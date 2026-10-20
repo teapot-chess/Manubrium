@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plain http is allowed because a desktop copy of OpenPairings in the hall
+  answers on a private address (192.168.x.x, 10.x.x.x, ...) with no
+  certificate, and Android's network security config has no way to say
+  "private ranges only": it matches domain names, not address ranges.
+
+  So the rule is enforced in the app instead (src/link.ts, isLocalHost):
+  a server is accepted over http only when its host is loopback, a private
+  IPv4 range, link-local, an IPv6 unique-local address or a .local name.
+  Everything else must be https. The user's own CAs are not trusted.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

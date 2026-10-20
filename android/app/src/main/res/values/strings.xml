@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Manubrium</string>
+    <string name="title_activity_main">Manubrium</string>
+    <string name="package_name">cloud.pairings.manubrium</string>
+    <string name="custom_url_scheme">cloud.pairings.manubrium</string>
+</resources>
