@@ -1,0 +1,16 @@
+Manubrium
+Copyright 2026 Jorian Burssens
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+What the built apps carry besides Manubrium, none of it copied into this
+repository - they are npm dependencies, listed in package-lock.json, each
+under its own licence:
+
+- Capacitor and its plugins (@capacitor/*), MIT licence, Copyright (c)
+  Ionic and contributors: the native shell, HTTP, preferences, device info
+  and the barcode scanner.
+- Preact, MIT licence, Copyright (c) Jason Miller: the user interface.
+
+Manubrium talks to OpenPairings servers. OpenPairings is a separate program
+under its own licence; nothing of it is included here.
