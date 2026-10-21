@@ -37,6 +37,7 @@ src/
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
   servers.ts     the servers on this phone, one token each
+  secure.ts      where the tokens live: Keychain / Keystore, Preferences in a browser
   platform.ts    phone-or-browser differences: storage, camera, deep links
   ui/            the screens
 ```
@@ -84,16 +85,22 @@ committed, with these changes:
   for loopback, 10/8, 172.16/12, 192.168/16, link-local, IPv6 unique-local
   and `.local` names; everything else must be https.
 - `AndroidManifest.xml`: the network security config, the camera permission
-  (QR scanning) and an intent filter for `manubrium://connect`, so a scanned
-  or tapped connect link opens the app.
+  (QR scanning, incident photos; declared not required) and an intent
+  filter for `manubrium://connect`, so a scanned or tapped connect link
+  opens the app.
+- `build.gradle`: the version from CI (`-PversionCode`, `-PversionName`)
+  and a release signing config that is used only when CI hands it the
+  upload keystore in the environment.
 
 **iOS** (`ios/App/App/Info.plist`)
 - `NSLocalNetworkUsageDescription`: iOS asks before an app talks to the
   local network; without the sentence the hall's desktop copy is unreachable.
 - `NSAppTransportSecurity` / `NSAllowsLocalNetworking`: plain http to
   local-network addresses only. Everything else keeps ATS (https).
-- `NSCameraUsageDescription` for the QR scanner, and the `manubrium` URL
-  scheme.
+- `NSCameraUsageDescription` (the QR scanner, incident photos),
+  `NSPhotoLibraryUsageDescription` (an existing photo for an incident),
+  `ITSAppUsesNonExemptEncryption` (standard HTTPS only, so TestFlight does
+  not ask per build), and the `manubrium` URL scheme.
 
 After changing anything in `src/`: `npm run sync` (build, then
 `npx cap sync`).
@@ -101,55 +108,61 @@ After changing anything in `src/`: `npm run sync` (build, then
 ## Building for a phone
 
 Nothing here installs the SDKs; they are needed only to build the native
-apps.
+apps. The identity - bundle id `cloud.pairings.manubrium`, name Manubrium,
+version from `package.json` - is set in `capacitor.config.ts`, the Xcode
+project and `android/app/build.gradle` together (`docs/releasing.md`).
 
-**Android** - Android Studio (with its SDK and JDK 21):
+### Prerequisites
+
+- Node 24, npm 11, `npm install`.
+- **Android:** Android Studio with its SDK and JDK 21.
+- **iOS:** a Mac with Xcode 16 or later, and an Apple Developer Program
+  membership for anything beyond the simulator. The project uses Swift
+  Package Manager, so there is no `pod install`.
+
+After changing anything in `src/`: `npm run sync` (build, then
+`npx cap sync`), which copies the bundle into both native projects and
+registers the plugins. After changing anything in `brand/`: `npm run assets`.
+
+### A development build on your own phone
 
 ```sh
 npm run sync
-npx cap open android      # then Run, or Build > Generate Signed Bundle
+npx cap open android      # Android Studio: pick the device, Run
+npx cap open ios          # Xcode: pick the device, Run
 ```
 
-**iOS** - a Mac with Xcode 16 or later. The iOS project uses Swift Package
-Manager, so there is no `pod install`:
+In Xcode, once per Mac: select the *App* target, *Signing & Capabilities*,
+pick your team and keep *Automatically manage signing*. Xcode makes a
+development certificate and profile for the phone it sees. The first run on
+a phone asks to trust the developer under *Settings > General > VPN & Device
+Management*. None of that touches the repository: the team id is not
+committed, and the store build signs differently (below).
 
-```sh
-npm run sync
-npx cap open ios          # then pick a device and Run
-```
+For the hall's local network, run a desktop OpenPairings on the laptop and
+connect the phone to its private address; iOS asks once for the local
+network, Android asks for nothing.
 
-### TestFlight (not done yet)
+### Store builds: TestFlight and Google Play
 
-1. An Apple Developer Program membership (paid, per organisation or person).
-2. In App Store Connect, create the app with bundle id
-   `cloud.pairings.manubrium` (change `appId` in `capacitor.config.ts` first if
-   it should be another, then `npx cap sync`).
-3. In Xcode: *App* target, *Signing & Capabilities*: pick the team, keep
-   "Automatically manage signing". Set the version and build number.
-4. Add the app icon (`ios/App/App/Assets.xcassets/AppIcon.appiconset`) - the
-   generated one is Capacitor's placeholder.
-5. *Product > Archive*, then in the Organizer *Distribute App > App Store
-   Connect > Upload*.
-6. In App Store Connect, *TestFlight*: answer the export-compliance question
-   (standard HTTPS only), add internal testers, or an external group (which
-   needs Beta App Review).
-7. App Review will want a test account on a public server: an OpenPairings
-   account with a small tournament on it, and a connect code made shortly
-   before, or a note on how to make one.
+Both come out of GitHub Actions, signed with the organisation's secrets,
+and need no Mac on anyone's desk:
 
-For Google Play the equivalent is an internal-testing track with a signed
-`.aab` from *Generate Signed Bundle*.
+- `.github/workflows/testflight.yml` archives, signs for the App Store and
+  uploads to App Store Connect (then TestFlight).
+- `.github/workflows/android.yml` builds the signed `.aab` for the Play
+  Console and the `.apk` for a tester without Play.
+
+Both run from the Actions tab (*Run workflow*) or on a tag `vX.Y.Z` that
+matches `package.json`. `docs/releasing.md` has the whole procedure, the
+secrets, and what to create at Apple and Google first. The listing copy,
+the privacy policy and the screenshot list are in `store/`.
 
 ## Known gaps
 
-- **Tokens live in Capacitor Preferences** (UserDefaults / SharedPreferences),
-  not the Keychain / Keystore. A secure-storage plugin is the next step
-  before a store release.
 - **No real-device run yet.** The web bundle, the API client and the outbox
   are tested; the native shells have been generated, not built (no SDKs on
   the machine that made them).
-- **Icons and splash screens** are Capacitor's placeholders; OpenPairings'
-  nine-squares mark belongs there.
 - **Not in the app because the server does not offer it yet:** manual
   pairing changes, writing settings, and acknowledging from a phone the
   results Lite refuses for the desk (a decisive postponed game, a correction
