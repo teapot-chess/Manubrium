@@ -139,7 +139,13 @@ export interface StandingRow {
   tiebreaks: Record<string, number>;
 }
 
-export interface Standings { tiebreaks: { code: string; name: string }[]; rows: StandingRow[] }
+export interface Standings {
+  tiebreaks: { code: string; name: string }[];
+  rows: StandingRow[];
+  /** Points count every result entered; tie-breaks only rounds up to this one, the complete ones (newer servers only). */
+  tiebreaks_through?: number;
+  rounds_paired?: number;
+}
 
 export interface Player {
   id: number;

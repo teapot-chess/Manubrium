@@ -9,6 +9,7 @@ import type { Ctx } from "./App";
 import { describeError, Empty, Notice, Sheet } from "./common";
 import { SettingsEditor } from "./SettingsEditor";
 import { BoardLinks } from "./BoardLinks";
+import { refusalText } from "../queue";
 
 const SETTING_LABELS: Record<string, string> = {
   type: "Type",
@@ -95,7 +96,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                     Round {q.entry.round}
                     {q.entry.kind === "result" ? `, board ${q.entry.board}: ${q.entry.result}` : `: incident (${q.entry.type})`}
                   </span>
-                  <span class="row-sub">{q.state === "waiting" ? "Waiting to send" : `Not accepted: ${q.message}`}</span>
+                  <span class="row-sub">{q.state === "waiting" ? "Waiting to send" : `Not accepted: ${refusalText(q)}`}</span>
                 </span>
               </li>
             ))}

@@ -14,6 +14,7 @@ import { MoreScreen } from "./MoreScreen";
 import { NewTournament } from "./NewTournament";
 import { PlayersScreen } from "./PlayersScreen";
 import { RoundScreen } from "./RoundScreen";
+import { StandingsScreen } from "./StandingsScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
 
 vi.mock("../platform", () => ({
@@ -312,6 +313,7 @@ describe("an incident photo", () => {
     render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
 
     fireEvent.click(await el("#log-incident"));
+    fireEvent.change(document.querySelector("#incident-board")!, { target: { value: "1" } });
     fireEvent.click(document.querySelector("#incident-photo")!);
     await waitFor(() => expect(document.querySelector(".photo-preview img")).not.toBeNull());
     fireEvent.submit(document.querySelector("form.form")!);
@@ -338,6 +340,93 @@ describe("an incident photo", () => {
     fireEvent.click(document.querySelector("#photo-4")!);
     await waitFor(() => expect(api.photo).toHaveBeenCalledWith(7, 4));
     await waitFor(() => expect(document.querySelector("#incident-photo-view")!.getAttribute("src")).toBe("blob:photo"));
+  });
+});
+
+describe("the offline queue on the organiser's phone", () => {
+  it("asks which board a round-level incident is about, and sends that board", async () => {
+    const api = fakeApi(round([board(1, 1), board(2, 2)]));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#log-incident"));
+    expect((document.querySelector("form.form button[type=submit]") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(document.querySelector("form.form")!);
+    expect(api.sync).not.toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "incident" })]);
+
+    fireEvent.change(document.querySelector("#incident-board")!, { target: { value: "2" } });
+    fireEvent.submit(document.querySelector("form.form")!);
+
+    await waitFor(() =>
+      expect(api.sync).toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "incident", pairing: 2, board: 2 })]),
+    );
+  });
+
+  it("names the board of a refused result even when the server could not, and never says 'check with the arbiter'", async () => {
+    const api = fakeApi(round([board(1, 1), board(2, 2)]));
+    api.sync.mockImplementation(async (_id: number, entries: { cid: string }[]) =>
+      entries.map((e) => ({ cid: e.cid, status: "refused", reason: "not_saved", message: "Board ?: not saved. Check with the arbiter." })),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-2"));
+    fireEvent.click(await el(".result-grid button"));
+
+    // Still there until somebody reads it: refused is not dropped.
+    await waitFor(() => expect(outbox.list(server.base, 7)).toMatchObject([{ state: "refused", reason: "not_saved" }]));
+
+    // The app re-renders on its outbox bump; the fake context does not, so look again.
+    cleanup();
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+    const notice = await screen.findByText(/Not accepted/);
+    expect(notice.textContent).toContain("Board 2: not saved.");
+    expect(notice.textContent).not.toContain("?");
+    expect(notice.textContent).not.toMatch(/check with the arbiter/i);
+  });
+});
+
+describe("standings with a round in progress", () => {
+  const row = (id: number, name: string, points: number, bh: number) => ({
+    rank: id,
+    player: { id, name, title: null, rating: 2000 },
+    points,
+    tiebreaks: { BHC1: 0, BH: bh, SB: 0 },
+  });
+  const tiebreaks = [
+    { code: "BHC1", name: "Buchholz Cut-1" },
+    { code: "BH", name: "Buchholz" },
+    { code: "SB", name: "Sonneborn-Berger" },
+  ];
+
+  it("shows each tie-break under its own column and says they stop at the last complete round", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockResolvedValue({
+      tiebreaks,
+      rows: [row(1, "Bosmans", 2, 0), row(2, "Peeters", 0, 1)],
+      tiebreaks_through: 1,
+      rounds_paired: 2,
+    });
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    const note = await el("#standings-tiebreak-note");
+    expect(note.textContent).toContain("up to round 1");
+    const head = Array.from(document.querySelectorAll("#standings thead th")).map((th) => th.textContent);
+    const peeters = Array.from(document.querySelectorAll("#standings tbody tr")[1].querySelectorAll("td")).map((td) => td.textContent);
+    expect(peeters[head.indexOf("BH")]).toBe("1");
+    expect(peeters[head.indexOf("BHC1")]).toBe("0");
+  });
+
+  it("says nothing once every paired round is complete, or on a server that does not tell", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockResolvedValue({ tiebreaks, rows: [row(1, "Bosmans", 2, 1)], tiebreaks_through: 2, rounds_paired: 2 });
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    await el("#standings");
+    expect(document.querySelector("#standings-tiebreak-note")).toBeNull();
+
+    cleanup();
+    api.standings.mockResolvedValue({ tiebreaks, rows: [row(1, "Bosmans", 2, 1)] });
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    await el("#standings");
+    expect(document.querySelector("#standings-tiebreak-note")).toBeNull();
   });
 });
 
