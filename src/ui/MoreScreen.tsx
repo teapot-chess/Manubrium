@@ -1,5 +1,6 @@
-// More: the incidents (desk roles) with their photos, the settings - read,
-// and the mid-event ones changed - and the outbox for this tournament.
+// More: the incidents (desk roles) with their photos, the hall boards
+// (Alnasl), the settings - read, and the mid-event ones changed - and the
+// outbox for this tournament.
 
 import { useEffect, useState } from "preact/hooks";
 import type { Incident, Tournament } from "../api";
@@ -7,6 +8,7 @@ import { takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Notice, Sheet } from "./common";
 import { SettingsEditor } from "./SettingsEditor";
+import { BoardLinks } from "./BoardLinks";
 
 const SETTING_LABELS: Record<string, string> = {
   type: "Type",
@@ -145,6 +147,8 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
           )}
         </section>
       )}
+
+      {desk && <BoardLinks ctx={ctx} t={t} />}
 
       {desk && (
         <section>

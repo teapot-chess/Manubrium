@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import type { Standings, Tournament } from "../api";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice } from "./common";
+import { describeError, Empty, Loading, Notice, ShareButton } from "./common";
+import { formatNumber as format, standingsText } from "../share";
 
 export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   const [s, setS] = useState<Standings | null>(null);
@@ -25,6 +26,11 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
       {error && <Notice kind="error">{error}</Notice>}
       {!s && !error && <Loading />}
       {s && s.rows.length === 0 && <Empty>No players yet.</Empty>}
+      {s && s.rows.length > 0 && (
+        <div class="view-tools">
+          <ShareButton id="share-standings" title={`${props.t.name}, standings`} text={() => standingsText(props.t, s)} />
+        </div>
+      )}
       {s && s.rows.length > 0 && (
         <div class="table-wrap">
           <table id="standings">
@@ -69,7 +75,3 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   );
 }
 
-function format(v: unknown): string {
-  if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, "");
-  return v == null ? "" : String(v);
-}

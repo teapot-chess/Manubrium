@@ -1,5 +1,32 @@
 import type { ComponentChildren } from "preact";
+import { useState } from "preact/hooks";
 import { ApiError, OfflineError } from "../api";
+import { shareText } from "../platform";
+
+// The nine-square mark (brand/manubrium-mark.svg), inline: the handle - one
+// filled column down an empty board - in currentColor, the centre square in
+// the mark's own accent. Sized by CSS (.mark, .mark.big).
+const OUTLINED = [
+  [2.6, 2.6],
+  [16.6, 2.6],
+  [2.6, 9.6],
+  [16.6, 9.6],
+  [2.6, 16.6],
+  [16.6, 16.6],
+];
+
+export function Mark(props: { big?: boolean }) {
+  return (
+    <svg class={props.big ? "mark big" : "mark"} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {OUTLINED.map(([x, y]) => (
+        <rect key={`${x},${y}`} x={x} y={y} width="4.8" height="4.8" fill="none" stroke="currentColor" stroke-width="1.2" />
+      ))}
+      <rect x="9" y="2" width="6" height="6" fill="currentColor" />
+      <rect class="mark-centre" x="9" y="9" width="6" height="6" />
+      <rect x="9" y="16" width="6" height="6" fill="currentColor" />
+    </svg>
+  );
+}
 
 export function TopBar(props: {
   title: string;
@@ -17,7 +44,7 @@ export function TopBar(props: {
           </svg>
         </button>
       ) : (
-        <span class="mark" aria-hidden="true" />
+        <Mark />
       )}
       <div class="topbar-text">
         <h1>{props.title}</h1>
@@ -72,4 +99,27 @@ export function Loading() {
 /** "1/2-1/2" is how the server spells it; a phone can afford the glyph. */
 export function resultLabel(code: string): string {
   return code.replace(/1\/2/g, "½");
+}
+
+/**
+ * A Share button: the phone's share sheet, or in a browser the Web Share
+ * API or the clipboard. `text` is built when tapped, so it is never stale.
+ */
+export function ShareButton(props: { id: string; title: string; text: () => string | null; label?: string }) {
+  const [said, setSaid] = useState<string | null>(null);
+  async function go() {
+    const text = props.text();
+    if (!text) return;
+    const outcome = await shareText(props.title, text);
+    setSaid(outcome === "copied" ? "Copied" : outcome === "failed" ? "Could not share" : null);
+    if (outcome === "copied" || outcome === "failed") setTimeout(() => setSaid(null), 2500);
+  }
+  return (
+    <button type="button" class="chip share" id={props.id} onClick={go} aria-live="polite">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+      </svg>
+      {said ?? props.label ?? "Share"}
+    </button>
+  );
 }

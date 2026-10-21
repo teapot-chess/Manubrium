@@ -20,6 +20,7 @@
   --ok-soft: #e8f0eb;
   --shadow: 0 1px 2px rgba(36, 33, 28, 0.06), 0 6px 20px rgba(36, 33, 28, 0.06);
   --radius: 14px;
+  --mark-centre: #7a2e1e;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
@@ -41,6 +42,7 @@
     --warn: #f0c36a;
     --warn-soft: rgba(240, 195, 106, 0.12);
     --ok-soft: rgba(96, 189, 140, 0.14);
+    --mark-centre: #e2a08c;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
   }
@@ -59,7 +61,9 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; line-height: 1.2; }
 
-.splash { height: 100vh; background: var(--bg); }
+.splash { height: 100vh; background: var(--bg); display: grid; place-items: center; }
+.splash .mark { animation: breathe 1.6s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.55; } }
 
 /* ---------- screen frame ---------- */
 .screen { min-height: 100vh; display: flex; flex-direction: column; }
@@ -80,14 +84,12 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .topbar h1 { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar p { margin: 2px 0 0; font-size: 12.5px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* The nine-square mark, in the accent. */
-.mark {
-  width: 28px; height: 28px; flex: none; border-radius: 7px;
-  background:
-    conic-gradient(from 90deg at 33.3% 33.3%, var(--accent) 25%, transparent 0) 0 0 / 66.6% 66.6%,
-    var(--accent-soft);
-}
-.mark.big { width: 64px; height: 64px; border-radius: 16px; }
+/* The nine-square mark (brand/manubrium-mark.svg): the board in the accent,
+   the centre square in the family's rust, as on the splash screen. The
+   viewBox already leaves the squares a margin, so no padding here. */
+.mark { display: block; width: 32px; height: 32px; flex: none; color: var(--accent); }
+.mark .mark-centre { fill: var(--mark-centre); }
+.mark.big { width: 72px; height: 72px; }
 
 .icon-btn {
   width: 40px; height: 40px; flex: none; display: grid; place-items: center;
@@ -309,6 +311,56 @@ label.check input { width: 22px; min-height: 22px; flex: none; }
 .photo-preview { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 .photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
 .incident-photo { display: block; width: 100%; height: auto; border-radius: 12px; margin-top: 8px; }
+
+/* ---------- share, hall boards, check-in, byes, search ---------- */
+.view-tools { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; transition: background 120ms ease, border-color 120ms ease, transform 120ms ease; }
+.chip:active { transform: scale(0.96); }
+.chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+.chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.board-report { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.board-report svg { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; opacity: 0.8; }
+.board-report.mismatch { color: var(--danger); font-weight: 700; }
+
+.checkin-bar { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; }
+.checkin-count { flex: 1; font-size: 13.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.checkin-bar.on .checkin-count { color: var(--accent); font-weight: 700; }
+.tick {
+  width: 30px; height: 30px; margin-right: 14px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; border: 2px solid var(--border); pointer-events: none;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.tick svg { width: 18px; height: 18px; fill: none; stroke: var(--accent-ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 140ms ease; }
+.tick.on { background: var(--accent); border-color: var(--accent); transform: scale(1.04); }
+.tick.on svg { opacity: 1; }
+.row.is-present { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+
+.search-hits { max-height: 46vh; overflow-y: auto; transition: opacity 120ms ease; }
+.search-hits.stale { opacity: 0.55; }
+.add-plus { margin-right: 16px; font-size: 22px; font-weight: 600; color: var(--accent); }
+
+.byes-editor { margin-top: 6px; }
+.bye-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.bye-rows li { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 14px; border-top: 1px solid var(--border); min-height: 52px; }
+.bye-rows li:first-child { border-top: 0; }
+.bye-rows li.on { background: var(--warn-soft); }
+.bye-rows li.locked { color: var(--text-soft); }
+.bye-round { flex: 1; font-weight: 600; }
+.bye-rows select { width: auto; min-width: 44%; min-height: 40px; padding: 6px 10px; }
+.bye-fixed { display: flex; flex-direction: column; align-items: flex-end; padding-right: 6px; font-weight: 600; }
+.bye-fixed small { font-weight: 400; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.check-cell { display: flex; align-items: flex-end; padding-bottom: 12px; }
+
+.qr { width: min(260px, 70vw); margin: 8px auto; padding: 10px; background: #ffffff; border-radius: 14px; box-shadow: var(--shadow); animation: rise 200ms ease-out; }
+.qr svg { display: block; width: 100%; height: auto; }
+.code-once {
+  display: block; margin: 12px 0 0; padding: 12px; border-radius: 10px; text-align: center;
+  background: var(--surface-alt); border: 1px dashed var(--border);
+  font: 600 15px/1.4 ui-monospace, "SF Mono", Menlo, monospace; word-break: break-all; user-select: all;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

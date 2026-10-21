@@ -5,7 +5,7 @@ import { describeError, Empty, Loading, Notice, TopBar } from "./common";
 
 const ROLE: Record<string, string> = { owner: "Organiser", editor: "Editor", arbiter: "Arbiter" };
 
-export function Tournaments(props: { ctx: Ctx; onServers: () => void; onOpen: (t: TournamentLine) => void }) {
+export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () => void; onOpen: (t: TournamentLine) => void }) {
   const { ctx } = props;
   const [list, setList] = useState<TournamentLine[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onOpen: (t
           </Notice>
         )}
         {list === null && !error && <Loading />}
-        {list && list.length === 0 && <Empty>No tournaments on this account yet. Make one at the desk.</Empty>}
+        {list && list.length === 0 && <Empty>No tournaments on this account yet.</Empty>}
         {list && list.length > 0 && (
           <ul class="list" id="tournament-list">
             {list.map((t) => {
@@ -63,6 +63,11 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onOpen: (t
               );
             })}
           </ul>
+        )}
+        {list && !signedOut && (
+          <button type="button" class="btn primary block" id="new-tournament-btn" onClick={props.onNew}>
+            New tournament
+          </button>
         )}
         {list && (
           <button type="button" class="btn ghost block" onClick={load}>
