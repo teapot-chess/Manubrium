@@ -4,7 +4,12 @@ import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { Device } from "@capacitor/device";
 import { App } from "@capacitor/app";
+import { SecureStorage } from "@aparajita/capacitor-secure-storage";
 import type { KeyValue } from "./queue";
+import { secureKeyValue, type PlainBackend, type SecureBackend } from "./secure";
+
+export const native = Capacitor.isNativePlatform();
+export const platform = Capacitor.getPlatform(); // "ios" | "android" | "web"
 
 /** Preferences: UserDefaults on iOS, SharedPreferences on Android, localStorage in a browser. */
 export const storage: KeyValue = {
@@ -16,8 +21,42 @@ export const storage: KeyValue = {
   },
 };
 
-export const native = Capacitor.isNativePlatform();
-export const platform = Capacitor.getPlatform(); // "ios" | "android" | "web"
+const preferences: PlainBackend = {
+  ...storage,
+  async remove(key) {
+    await Preferences.remove({ key });
+  },
+};
+
+// The plugin prefixes every key; ours keeps the app's items apart from any
+// other plugin's in the same keychain. Set before the first call, once.
+const vaultReady = native ? SecureStorage.setKeyPrefix("manubrium_") : Promise.resolve();
+
+const vault: SecureBackend = {
+  async getItem(key) {
+    await vaultReady;
+    return SecureStorage.getItem(key);
+  },
+  async setItem(key, value) {
+    await vaultReady;
+    await SecureStorage.setItem(key, value);
+  },
+  async removeItem(key) {
+    await vaultReady;
+    await SecureStorage.removeItem(key);
+  },
+};
+
+/**
+ * Where the device tokens live: the iOS Keychain or the Android Keystore
+ * on a phone, Preferences in a browser. Tokens an earlier version left in
+ * Preferences are moved over on first read (src/secure.ts).
+ */
+export const secureStorage: KeyValue = secureKeyValue({
+  secure: native ? vault : null,
+  plain: preferences,
+  warn: (message, error) => console.warn(message, error),
+});
 
 /** What the account page will list this phone as. */
 export async function deviceName(): Promise<string> {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
 import { ServerList, type SavedServer } from "../servers";
-import { onOpenLink, storage } from "../platform";
+import { onOpenLink, secureStorage, storage } from "../platform";
 import { AddServer } from "./AddServer";
 import { Servers } from "./Servers";
 import { Tournaments } from "./Tournaments";
@@ -25,7 +25,7 @@ export interface Ctx {
   bump: () => void;
 }
 
-const serverList = new ServerList(storage);
+const serverList = new ServerList(secureStorage); // tokens: Keychain / Keystore
 const outbox = new Outbox(storage);
 
 export function App() {

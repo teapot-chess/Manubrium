@@ -1,6 +1,6 @@
 // The servers this phone is connected to, each with its own device token.
-// Kept in the app's preferences (see platform.ts and the README's note on
-// where tokens live).
+// Kept in the Keychain / Keystore on a phone, Preferences in a browser (see
+// platform.ts and src/secure.ts).
 
 import type { KeyValue } from "./queue";
 import type { ServerInfo, UserInfo } from "./api";

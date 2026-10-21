@@ -1,0 +1,144 @@
+# The Android store build: a signed .aab for the Play Console (uploaded by
+# hand to a testing track; Play app signing re-signs it with the app key)
+# and the matching .apk for a phone with no Play account. Run by hand
+# (workflow_dispatch) or by a version tag, which also gets the .apk as a
+# release asset.
+#
+# Signing: android/app/build.gradle reads the upload keystore from the
+# MANUBRIUM_* variables and signs only when they are set; without them the
+# build is unsigned, so a fork gets a build, not a red cross. The secrets
+# and where they come from: docs/releasing.md.
+name: Android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+          cache-dependency-path: |
+            android/build.gradle
+            android/app/build.gradle
+            android/variables.gradle
+            android/gradle/wrapper/gradle-wrapper.properties
+
+      - run: npm ci
+
+      - name: Build the web bundle
+        run: npm run build
+
+      - name: Copy it into the Android project
+        run: npx cap sync android
+
+      - name: Version and build number
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "APP_BUILD=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "Manubrium $version ($GITHUB_RUN_NUMBER)"
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              tag=${GITHUB_REF#refs/tags/v}
+              [ "$tag" = "$version" ] || { echo "::error::tag v$tag but package.json says $version"; exit 1; }
+              ;;
+          esac
+
+      - name: Is the upload keystore set up?
+        id: keystore
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE" ]; then
+            echo "sign=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sign=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No ANDROID_KEYSTORE secret (a fork?) - the bundle will be unsigned and the Play Console will refuse it (docs/releasing.md)."
+          fi
+
+      - name: Write the keystore
+        if: steps.keystore.outputs.sign == 'true'
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "MANUBRIUM_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      # The passwords reach Gradle through the environment of this one step.
+      - name: Build the signed bundle and apk
+        env:
+          MANUBRIUM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MANUBRIUM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MANUBRIUM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          set -eu
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain \
+            -PversionCode="$APP_BUILD" -PversionName="$APP_VERSION" \
+            bundleRelease assembleRelease
+          ls -l app/build/outputs/bundle/release app/build/outputs/apk/release
+
+      - name: Name the files after the version
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/out"
+          cp android/app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/out/Manubrium-$APP_VERSION-$APP_BUILD.aab"
+          apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          cp "$apk" "$RUNNER_TEMP/out/Manubrium-$APP_VERSION-$APP_BUILD.apk"
+          echo "OUT=$RUNNER_TEMP/out" >> "$GITHUB_ENV"
+
+      - name: Delete the keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Manubrium-android-${{ env.APP_VERSION }}-${{ env.APP_BUILD }}
+          path: ${{ env.OUT }}
+          retention-days: 30
+          if-no-files-found: error
+
+  # On a version tag the .apk goes on the GitHub release (a tester without
+  # Play can sideload it). The .aab stays an artifact: only the Play Console
+  # can do anything with it.
+  release:
+    needs: android
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: Manubrium-android-*
+          merge-multiple: true
+          path: out
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: out/*.apk
+          fail_on_unmatched_files: true
