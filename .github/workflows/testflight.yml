@@ -1,0 +1,196 @@
+# The iOS store build: archive, sign for the App Store, upload to App Store
+# Connect, where it lands in TestFlight. Run by hand (workflow_dispatch) or
+# by a version tag.
+#
+# Signing is manual, with a certificate and a profile from the secrets -
+# not "automatic" with the API key, which would also work but would let
+# xcodebuild create certificates and profiles in the team on its own. The
+# secrets and where they come from: docs/releasing.md.
+#
+# Secrets are passed to the steps that need them, never to the job's env:
+# job env reaches every step, third-party actions included.
+name: TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the web bundle
+        run: npm run build
+
+      - name: Copy it into the iOS project
+        run: npx cap sync ios
+
+      # The version is package.json's; the build number is this run's
+      # number, which only goes up and is unique per workflow - App Store
+      # Connect refuses a build number it has seen for the same version.
+      - name: Version and build number
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "APP_BUILD=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "Manubrium $version ($GITHUB_RUN_NUMBER)"
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              tag=${GITHUB_REF#refs/tags/v}
+              [ "$tag" = "$version" ] || { echo "::error::tag v$tag but package.json says $version"; exit 1; }
+              ;;
+          esac
+
+      - name: Xcode
+        run: |
+          xcodebuild -version
+          xcodebuild -project ios/App/App.xcodeproj -list
+
+      # A throwaway keychain with the distribution certificate, and the
+      # profile where Xcode looks for profiles. The profile's own name is
+      # read from the file, so renaming it in the developer portal needs no
+      # change here.
+      - name: Import the certificate and the profile
+        env:
+          APPLE_DIST_CERT_P12: ${{ secrets.APPLE_DIST_CERT_P12 }}
+          APPLE_DIST_CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          set -eu
+          for name in APPLE_DIST_CERT_P12 APPLE_DIST_CERT_PASSWORD APPLE_PROVISIONING_PROFILE; do
+            eval "value=\${$name:-}"
+            [ -n "$value" ] || { echo "::error::secret $name is not set (docs/releasing.md)"; exit 1; }
+          done
+
+          work=$(mktemp -d)
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(openssl rand -hex 24)
+
+          printf '%s' "$APPLE_DIST_CERT_P12" | base64 --decode > "$work/dist.p12"
+          if ! openssl pkcs12 -in "$work/dist.p12" -passin env:APPLE_DIST_CERT_PASSWORD -noout 2>"$work/openssl.err"; then
+            echo "::error::APPLE_DIST_CERT_PASSWORD does not open APPLE_DIST_CERT_P12 (p12 sha256 $(shasum -a 256 "$work/dist.p12" | cut -c1-16))"
+            cat "$work/openssl.err"
+            exit 1
+          fi
+
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$work/dist.p12" -k "$keychain" -P "$APPLE_DIST_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          security find-identity -v -p codesigning "$keychain" | grep -q "Apple Distribution" || {
+            echo "::error::no 'Apple Distribution' identity in the certificate"
+            exit 1
+          }
+
+          printf '%s' "$APPLE_PROVISIONING_PROFILE" | base64 --decode > "$work/profile.mobileprovision"
+          security cms -D -i "$work/profile.mobileprovision" > "$work/profile.plist"
+          uuid=$(plutil -extract UUID raw -o - "$work/profile.plist")
+          name=$(plutil -extract Name raw -o - "$work/profile.plist")
+          bundle=$(plutil -extract Entitlements.application-identifier raw -o - "$work/profile.plist")
+          echo "profile '$name' for $bundle"
+          case "$bundle" in
+            *.cloud.pairings.manubrium) ;;
+            *) echo "::error::the profile is for $bundle, not cloud.pairings.manubrium"; exit 1 ;;
+          esac
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$work/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+          echo "PROFILE_NAME=$name" >> "$GITHUB_ENV"
+          rm -rf "$work"
+
+      - name: Archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -eu -o pipefail
+          [ -n "$APPLE_TEAM_ID" ] || { echo "::error::secret APPLE_TEAM_ID is not set"; exit 1; }
+          xcodebuild archive \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Manubrium.xcarchive" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            MARKETING_VERSION="$APP_VERSION" \
+            CURRENT_PROJECT_VERSION="$APP_BUILD" \
+            | tee "$RUNNER_TEMP/archive.log" | grep -E "^(\*\*|error|warning: .*(sign|provision)|=== )" || true
+          grep -q "ARCHIVE SUCCEEDED" "$RUNNER_TEMP/archive.log" || { tail -80 "$RUNNER_TEMP/archive.log"; exit 1; }
+
+      - name: Export the .ipa
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -eu
+          sed -e "s/__TEAM_ID__/$APPLE_TEAM_ID/" -e "s/__PROFILE_NAME__/$PROFILE_NAME/" \
+            ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+          plutil -lint "$RUNNER_TEMP/ExportOptions.plist"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Manubrium.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export"
+          ls -l "$RUNNER_TEMP/export"
+          ipa=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
+          cp "$ipa" "$RUNNER_TEMP/Manubrium-$APP_VERSION-$APP_BUILD.ipa"
+          echo "IPA=$RUNNER_TEMP/Manubrium-$APP_VERSION-$APP_BUILD.ipa" >> "$GITHUB_ENV"
+
+      # altool is deprecated in name only: it is still what Xcode ships for
+      # a scripted upload, and it takes the App Store Connect API key, so no
+      # Apple ID or app-specific password is kept anywhere. The .p8 must sit
+      # in ~/private_keys with exactly this file name for altool to find it.
+      - name: Upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          set -eu
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            eval "value=\${$name:-}"
+            [ -n "$value" ] || { echo "::error::secret $name is not set (docs/releasing.md)"; exit 1; }
+          done
+          mkdir -p "$HOME/private_keys"
+          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8"
+          xcrun altool --validate-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+          rm -f "$HOME/private_keys/AuthKey_$ASC_KEY_ID.p8"
+          echo "Uploaded Manubrium $APP_VERSION ($APP_BUILD). It shows up in TestFlight once App Store Connect has processed it (minutes)."
+
+      - name: Keep the .ipa for a month
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Manubrium-ios-${{ env.APP_VERSION }}-${{ env.APP_BUILD }}
+          path: ${{ env.IPA }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Delete the temporary keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -rf "$HOME/private_keys" "$HOME/Library/MobileDevice/Provisioning Profiles"
