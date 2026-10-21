@@ -3,7 +3,7 @@ import { connect } from "../api";
 import { LinkError, parseConnectLink } from "../link";
 import { deviceName, native, platform, scanQr } from "../platform";
 import { labelFor, type SavedServer } from "../servers";
-import { describeError, Notice, TopBar } from "./common";
+import { describeError, Mark, Notice, TopBar } from "./common";
 
 export function AddServer(props: {
   initialLink?: string;
@@ -62,7 +62,7 @@ export function AddServer(props: {
       <TopBar title="Add a server" onBack={props.canCancel ? props.onCancel : undefined} />
       <main class="content narrow">
         <div class="welcome">
-          <span class="mark big" aria-hidden="true" />
+          <Mark big />
           <p>
             On the OpenPairings server, open your account page, go to <strong>Manubrium app</strong> and choose{" "}
             <strong>Connect a phone</strong>. Then scan the code it shows.

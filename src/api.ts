@@ -37,6 +37,31 @@ export interface Tournament extends TournamentLine {
   rounds: { number: number; publish_level: number; missing_results: number }[];
   next_round: { number: number; blocker: string | null; warnings: Warning[] } | null;
   settings: Record<string, unknown>;
+  /** The kinds of requested bye this tournament takes, for a player's byes. */
+  bye_kinds?: { id: string; label: string }[];
+  /** The public page on OpenResults, when the tournament is published there. */
+  openresults_url?: string | null;
+}
+
+/** What `GET /tournament-options` offers a new tournament. */
+export interface TournamentOptions {
+  systems: { id: string; label: string }[];
+  player_sources: { id: string; label: string }[];
+  defaults: Record<string, unknown>;
+}
+
+/** A new tournament, as `POST /tournaments` takes it. */
+export interface NewTournament {
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  city: string | null;
+  venue: string | null;
+  system: string;
+  rounds_count: number | null;
+  time_control: string | null;
+  federation: string | null;
+  rated: boolean;
 }
 
 export interface BoardPlayer { id: number; name: string; title: string | null; rating: number | null; score: number }
@@ -56,6 +81,16 @@ export interface Board {
   clearable: boolean;
   /** Entered on a Manubrium Lite phone (`/m`): waiting for the arbiter's word, or confirmed. */
   phone?: { by: string; state: "unconfirmed" | "confirmed"; at: string } | null;
+  /** What the board in the hall (Alnasl) reports. Shown, never entered. */
+  board_report?: BoardReport | null;
+}
+
+export interface BoardReport {
+  status: string;
+  result: string | null;
+  mismatch: boolean;
+  moves_count: number | null;
+  updated_at: string | null;
 }
 
 export interface PoolEntry { player: BoardPlayer; type: string | null; absent: boolean }
@@ -123,6 +158,41 @@ export interface Player {
   status: "active" | "withdrawn" | "expelled";
   absent: boolean;
   absent_rounds: number[];
+  /** Checked in at the hall. */
+  present?: boolean;
+  /** Requested byes, by round. */
+  byes?: Bye[];
+}
+
+export interface Bye { round: number; kind: string }
+
+/** One hit from `GET /player-search`: a player on the FIDE or a national list. */
+export interface SearchHit {
+  source: string;
+  fide_id: number | null;
+  national_id: string | number | null;
+  name: string;
+  federation: string | null;
+  title: string | null;
+  sex: string | null;
+  birth_year: number | null;
+  fide_rating: number | null;
+  national_rating: number | null;
+  club: string | null;
+  already_in: boolean;
+}
+
+/** Where a player added from a list comes from. */
+export type PlayerSource = { source: "fide"; fide_id: number } | { source: string; national_id: string | number };
+
+/** A hall board's link to the tournament (Alnasl). */
+export interface BoardLink {
+  id: number;
+  kind: string;
+  label: string | null;
+  reach: string | null;
+  created_at: string;
+  last_seen_at: string | null;
 }
 
 export interface Incident {
@@ -293,6 +363,14 @@ export interface Client {
   updateSettings(id: number, settings: SettingsChange): Promise<Record<string, unknown>>;
   attachPhoto(id: number, incident: number, jpegBase64: string): Promise<Incident>;
   photo(id: number, incident: number): Promise<Blob>;
+  tournamentOptions(): Promise<TournamentOptions>;
+  createTournament(tournament: NewTournament): Promise<Tournament>;
+  searchPlayers(id: number, q: string, source: string): Promise<SearchHit[]>;
+  addPlayerFrom(id: number, from: PlayerSource): Promise<Player>;
+  setByes(id: number, playerId: number, byes: Bye[]): Promise<Player | null>;
+  boardLinks(id: number): Promise<BoardLink[]>;
+  createBoardLink(id: number, label?: string): Promise<{ link: BoardLink; code: string }>;
+  revokeBoardLink(id: number, linkId: number): Promise<void>;
 }
 
 export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
@@ -333,6 +411,20 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
       (await req<{ settings: Record<string, unknown> }>("PATCH", `${t(id)}/settings`, { settings })).settings,
     attachPhoto: async (id, incident, jpegBase64) =>
       (await req<{ incident: Incident }>("POST", `${t(id)}/incidents/${incident}/photo`, { photo: jpegBase64 })).incident,
+    tournamentOptions: () => req("GET", "/tournament-options"),
+    createTournament: async (tournament) => (await req<{ tournament: Tournament }>("POST", "/tournaments", { tournament })).tournament,
+    searchPlayers: async (id, q, source) => {
+      const query = new URLSearchParams({ q, source }).toString();
+      return (await req<{ results: SearchHit[] }>("GET", `${t(id)}/player-search?${query}`)).results;
+    },
+    addPlayerFrom: async (id, from) => (await req<{ player: Player }>("POST", `${t(id)}/players`, { player: { from } })).player,
+    setByes: async (id, playerId, byes) =>
+      (await req<{ player?: Player } | undefined>("PUT", `${t(id)}/players/${playerId}/byes`, { byes }))?.player ?? null,
+    boardLinks: async (id) => (await req<{ links: BoardLink[] }>("GET", `${t(id)}/board-links`)).links,
+    createBoardLink: (id, label) => req("POST", `${t(id)}/board-links`, label ? { link: { label } } : {}),
+    revokeBoardLink: async (id, linkId) => {
+      await req("DELETE", `${t(id)}/board-links/${linkId}`);
+    },
     photo: async (id, incident) => {
       // Not JSON: the JPEG itself, so not through `call`.
       let response: Response;

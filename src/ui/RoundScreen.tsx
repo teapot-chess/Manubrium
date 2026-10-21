@@ -6,7 +6,9 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import { ApiError, OfflineError, type Board, type Round, type Tournament } from "../api";
 import { onResume, takePhoto } from "../platform";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice, resultLabel, Sheet } from "./common";
+import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
+import { boardReportLabel } from "../alnasl";
+import { pairingsText } from "../share";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
@@ -204,6 +206,12 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       )}
       {round && deskRole && <FinishEdits ctx={ctx} t={t} round={round} onDone={edited} />}
 
+      {round && round.boards.length > 0 && (
+        <div class="view-tools">
+          <ShareButton id="share-round" title={`${t.name}, round ${round.number}`} text={() => pairingsText(t, round)} />
+        </div>
+      )}
+
       {!round && !error && <Loading />}
       {round && round.boards.length === 0 && <Empty>No boards in this round.</Empty>}
       {round && (
@@ -224,6 +232,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
                   <span class="players">
                     <Name p={b.white} />
                     {b.bye ? <span class="bye">bye</span> : <Name p={b.black} />}
+                    <BoardReportLine board={b} />
                   </span>
                   <span class="result">
                     {shown ? resultLabel(shown) : "–"}
@@ -311,6 +320,29 @@ function Name(props: { p: Board["white"] }) {
       <small>
         {props.p.rating ?? ""} · {props.p.score}
       </small>
+    </span>
+  );
+}
+
+// The hall board's word (Alnasl), small, beside the pairing: red when it
+// disagrees with the result entered. Only ever shown - never entered,
+// never offered as a choice.
+function BoardReportLine(props: { board: Board }) {
+  const report = props.board.board_report;
+  const label = boardReportLabel(report);
+  if (!report || !label) return null;
+  return (
+    <span
+      class={`board-report ${report.mismatch ? "mismatch" : ""}`}
+      id={`board-report-${props.board.id}`}
+      title={report.mismatch ? "The board in the hall reports something else than the result entered." : "What the board in the hall reports."}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <path d="M4 12h16M12 4v16" />
+      </svg>
+      {label}
+      {report.mismatch && " · differs"}
     </span>
   );
 }

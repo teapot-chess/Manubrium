@@ -6,17 +6,20 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { ApiError, type Board, type Client, type Round, type Tournament } from "../api";
+import { ApiError, OfflineError, type Board, type Client, type Player, type Round, type SearchHit, type Tournament } from "../api";
 import { Outbox, type KeyValue } from "../queue";
 import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
 import { MoreScreen } from "./MoreScreen";
+import { NewTournament } from "./NewTournament";
+import { PlayersScreen } from "./PlayersScreen";
 import { RoundScreen } from "./RoundScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
 
 vi.mock("../platform", () => ({
   onResume: () => () => undefined,
   takePhoto: vi.fn(async () => "/9j/PHOTO"),
+  shareText: vi.fn(async () => "shared"),
 }));
 
 class Memory implements KeyValue {
@@ -111,6 +114,28 @@ function fakeApi(r: Round): FakeApi {
     attachPhoto: vi.fn(async () => ({})),
     photo: vi.fn(async () => new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: "image/jpeg" })),
     incidents: vi.fn(async () => []),
+    players: vi.fn(async () => []),
+    updatePlayer: vi.fn(async () => ({})),
+    createPlayer: vi.fn(async () => ({})),
+    setByes: vi.fn(async () => null),
+    tournamentOptions: vi.fn(async () => ({
+      systems: [
+        { id: "swiss_dutch", label: "Swiss (Dutch)" },
+        { id: "round_robin", label: "Round robin" },
+      ],
+      player_sources: [
+        { id: "fide", label: "FIDE" },
+        { id: "bel", label: "Belgian" },
+      ],
+      defaults: { federation: "BEL", rounds_count: 7, time_control: "90+30", rated: true },
+    })),
+    searchPlayers: vi.fn(async () => []),
+    addPlayerFrom: vi.fn(async () => ({})),
+    boardLinks: vi.fn(async () => []),
+    createBoardLink: vi.fn(async () => ({ link: { id: 3, kind: "relay", label: "Top boards", reach: null, created_at: "", last_seen_at: null }, code: "alnasl_ONCE" })),
+    revokeBoardLink: vi.fn(async () => undefined),
+    createTournament: vi.fn(async () => ({ id: 9, name: "Hall Open" })),
+    standings: vi.fn(async () => ({ tiebreaks: [], rows: [] })),
   } as never;
 }
 
@@ -371,5 +396,252 @@ describe("settings", () => {
     const api = fakeApi(round([]));
     render(<MoreScreen ctx={ctxWith(api)} t={tournament("arbiter", { time_control: "90+30" })} />);
     expect(document.querySelector("#edit-settings")).toBeNull();
+  });
+});
+
+function player(id: number, name: string, extra: Partial<Player> = {}): Player {
+  return {
+    id,
+    name,
+    title: null,
+    sex: null,
+    federation: "BEL",
+    club: null,
+    birth_year: null,
+    fide_id: null,
+    fide_rating: null,
+    national_rating: null,
+    rating: 1800,
+    pairing_number: id,
+    start_round: null,
+    status: "active",
+    absent: false,
+    absent_rounds: [],
+    present: false,
+    byes: [],
+    ...extra,
+  };
+}
+
+describe("check-in", () => {
+  it("ticks players present, counts them, and filters to who is not here yet", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(1, "Ann"), player(2, "Bob", { present: true }), player(3, "Cy", { status: "withdrawn" })]);
+    api.updatePlayer.mockImplementation(async (_t: number, id: number, c: Record<string, unknown>) => player(id, "Ann", c));
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    expect((await el("#checkin-count")).textContent).toBe("1 of 2 present");
+    fireEvent.click(document.querySelector("#checkin-toggle")!);
+    fireEvent.click(document.querySelector("#present-1")!);
+
+    await waitFor(() => expect(api.updatePlayer).toHaveBeenCalledWith(7, 1, { present: true }));
+    await waitFor(() => expect(document.querySelector("#checkin-count")!.textContent).toBe("2 of 2 present"));
+
+    fireEvent.click(document.querySelector("#checkin-missing")!);
+    expect(document.querySelector("#present-1")).toBeNull();
+    await screen.findByText("Everybody is here.");
+  });
+
+  it("puts the tick back when the server says no", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(1, "Ann")]);
+    api.updatePlayer.mockRejectedValueOnce(new ApiError(422, "locked", "Not saved: the tournament is archived."));
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#checkin-toggle"));
+    fireEvent.click(document.querySelector("#present-1")!);
+    await screen.findByText(/archived/);
+    expect(document.querySelector("#checkin-count")!.textContent).toBe("0 of 1 present");
+  });
+});
+
+describe("adding players from a list", () => {
+  const hit = (extra: Partial<SearchHit>): SearchHit => ({
+    source: "fide",
+    fide_id: 1503014,
+    national_id: null,
+    name: "Carlsen, Magnus",
+    federation: "NOR",
+    title: "GM",
+    sex: "m",
+    birth_year: 1990,
+    fide_rating: 2830,
+    national_rating: null,
+    club: null,
+    already_in: false,
+    ...extra,
+  });
+
+  it("waits for three letters and the thumbs to stop, then adds the tapped one", async () => {
+    const api = fakeApi(round([]));
+    api.searchPlayers.mockResolvedValue([hit({}), hit({ fide_id: 2, name: "Carlsen, Henrik", already_in: true })]);
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#add-player"));
+    await el("#source-bel");
+    const input = document.querySelector("#player-search")!;
+    fireEvent.input(input, { target: { value: "ca" } });
+    fireEvent.input(input, { target: { value: "car" } });
+    fireEvent.input(input, { target: { value: "carl" } });
+
+    await el("#search-hits");
+    expect(api.searchPlayers).toHaveBeenCalledTimes(1);
+    expect(api.searchPlayers).toHaveBeenCalledWith(7, "carl", "fide");
+    expect((document.querySelector("#hit-1") as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(document.querySelector("#hit-0")!);
+    await waitFor(() => expect(api.addPlayerFrom).toHaveBeenCalledWith(7, { source: "fide", fide_id: 1503014 }));
+    await screen.findByText("Added");
+    expect(api.players).toHaveBeenCalledTimes(2);
+  });
+
+  it("searches the Belgian list by its own id when switched to it", async () => {
+    const api = fakeApi(round([]));
+    api.searchPlayers.mockResolvedValue([hit({ source: "bel", national_id: 12345 })]);
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#add-player"));
+    fireEvent.click(await el("#source-bel"));
+    fireEvent.input(document.querySelector("#player-search")!, { target: { value: "Carlsen" } });
+    fireEvent.click(await el("#hit-0"));
+
+    await waitFor(() => expect(api.addPlayerFrom).toHaveBeenCalledWith(7, { source: "bel", national_id: 12345 }));
+    expect(api.searchPlayers).toHaveBeenCalledWith(7, "Carlsen", "bel");
+  });
+
+  it("keeps entering by hand as the way out", async () => {
+    const api = fakeApi(round([]));
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#add-player"));
+    fireEvent.click(await el("#add-by-hand"));
+    fireEvent.input(await el("#p-name"), { target: { value: "Hand, Made" } });
+    fireEvent.submit(document.querySelector("form.form")!);
+    await waitFor(() => expect(api.createPlayer).toHaveBeenCalledWith(7, expect.objectContaining({ name: "Hand, Made" })));
+  });
+});
+
+describe("byes", () => {
+  const kinds = {
+    bye_kinds: [
+      { id: "half", label: "Half-point bye" },
+      { id: "zero", label: "Zero-point bye" },
+    ],
+  };
+
+  it("are edited for unpaired rounds only, and the server's refusal is shown as it is", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(1, "Ann", { byes: [{ round: 1, kind: "half" }] })]);
+    api.setByes.mockRejectedValueOnce(new ApiError(422, "bye_not_allowed", "Round 5 takes no half-point bye: it is one of the last two."));
+    render(<PlayersScreen ctx={ctxWith(api)} t={{ ...tournament("owner"), ...kinds }} />);
+
+    fireEvent.click(await el("#player-1"));
+    expect((await el("#bye-1")).tagName).toBe("SPAN");
+    expect(document.querySelector("#bye-1")!.textContent).toContain("Half-point bye");
+    expect((document.querySelector("#save-byes") as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(document.querySelector("#bye-5")!, { target: { value: "half" } });
+    fireEvent.click(document.querySelector("#save-byes")!);
+
+    await waitFor(() => expect(api.setByes).toHaveBeenCalledWith(7, 1, [{ round: 5, kind: "half" }]));
+    await screen.findByText("Round 5 takes no half-point bye: it is one of the last two.");
+  });
+});
+
+describe("the hall boards' word", () => {
+  it("is shown beside the pairing, red when it differs, and never entered", async () => {
+    const r = round([
+      board(1, 1, { result: "1-0", board_report: { status: "finished", result: "0-1", mismatch: true, moves_count: 41, updated_at: null } }),
+      board(2, 2, { board_report: { status: "playing", result: null, mismatch: false, moves_count: 23, updated_at: null } }),
+    ]);
+    const api = fakeApi(r);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    const one = await el("#board-report-1");
+    expect(one.className).toContain("mismatch");
+    expect(one.textContent).toContain("board 0-1");
+    expect(document.querySelector("#board-report-2")!.textContent).toContain("playing · 23 moves");
+
+    fireEvent.click(document.querySelector("#board-2")!);
+    expect(document.querySelector(".result-grid .btn.primary")).toBeNull();
+    expect(api.sync).not.toHaveBeenCalled();
+    expect(outbox.count(server.base, 7)).toBe(0);
+  });
+});
+
+describe("sharing", () => {
+  it("shares the round's pairings with the OpenResults link", async () => {
+    const { shareText } = await import("../platform");
+    const api = fakeApi(round([board(1, 1, { result: "1-0" })]));
+    const t = { ...tournament("arbiter"), openresults_url: "https://openresults.cloud/t/7" };
+    render(<RoundScreen ctx={ctxWith(api)} t={t} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#share-round"));
+    await waitFor(() => expect(shareText).toHaveBeenCalledWith("Hall Open, round 1", expect.stringContaining(" 1  White 1  1-0  Black 1")));
+    expect((shareText as Mock).mock.calls.at(-1)![1]).toContain("https://openresults.cloud/t/7");
+  });
+});
+
+describe("hall board codes", () => {
+  it("makes a code, shows it once as a QR code, and revokes one after asking", async () => {
+    const api = fakeApi(round([]));
+    api.boardLinks.mockResolvedValue([{ id: 2, kind: "relay", label: "Bottom boards", reach: "hall", created_at: "", last_seen_at: null }]);
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#new-board-link"));
+    fireEvent.input(document.querySelector("#board-link-label")!, { target: { value: "Top boards" } });
+    fireEvent.submit(document.querySelector("#board-link-form")!);
+
+    await waitFor(() => expect(api.createBoardLink).toHaveBeenCalledWith(7, "Top boards"));
+    expect((await el("#board-link-code")).textContent).toBe("alnasl_ONCE");
+    await waitFor(() => expect(document.querySelector("#board-link-qr svg")).not.toBeNull());
+    await screen.findByText(/Shown once/);
+
+    fireEvent.click(await el("#revoke-link-2"));
+    expect(api.revokeBoardLink).not.toHaveBeenCalled();
+    fireEvent.click(document.querySelector("#revoke-confirm")!);
+    await waitFor(() => expect(api.revokeBoardLink).toHaveBeenCalledWith(7, 2));
+  });
+
+  it("are not offered to an arbiter", async () => {
+    const api = fakeApi(round([]));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("arbiter")} />);
+    expect(document.querySelector("#board-links-section")).toBeNull();
+    expect(api.boardLinks).not.toHaveBeenCalled();
+  });
+});
+
+describe("a new tournament", () => {
+  it("starts from the server's defaults and opens what it made", async () => {
+    const api = fakeApi(round([]));
+    const created = vi.fn();
+    render(<NewTournament ctx={ctxWith(api)} onCancel={() => undefined} onCreated={created} />);
+
+    fireEvent.input(await el("#nt-name"), { target: { value: "  Hall Open  " } });
+    fireEvent.input(document.querySelector("#nt-city")!, { target: { value: "Gent" } });
+    fireEvent.change(document.querySelector("#nt-system")!, { target: { value: "round_robin" } });
+    fireEvent.submit(document.querySelector("#new-tournament")!);
+
+    await waitFor(() => expect(created).toHaveBeenCalledWith({ id: 9, name: "Hall Open" }));
+    expect(api.createTournament).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Hall Open",
+        city: "Gent",
+        venue: null,
+        system: "round_robin",
+        rounds_count: 7,
+        time_control: "90+30",
+        federation: "BEL",
+        rated: true,
+      }),
+    );
+  });
+
+  it("says it needs a connection rather than queueing it", async () => {
+    const api = fakeApi(round([]));
+    api.tournamentOptions.mockRejectedValueOnce(new OfflineError());
+    render(<NewTournament ctx={ctxWith(api)} onCancel={() => undefined} onCreated={() => undefined} />);
+    await screen.findByText(/No connection/);
+    expect(document.querySelector("#new-tournament")).toBeNull();
   });
 });

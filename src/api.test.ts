@@ -131,6 +131,79 @@ describe("client", () => {
     expect(seen[5].body).toEqual({ photo: "/9j/4AAQ" });
   });
 
+  it("builds the new-tournament, player list, byes and board-link routes", async () => {
+    const { fetch, seen } = fake(200, {
+      systems: [{ id: "swiss_dutch", label: "Swiss (Dutch)" }],
+      player_sources: [],
+      defaults: {},
+      tournament: { id: 9 },
+      results: [{ name: "Carlsen, Magnus" }],
+      player: { id: 5 },
+      links: [{ id: 2 }],
+      link: { id: 3 },
+      code: "alnasl_abc",
+    });
+    const api = client(BASE, "t", fetch);
+    const fields = {
+      name: "Hall Open",
+      start_date: "2026-10-21",
+      end_date: null,
+      city: "Gent",
+      venue: null,
+      system: "swiss_dutch",
+      rounds_count: 7,
+      time_control: "90+30",
+      federation: "BEL",
+      rated: true,
+    };
+
+    expect((await api.tournamentOptions()).systems).toHaveLength(1);
+    expect(await api.createTournament(fields)).toEqual({ id: 9 });
+    expect(await api.searchPlayers(7, "Carlsen, M", "fide")).toEqual([{ name: "Carlsen, Magnus" }]);
+    expect(await api.addPlayerFrom(7, { source: "fide", fide_id: 1503014 })).toEqual({ id: 5 });
+    await api.addPlayerFrom(7, { source: "bel", national_id: 12345 });
+    expect(await api.setByes(7, 5, [{ round: 4, kind: "half" }])).toEqual({ id: 5 });
+    expect(await api.boardLinks(7)).toEqual([{ id: 2 }]);
+    expect(await api.createBoardLink(7, "Top boards")).toMatchObject({ code: "alnasl_abc" });
+    await api.createBoardLink(7);
+    await api.revokeBoardLink(7, 3);
+    await api.updatePlayer(7, 5, { present: true });
+
+    expect(seen.map((s) => `${s.method} ${s.url.replace(`${BASE}/api/manubrium/v1`, "")}`)).toEqual([
+      "GET /tournament-options",
+      "POST /tournaments",
+      "GET /tournaments/7/player-search?q=Carlsen%2C+M&source=fide",
+      "POST /tournaments/7/players",
+      "POST /tournaments/7/players",
+      "PUT /tournaments/7/players/5/byes",
+      "GET /tournaments/7/board-links",
+      "POST /tournaments/7/board-links",
+      "POST /tournaments/7/board-links",
+      "DELETE /tournaments/7/board-links/3",
+      "PATCH /tournaments/7/players/5",
+    ]);
+    expect(seen[1].body).toEqual({ tournament: fields });
+    expect(seen[3].body).toEqual({ player: { from: { source: "fide", fide_id: 1503014 } } });
+    expect(seen[4].body).toEqual({ player: { from: { source: "bel", national_id: 12345 } } });
+    expect(seen[5].body).toEqual({ byes: [{ round: 4, kind: "half" }] });
+    expect(seen[7].body).toEqual({ link: { label: "Top boards" } });
+    expect(seen[8].body).toEqual({});
+    expect(seen[10].body).toEqual({ player: { present: true }, acknowledged: [] });
+  });
+
+  it("takes a byes answer without a player in it", async () => {
+    const { fetch } = fake(204);
+    await expect(client(BASE, "t", fetch).setByes(7, 5, [])).resolves.toBeNull();
+  });
+
+  it("hands a refused bye's sentence through as it is", async () => {
+    const { fetch } = fake(422, { error: "bye_not_allowed", message: "Round 6 allows no half-point bye in this tournament." });
+    await expect(client(BASE, "t", fetch).setByes(7, 5, [{ round: 6, kind: "half" }])).rejects.toMatchObject({
+      status: 422,
+      message: "Round 6 allows no half-point bye in this tournament.",
+    });
+  });
+
   it("fetches a photo as bytes, with the token, and 404 as an error", async () => {
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
     const seen: { url: string; headers: Record<string, string> }[] = [];

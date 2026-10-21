@@ -7,6 +7,7 @@ import { App } from "@capacitor/app";
 import { SecureStorage } from "@aparajita/capacitor-secure-storage";
 import type { KeyValue } from "./queue";
 import { secureKeyValue, type PlainBackend, type SecureBackend } from "./secure";
+import { webShare, type ShareOutcome } from "./share";
 
 export const native = Capacitor.isNativePlatform();
 export const platform = Capacitor.getPlatform(); // "ios" | "android" | "web"
@@ -156,4 +157,23 @@ function pickJpeg(): Promise<string | null> {
     };
     input.click();
   });
+}
+
+/**
+ * Hands text to the phone's share sheet. In a browser: the Web Share API
+ * where there is one, the clipboard where there is not. Says which, so the
+ * screen can tell the person; "cancelled" when they closed the sheet.
+ */
+export async function shareText(title: string, text: string): Promise<ShareOutcome> {
+  if (native) {
+    const { Share } = await import("@capacitor/share");
+    try {
+      await Share.share({ title, text, dialogTitle: title });
+      return "shared";
+    } catch {
+      // Closing the sheet rejects too; there is no telling the two apart.
+      return "cancelled";
+    }
+  }
+  return webShare(title, text);
 }

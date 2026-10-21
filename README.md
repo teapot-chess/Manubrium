@@ -9,6 +9,24 @@ the standings, change players and the mid-event settings from it. Arbiters
 enter results, log incidents with a photo, and confirm or reject the results
 Manubrium Lite phones entered.
 
+Since the second batch it also:
+
+- makes a **new tournament** from the Tournaments list - the short form
+  (name, dates, place, system, rounds, time control, federation, rated);
+  the long one stays at the desk;
+- **adds players from the FIDE or Belgian list** by searching and tapping,
+  with typing them in by hand kept for whoever is on neither;
+- runs the **check-in** at the door: tick who is here, "n of m present",
+  and a filter for the ones still on the train;
+- edits a player's **requested byes** round by round; paired rounds are
+  history and only shown;
+- **shares** the round's pairings or the standings as plain text, with the
+  OpenResults link when there is one;
+- shows what the **hall boards (Alnasl)** report beside each pairing - the
+  board's result or how far the game is, in red when it disagrees - and
+  makes and revokes the boards' codes under More. A board never enters a
+  result; the arbiter does.
+
 The server side - the API, device tokens, roles - lives in OpenPairings
 (`docs/manubrium.md`, section "Full app"). This repository is only the app.
 Manubrium Lite, the no-install browser page at `/m`, is OpenPairings' own and
@@ -38,6 +56,10 @@ src/
   link.ts        the connect link, and the "http only inside the building" rule
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
+  share.ts       the round and the standings as text, and the browser's share
+  byes.ts        a player's byes: which rounds may still change
+  search.ts      when a list search is worth sending, what a hit adds
+  alnasl.ts      the line a hall board's report gets beside its pairing
   servers.ts     the servers on this phone, one token each
   secure.ts      where the tokens live: Keychain / Keystore, Preferences in a browser
   platform.ts    phone-or-browser differences: storage, camera, deep links
@@ -57,7 +79,8 @@ An incident's photo rides in the outbox with its incident, shrunk to 1600
 pixels by the camera, and is sent in a request of its own.
 
 Everything else - clearing a result, confirming a Lite phone's result,
-pairing and hand edits, publishing, players, settings - needs the server's
+pairing and hand edits, publishing, players, check-in, byes, settings, a new
+tournament, the hall boards' codes - needs the server's
 answer and is online only. The app says so when it is not. Where the desk
 would ask a question before a change (a rule the boards break, a round
 already sent), the server asks it and the app shows it; nothing is answered
@@ -70,7 +93,7 @@ Needs Node 24 and npm 11.
 ```sh
 npm install
 npm run dev        # http://localhost:5173
-npm test           # unit tests (API client, outbox, link parsing)
+npm test           # unit tests (API client, outbox, links, share text, byes, screens)
 npm run build      # type-check and build into dist/
 ```
 
@@ -176,5 +199,14 @@ the privacy policy and the screenshot list are in `store/`.
   from a phone the results Lite refuses for the desk (a decisive postponed
   game, a correction after the next round is paired, a round already sent to
   FIDE). Team events' hand edits stay at the desk.
+- **Built against the server's contract, not its finished code.** New
+  tournaments, list search, check-in, byes, board reports and board codes
+  were written while OpenPairings was still writing its half. The fakes
+  agree with the contract; whether the server does is the first real run's
+  job.
+- **The Belgian list is the only national one offered**, because it is the
+  only one the server has. The toggle shows whatever `player_sources` says.
+- **A new tournament is not queued offline.** It needs a connection, on
+  purpose.
 - `npm audit` reports moderate advisories in `@capacitor/cli`'s `xcode`
   dependency. It is a build-time tool and never ships in the app.

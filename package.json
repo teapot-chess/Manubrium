@@ -22,7 +22,9 @@
     "@capacitor/core": "^8.5.3",
     "@capacitor/device": "^8.0.3",
     "@capacitor/preferences": "^8.0.1",
-    "preact": "^11.0.1"
+    "@capacitor/share": "^8.0.3",
+    "preact": "^11.0.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.3",
@@ -31,6 +33,7 @@
     "@capacitor/ios": "^8.5.3",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.4",
+    "@types/qrcode": "^1.5.6",
     "happy-dom": "^21.0.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",

@@ -8,6 +8,8 @@ import { ServerList, type SavedServer } from "../servers";
 import { onOpenLink, secureStorage, storage } from "../platform";
 import { AddServer } from "./AddServer";
 import { Servers } from "./Servers";
+import { Mark } from "./common";
+import { NewTournament } from "./NewTournament";
 import { Tournaments } from "./Tournaments";
 import { TournamentView } from "./TournamentView";
 
@@ -15,6 +17,7 @@ export type Screen =
   | { name: "servers" }
   | { name: "add"; link?: string }
   | { name: "tournaments" }
+  | { name: "new" }
   | { name: "tournament"; tournament: TournamentLine };
 
 export interface Ctx {
@@ -54,7 +57,12 @@ export function App() {
     [server, bump],
   );
 
-  if (servers === null) return <div class="splash" aria-busy="true" />;
+  if (servers === null)
+    return (
+      <div class="splash" aria-busy="true">
+        <Mark big />
+      </div>
+    );
 
   if (screen.name === "add" || servers.length === 0) {
     return (
@@ -104,10 +112,21 @@ export function App() {
     );
   }
 
+  if (screen.name === "new") {
+    return (
+      <NewTournament
+        ctx={ctx}
+        onCancel={() => setScreen({ name: "tournaments" })}
+        onCreated={(t) => setScreen({ name: "tournament", tournament: t })}
+      />
+    );
+  }
+
   return (
     <Tournaments
       ctx={ctx}
       onServers={() => setScreen({ name: "servers" })}
+      onNew={() => setScreen({ name: "new" })}
       onOpen={(t) => setScreen({ name: "tournament", tournament: t })}
     />
   );
