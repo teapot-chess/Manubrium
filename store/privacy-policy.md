@@ -1,7 +1,6 @@
 # Manubrium privacy policy
 
-*Effective 2026-10-21. Applies to the Manubrium app for iOS and Android.
-Publish this page at a public URL and give that URL to both stores.*
+*Effective 2026-10-21. Applies to the Manubrium app for iOS and Android.*
 
 Manubrium is a phone app for running a chess tournament that is managed
 on an [OpenPairings](https://pairings.cloud) server. The app is a client:
@@ -38,8 +37,9 @@ Deleting the app deletes all of it.
 ## What the app sends to a server
 
 What you enter: results, incidents with their text and, when you attach
-one, a photo; pairing, publishing and player changes when your role
-allows them. Each is sent to the one server the tournament lives on,
+one, a photo; pairing, publishing, player, bye and settings changes, new
+tournaments, and the names you search for in the rating lists, when your
+role allows them. Each is sent to the one server the tournament lives on,
 under your account there. That server's operator is the controller of
 that data; the server's own privacy terms apply to it (for the hosted
 service at pairings.cloud, its terms page).

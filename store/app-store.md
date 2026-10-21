@@ -26,7 +26,10 @@ FOR THE ARBITER
 Enter results and log incidents from the floor, with a photo of the scoresheet or the clock when it matters. What has already been sent, what is still waiting and what the server refused is always visible.
 
 FOR THE ORGANISER
-Pair the next round, publish it, read the standings, add a late player or withdraw one - from the phone, as soon as the last result is in.
+Start a tournament, add players straight from the FIDE or Belgian rating list, tick them off as they arrive, record their requested byes. Pair the next round, publish it, share the pairings and the standings - from the phone, as soon as the last result is in.
+
+HALL BOARDS
+With Alnasl in the hall, what each electronic board saw sits small beside its pairing, in red when it disagrees with the result entered. A board never enters a result; the arbiter does.
 
 SEVERAL SERVERS, ONE APP
 Connect to as many OpenPairings servers as you work with. A connect code on your account page links the phone in one scan; each phone gets its own token, which the account page can revoke.
@@ -34,14 +37,14 @@ Connect to as many OpenPairings servers as you work with. A connect code on your
 PLAIN AND OFFLINE-FIRST
 No sign-up, no analytics, no account of its own. The app talks only to the servers you add and stores only what it needs to reach them. It follows the phone's light or dark setting.
 
-Manubrium needs an OpenPairings server (version 1.0 or later) with the mobile API switched on, and an account on it. The server, and its documentation, are at pairings.cloud. Manubrium is free software under the Apache License 2.0.
+Manubrium needs an OpenPairings server (version 0.101 or later) with the mobile API switched on, and an account on it. The server, and its documentation, are at pairings.cloud. Manubrium is free software under the Apache License 2.0.
 
 **What's new** (first version):
-First release: results, incidents, pairing, publishing, standings and players, with an outbox for the hall's dead spots.
+First release: results, incidents, pairing, publishing, standings, players, new tournaments, byes, sharing and hall boards, with an outbox for the hall's dead spots.
 
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
-**Privacy policy URL:** (publish `store/privacy-policy.md`, e.g. https://pairings.cloud/manubrium/privacy)
+**Privacy policy URL:** https://pairings.cloud/help/manubrium-privacy
 **Copyright:** 2026 teapot-chess contributors
 
 **Age rating:** none of the content descriptors apply; 4+.

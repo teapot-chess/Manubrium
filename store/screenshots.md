@@ -33,7 +33,7 @@ required):
 |---|---|---|
 | iPhone 6.9" (iPhone 16 Pro Max / 17 Pro Max) | 1320 x 2868 or 1290 x 2796 | **yes** - covers all iPhones |
 | iPhone 6.5" (11 Pro Max / XS Max) | 1284 x 2778 or 1242 x 2688 | optional since 2024 (6.9" scales down) |
-| iPad 13" (iPad Pro M4) | 2064 x 2752 or 2048 x 2732 | **yes**, because the app's `TARGETED_DEVICE_FAMILY` includes iPad; otherwise set it to iPhone-only in Xcode |
+| iPad 13" (iPad Pro M4) | 2064 x 2752 or 2048 x 2732 | no: 1.0 is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`); iPads run it in iPhone mode |
 
 Simulators that give those sizes: *iPhone 16 Pro Max* (6.9"), *iPad Pro
 13-inch (M4)*. `Cmd-S` in the Simulator saves a PNG at native resolution.
