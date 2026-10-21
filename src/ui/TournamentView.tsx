@@ -45,7 +45,7 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
         {t && tab === "round" && <RoundScreen ctx={ctx} t={t} reloadTournament={load} />}
         {t && tab === "standings" && <StandingsScreen ctx={ctx} t={t} />}
         {t && tab === "players" && <PlayersScreen ctx={ctx} t={t} />}
-        {t && tab === "more" && <MoreScreen ctx={ctx} t={t} />}
+        {t && tab === "more" && <MoreScreen ctx={ctx} t={t} reloadTournament={load} />}
       </main>
       <nav class="tabs" aria-label="Tournament">
         {tabs

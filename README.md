@@ -4,8 +4,10 @@ Run a chess tournament from the playing hall. Manubrium is a phone app
 (iOS and Android, built with [Capacitor](https://capacitorjs.com)) that talks
 to one or more [OpenPairings](https://pairings.cloud) servers: the current
 round is its home screen, results can be entered without a signal, and the
-organiser and editors can pair, publish, read the standings and change
-players from it. Arbiters enter results and log incidents.
+organiser and editors can pair, change the pairings by hand, publish, read
+the standings, change players and the mid-event settings from it. Arbiters
+enter results, log incidents with a photo, and confirm or reject the results
+Manubrium Lite phones entered.
 
 The server side - the API, device tokens, roles - lives in OpenPairings
 (`docs/manubrium.md`, section "Full app"). This repository is only the app.
@@ -51,8 +53,15 @@ the result the board showed when it was tapped, so the server refuses it if
 somebody changed that board in the meantime. A refusal stays on screen, with
 the server's sentence, until it is dismissed. Nothing is dropped quietly.
 
-Everything else - clearing a result, pairing, publishing, players - needs the
-server's answer and is online only. The app says so when it is not.
+An incident's photo rides in the outbox with its incident, shrunk to 1600
+pixels by the camera, and is sent in a request of its own.
+
+Everything else - clearing a result, confirming a Lite phone's result,
+pairing and hand edits, publishing, players, settings - needs the server's
+answer and is online only. The app says so when it is not. Where the desk
+would ask a question before a change (a rule the boards break, a round
+already sent), the server asks it and the app shows it; nothing is answered
+on the arbiter's behalf.
 
 ## Develop in a browser
 
@@ -163,10 +172,9 @@ the privacy policy and the screenshot list are in `store/`.
 - **No real-device run yet.** The web bundle, the API client and the outbox
   are tested; the native shells have been generated, not built (no SDKs on
   the machine that made them).
-- **Not in the app because the server does not offer it yet:** manual
-  pairing changes, writing settings, and acknowledging from a phone the
-  results Lite refuses for the desk (a decisive postponed game, a correction
-  after the next round is paired, a round already sent to FIDE).
-- **Incident photos** (the server accepts them from Lite) are not offered yet.
+- **Not in the app because the server does not offer it yet:** acknowledging
+  from a phone the results Lite refuses for the desk (a decisive postponed
+  game, a correction after the next round is paired, a round already sent to
+  FIDE). Team events' hand edits stay at the desk.
 - `npm audit` reports moderate advisories in `@capacitor/cli`'s `xcode`
   dependency. It is a build-time tool and never ships in the app.

@@ -1,10 +1,12 @@
-// More: the incidents (desk roles), the settings worth reading from a
-// phone, and the outbox for this tournament.
+// More: the incidents (desk roles) with their photos, the settings - read,
+// and the mid-event ones changed - and the outbox for this tournament.
 
 import { useEffect, useState } from "preact/hooks";
 import type { Incident, Tournament } from "../api";
+import { takePhoto } from "../platform";
 import type { Ctx } from "./App";
-import { describeError, Empty, Notice } from "./common";
+import { describeError, Empty, Notice, Sheet } from "./common";
+import { SettingsEditor } from "./SettingsEditor";
 
 const SETTING_LABELS: Record<string, string> = {
   type: "Type",
@@ -14,23 +16,67 @@ const SETTING_LABELS: Record<string, string> = {
   start_date: "Starts",
   end_date: "Ends",
   chief_arbiter: "Chief arbiter",
+  deputy_arbiter: "Deputy arbiter",
   time_control: "Time control",
+  rounds_count: "Rounds",
+  bye_value: "Pairing bye scores",
+  shared_places: "Shared places",
   fide_rated: "FIDE rated",
   postponed_games: "Postponed games",
   ask_bye_type: "Asks the bye type",
   publish_mode: "Publishing",
 };
 
-export function MoreScreen(props: { ctx: Ctx; t: Tournament }) {
+export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: () => Promise<void> }) {
   const { ctx, t } = props;
   const [incidents, setIncidents] = useState<Incident[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState<{ incident: Incident; url: string } | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
   const desk = t.can.includes("settings");
+  const canEdit = desk && Array.isArray(t.settings.editable) && !t.read_only;
   const queued = ctx.outbox.list(ctx.server.base, t.id);
 
+  const loadIncidents = () => ctx.api.incidents(t.id).then(setIncidents, (e) => setError(describeError(e)));
+
   useEffect(() => {
-    if (desk) ctx.api.incidents(t.id).then(setIncidents, (e) => setError(describeError(e)));
+    if (desk) loadIncidents();
   }, [t.id]);
+
+  useEffect(() => () => {
+    if (viewing) URL.revokeObjectURL(viewing.url);
+  }, [viewing]);
+
+  async function addPhoto(i: Incident) {
+    const photo = await takePhoto();
+    if (!photo) return;
+    setBusy(i.id);
+    setError(null);
+    try {
+      await ctx.api.attachPhoto(t.id, i.id, photo);
+      setInfo("Photo added.");
+      await loadIncidents();
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function showPhoto(i: Incident) {
+    setBusy(i.id);
+    setError(null);
+    try {
+      const blob = await ctx.api.photo(t.id, i.id);
+      setViewing({ incident: i, url: URL.createObjectURL(blob) });
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div class="more">
@@ -58,7 +104,16 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament }) {
       {desk && (
         <section>
           <h2>Incidents</h2>
-          {error && <Notice kind="error">{error}</Notice>}
+          {error && (
+            <Notice kind="error" onClose={() => setError(null)}>
+              {error}
+            </Notice>
+          )}
+          {info && (
+            <Notice kind="ok" onClose={() => setInfo(null)}>
+              {info}
+            </Notice>
+          )}
           {incidents && incidents.length === 0 && <Empty>None logged.</Empty>}
           {incidents && incidents.length > 0 && (
             <ul class="list compact" id="incident-list">
@@ -73,6 +128,17 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament }) {
                       {[i.white && i.black ? `${i.white} – ${i.black}` : null, i.note, i.by].filter(Boolean).join(" · ")}
                     </span>
                   </span>
+                  {i.has_photo ? (
+                    <button type="button" class="chip" id={`photo-${i.id}`} disabled={busy === i.id} onClick={() => showPhoto(i)}>
+                      Photo
+                    </button>
+                  ) : (
+                    !t.read_only && (
+                      <button type="button" class="chip" id={`add-photo-${i.id}`} disabled={busy === i.id} onClick={() => addPhoto(i)}>
+                        Add photo
+                      </button>
+                    )
+                  )}
                 </li>
               ))}
             </ul>
@@ -83,7 +149,13 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament }) {
       {desk && (
         <section>
           <h2>Settings</h2>
-          <p class="fine">Read only here; change them at the desk.</p>
+          {canEdit ? (
+            <button type="button" class="btn block" id="edit-settings" onClick={() => setEditing(true)}>
+              Change the mid-event settings
+            </button>
+          ) : (
+            <p class="fine">Read only here; change them at the desk.</p>
+          )}
           <dl class="settings" id="settings">
             {Object.entries(SETTING_LABELS).map(([key, label]) => {
               const v = t.settings[key];
@@ -103,6 +175,24 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament }) {
             )}
           </dl>
         </section>
+      )}
+
+      {editing && (
+        <SettingsEditor
+          ctx={ctx}
+          t={t}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            await props.reloadTournament?.();
+          }}
+        />
+      )}
+
+      {viewing && (
+        <Sheet title={`Round ${viewing.incident.round}${viewing.incident.board ? `, board ${viewing.incident.board}` : ""}`} onClose={() => setViewing(null)}>
+          <img class="incident-photo" id="incident-photo-view" src={viewing.url} alt="The incident's photo" />
+        </Sheet>
       )}
 
       <section>

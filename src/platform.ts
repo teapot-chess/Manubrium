@@ -113,3 +113,47 @@ export function onResume(handler: () => void): () => void {
     window.removeEventListener("online", handler);
   };
 }
+
+/**
+ * Takes a photo for an incident: the camera on a phone, a file picker in a
+ * browser. A JPEG as base64 (no `data:` prefix), shrunk to 1600 pixels on
+ * its longest side as the hall pages do, or null when cancelled.
+ */
+export async function takePhoto(): Promise<string | null> {
+  if (native) {
+    const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
+    try {
+      const photo = await Camera.getPhoto({
+        source: CameraSource.Camera,
+        resultType: CameraResultType.Base64,
+        quality: 70,
+        width: 1600,
+        height: 1600,
+        correctOrientation: true,
+        saveToGallery: false,
+      });
+      return photo.base64String ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return pickJpeg();
+}
+
+function pickJpeg(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg";
+    input.setAttribute("capture", "environment");
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  });
+}
