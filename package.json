@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "sync": "npm run build && cap sync"
+    "sync": "npm run build && cap sync",
+    "assets": "node brand/render.mjs && capacitor-assets generate --ios --android --assetPath brand/assets --iosProject ios/App --androidProject android"
   },
   "dependencies": {
     "@aparajita/capacitor-secure-storage": "^8.0.1",
