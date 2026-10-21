@@ -9,9 +9,10 @@ import { shareResult } from "./share";
 export function boardReportLabel(report: BoardReport | null | undefined): string | null {
   if (!report) return null;
   if (report.result) return `board ${shareResult(report.result)}`;
-  if (report.status === "playing" || report.moves_count) {
+  if (report.status === "live" || report.status === "playing" || report.moves_count) {
     const n = report.moves_count ?? 0;
     return `playing · ${n} ${n === 1 ? "move" : "moves"}`;
   }
+  if (report.status === "waiting") return "board waiting";
   return report.status ? report.status.replace(/_/g, " ") : null;
 }
