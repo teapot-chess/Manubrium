@@ -25,7 +25,9 @@ concurrency:
 
 jobs:
   ios:
-    runs-on: macos-15
+    # App Store Connect takes uploads built with the iOS 26 SDK or later
+    # (Xcode 26); it said so, with a 409, to a build made with 18.5.
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -61,6 +63,10 @@ jobs:
 
       - name: Xcode
         run: |
+          # The newest Xcode 26 on the image, whatever the default is today.
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$xcode" ] || { echo "::error::no Xcode 26 on this runner"; ls -d /Applications/Xcode*; exit 1; }
+          sudo xcode-select -s "$xcode"
           xcodebuild -version
           xcodebuild -project ios/App/App.xcodeproj -list
 
@@ -124,6 +130,7 @@ jobs:
         run: |
           set -eu -o pipefail
           [ -n "$APPLE_TEAM_ID" ] || { echo "::error::secret APPLE_TEAM_ID is not set"; exit 1; }
+          python3 ios/ci_signing.py "$APPLE_TEAM_ID" "$PROFILE_NAME"
           xcodebuild archive \
             -project ios/App/App.xcodeproj \
             -scheme App \
@@ -132,10 +139,6 @@ jobs:
             -archivePath "$RUNNER_TEMP/Manubrium.xcarchive" \
             -skipPackagePluginValidation \
             -skipMacroValidation \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
             MARKETING_VERSION="$APP_VERSION" \
             CURRENT_PROJECT_VERSION="$APP_BUILD" \
             | tee "$RUNNER_TEMP/archive.log" | grep -E "^(\*\*|error|warning: .*(sign|provision)|=== )" || true
