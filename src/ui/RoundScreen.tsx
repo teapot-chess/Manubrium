@@ -9,6 +9,7 @@ import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
 import { boardReportLabel } from "../alnasl";
 import { pairingsText } from "../share";
+import { refusalText } from "../queue";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
@@ -94,7 +95,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       black: b.black?.id ?? null,
       result,
       expected: b.result,
-    });
+    }, b.label);
     ctx.bump();
     flush();
   }
@@ -131,17 +132,25 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     await load();
   }
 
-  async function incident(b: Board | null, type: string, note: string, photo: string | null) {
-    await ctx.outbox.addIncident(base, t.id, {
-      round: number,
-      ...(b ? { pairing: b.id, board: b.board } : {}),
-      type,
-      note,
-      ...(photo ? { photo } : {}),
-    });
+  // Every incident belongs to a board: the server has nowhere to put one
+  // without, and refused the round-level ones as "Board ?".
+  async function incident(b: Board, type: string, note: string, photo: string | null) {
+    await ctx.outbox.addIncident(
+      base,
+      t.id,
+      {
+        round: number,
+        pairing: b.id,
+        board: b.board,
+        type,
+        note,
+        ...(photo ? { photo } : {}),
+      },
+      b.label,
+    );
     ctx.bump();
     flush();
-    setInfo(b ? `Board ${b.label}: incident queued.` : "Incident queued.");
+    setInfo(`Board ${b.label}: incident queued.`);
   }
 
   if (latest < 1) {
@@ -195,7 +204,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       )}
       {refused.map((q) => (
         <Notice key={q.entry.cid} kind="error" onClose={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
-          Not accepted: {q.message}
+          Not accepted: {refusalText(q)}
         </Notice>
       ))}
 
@@ -257,7 +266,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       <div class="round-actions">
         {t.can.includes("incidents") && (
-          <IncidentButton onLog={(type, note, photo) => incident(null, type, note, photo)} />
+          <IncidentButton boards={round ? round.boards.filter((b) => !b.bye && !b.empty) : []} onLog={(b, type, note, photo) => incident(b, type, note, photo)} />
         )}
         {(t.can.includes("pair") || t.can.includes("publish")) && (
           <button type="button" class="btn block" id="desk-actions" onClick={() => setDesk(true)}>
@@ -436,7 +445,7 @@ function ResultSheet(props: {
   );
 }
 
-function IncidentButton(props: { onLog: (type: string, note: string, photo: string | null) => void }) {
+function IncidentButton(props: { boards: Board[]; onLog: (b: Board, type: string, note: string, photo: string | null) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -446,9 +455,11 @@ function IncidentButton(props: { onLog: (type: string, note: string, photo: stri
       {open && (
         <Sheet title="Incident" onClose={() => setOpen(false)}>
           <IncidentForm
-            onLog={(type, note, photo) => {
+            boards={props.boards}
+            onLog={(type, note, photo, b) => {
+              if (!b) return;
               setOpen(false);
-              props.onLog(type, note, photo);
+              props.onLog(b, type, note, photo);
             }}
           />
         </Sheet>
@@ -457,18 +468,41 @@ function IncidentButton(props: { onLog: (type: string, note: string, photo: stri
   );
 }
 
-export function IncidentForm(props: { onLog: (type: string, note: string, photo: string | null) => void }) {
+/**
+ * The incident dialog. Opened from a board, it is about that board; opened
+ * from the round (`boards` given), it asks which one first.
+ */
+export function IncidentForm(props: {
+  boards?: Board[];
+  onLog: (type: string, note: string, photo: string | null, board?: Board) => void;
+}) {
   const [type, setType] = useState("arbiter_call");
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [boardId, setBoardId] = useState("");
+  const chosen = props.boards?.find((b) => String(b.id) === boardId);
+  const ready = !props.boards || !!chosen;
   return (
     <form
       class="form"
       onSubmit={(e) => {
         e.preventDefault();
-        props.onLog(type, note.trim(), photo);
+        if (ready) props.onLog(type, note.trim(), photo, chosen);
       }}
     >
+      {props.boards && (
+        <>
+          <label for="incident-board">Board</label>
+          <select id="incident-board" required value={boardId} onChange={(e) => setBoardId((e.target as HTMLSelectElement).value)}>
+            <option value="">Which board?</option>
+            {props.boards.map((b) => (
+              <option key={b.id} value={String(b.id)}>
+                {b.label}: {b.white?.name ?? "-"} - {b.black?.name ?? "-"}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       <label for="incident-type">What happened</label>
       <select id="incident-type" value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value)}>
         {INCIDENT_KINDS.map(([v, l]) => (
@@ -491,7 +525,7 @@ export function IncidentForm(props: { onLog: (type: string, note: string, photo:
           Take a photo
         </button>
       )}
-      <button type="submit" class="btn primary block">
+      <button type="submit" class="btn primary block" disabled={!ready}>
         Log it
       </button>
     </form>

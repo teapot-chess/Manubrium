@@ -27,6 +27,8 @@ export interface Queued {
   state: "waiting" | "refused";
   message?: string;
   reason?: string | null;
+  /** The board as the round showed it ("2", "12a"), kept for the refusal's sake. */
+  label?: string;
 }
 
 export interface FlushOutcome {
@@ -103,6 +105,7 @@ export class Outbox {
     server: string,
     tournament: number,
     fields: Omit<ResultEntry, "cid" | "kind">,
+    label?: string,
   ): Promise<Queued> {
     await this.load();
     const earlier = [...this.items]
@@ -122,6 +125,7 @@ export class Outbox {
       tournament,
       state: "waiting",
       entry: { ...fields, expected, cid: this.uuid(), kind: "result" },
+      ...(label ? { label } : {}),
     };
 
     this.items.push(queued);
@@ -133,6 +137,7 @@ export class Outbox {
     server: string,
     tournament: number,
     fields: Omit<Extract<Entry, { kind: "incident" }>, "cid" | "kind">,
+    label?: string,
   ): Promise<Queued> {
     await this.load();
     const queued: Queued = {
@@ -140,6 +145,7 @@ export class Outbox {
       tournament,
       state: "waiting",
       entry: { at: new Date().toISOString(), ...fields, cid: this.uuid(), kind: "incident" },
+      ...(label ? { label } : {}),
     };
     this.items.push(queued);
     await this.save();
@@ -223,4 +229,20 @@ export class Outbox {
     outcome.waiting = this.count(server, tournament);
     return outcome;
   }
+}
+
+/**
+ * What a refused entry says on screen. The server's sentence, with two
+ * repairs for servers that predate them: a board it could not name ("Board
+ * ?") is named from the entry itself, which always knew; and "Check with the
+ * arbiter" is dropped, because whoever holds this app is signed in to an
+ * account that IS the arbiter (organiser, editor or arbiter) - sending them
+ * off to find one sends them looking for themselves.
+ */
+export function refusalText(q: Queued): string {
+  const where = q.label ?? (q.entry.board ? String(q.entry.board) : null);
+  let text = q.message ?? "Not accepted by the server.";
+  text = text.replace(/^Board \?: ?/, where ? `Board ${where}: ` : `Round ${q.entry.round}: `);
+  text = text.replace(/ ?Check with the arbiter\.?$/, " Look at the board and enter it again if it still stands.");
+  return text;
 }

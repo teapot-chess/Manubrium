@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { OfflineError, type Entry, type EntryAnswer } from "./api";
-import { Outbox, type KeyValue } from "./queue";
+import { Outbox, refusalText, type KeyValue, type Queued } from "./queue";
 
 class Memory implements KeyValue {
   data = new Map<string, string>();
@@ -161,5 +161,38 @@ describe("Outbox", () => {
     await store.set("manubrium.outbox.v1", "{not json");
     await box.load();
     expect(box.list(S, 7)).toEqual([]);
+  });
+});
+
+describe("refusalText", () => {
+  const refused = (message: string, extra: Partial<Queued> = {}): Queued => ({
+    server: S,
+    tournament: 7,
+    state: "refused",
+    message,
+    entry: { cid: "c", kind: "result", round: 2, pairing: 12, board: 2, white: 1, black: 2, result: "1-0", expected: "" },
+    ...extra,
+  });
+
+  it("keeps a sentence that already names its board", () => {
+    expect(refusalText(refused("Board 2: not saved - the board now says 0-1."))).toBe("Board 2: not saved - the board now says 0-1.");
+  });
+
+  it("names the board the server could not, from the label the round showed", () => {
+    expect(refusalText(refused("Board ?: not saved.", { label: "2a" }))).toBe("Board 2a: not saved.");
+    expect(refusalText(refused("Board ?: not saved."))).toBe("Board 2: not saved.");
+  });
+
+  it("falls back to the round for an entry with no board at all", () => {
+    const q = refused("Board ?: not saved.", {
+      entry: { cid: "c", kind: "incident", round: 2, type: "arbiter_call", note: "" },
+    });
+    expect(refusalText(q)).toBe("Round 2: not saved.");
+  });
+
+  it("does not send the arbiter to check with the arbiter", () => {
+    expect(refusalText(refused("Board ?: not saved. Check with the arbiter."))).toBe(
+      "Board 2: not saved. Look at the board and enter it again if it still stands.",
+    );
   });
 });

@@ -4,6 +4,20 @@ import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, ShareButton } from "./common";
 import { formatNumber as format, standingsText } from "../share";
 
+/**
+ * Mid-round, points already count the results entered, but tie-breaks only
+ * count complete rounds - on the server's Standings page too. Without a word
+ * about it, a leader on 2 points with a Buchholz of 0 looks like a bug.
+ */
+export function tiebreakNote(s: Standings): string | null {
+  const through = s.tiebreaks_through;
+  const paired = s.rounds_paired;
+  if (s.tiebreaks.length === 0 || through === undefined || paired === undefined || through >= paired) return null;
+  return through === 0
+    ? "Tie-breaks count complete rounds only, and no round is complete yet."
+    : `Tie-breaks count complete rounds only: up to round ${through}. Points include every result entered so far.`;
+}
+
 export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   const [s, setS] = useState<Standings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +79,11 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
             </tbody>
           </table>
         </div>
+      )}
+      {s && s.rows.length > 0 && tiebreakNote(s) && (
+        <p class="fine" id="standings-tiebreak-note">
+          {tiebreakNote(s)}
+        </p>
       )}
       {s && (
         <button type="button" class="btn ghost block" onClick={load}>
