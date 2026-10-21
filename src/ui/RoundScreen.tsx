@@ -1,11 +1,13 @@
 // Home: the round. Tap a board, tap a result. Results queue (they work
-// without a signal); clearing, pairing and publishing are online only.
+// without a signal); clearing, pairing, publishing, hand edits and the word
+// on a Lite phone's result are online only.
 
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { ApiError, OfflineError, type Board, type Round, type Tournament } from "../api";
-import { onResume } from "../platform";
+import { onResume, takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, Sheet } from "./common";
+import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const PUBLISH = ["Not public", "Pairings", "Pairings and results", "Results and standings"];
@@ -30,6 +32,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [info, setInfo] = useState<string | null>(null);
   const [board, setBoard] = useState<Board | null>(null);
   const [desk, setDesk] = useState(false);
+  const [editing, setEditing] = useState<Board | null>(null);
+  const deskRole = t.can.includes("pair");
 
   const base = ctx.server.base;
 
@@ -104,12 +108,34 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     load();
   }
 
-  async function incident(b: Board | null, type: string, note: string) {
+  // The arbiter's word on a result a Lite phone entered: it stands, or the
+  // board is cleared. Both name what the board showed, so a result changed
+  // meanwhile is refused rather than confirmed unseen.
+  async function verdict(b: Board, confirm: boolean) {
+    setBoard(null);
+    try {
+      if (confirm) await ctx.api.confirmResult(t.id, number, b.id, b.result);
+      else await ctx.api.rejectResult(t.id, number, b.id, b.result);
+      setInfo(confirm ? `Board ${b.label}: ${resultLabel(b.result)} confirmed.` : `Board ${b.label}: rejected and cleared.`);
+    } catch (e) {
+      setError(describeError(e));
+    }
+    load();
+  }
+
+  async function edited(message: string) {
+    setEditing(null);
+    setInfo(message);
+    await load();
+  }
+
+  async function incident(b: Board | null, type: string, note: string, photo: string | null) {
     await ctx.outbox.addIncident(base, t.id, {
       round: number,
       ...(b ? { pairing: b.id, board: b.board } : {}),
       type,
       note,
+      ...(photo ? { photo } : {}),
     });
     ctx.bump();
     flush();
@@ -126,6 +152,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   );
   const refused = queued.filter((q) => q.state === "refused");
   const missing = round ? round.boards.filter((b) => !b.bye && !b.result).length : 0;
+  const toCheck = round ? round.boards.filter((b) => b.phone?.state === "unconfirmed").length : 0;
 
   return (
     <div class="round">
@@ -170,6 +197,13 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
         </Notice>
       ))}
 
+      {toCheck > 0 && t.can.includes("results") && (
+        <Notice kind="info">
+          {toCheck === 1 ? "1 result" : `${toCheck} results`} from a phone to check. Tap the board to confirm or reject.
+        </Notice>
+      )}
+      {round && deskRole && <FinishEdits ctx={ctx} t={t} round={round} onDone={edited} />}
+
       {!round && !error && <Loading />}
       {round && round.boards.length === 0 && <Empty>No boards in this round.</Empty>}
       {round && (
@@ -181,10 +215,10 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
               <li key={b.id}>
                 <button
                   type="button"
-                  class={`board ${shown ? "done" : ""} ${pending ? "pending" : ""}`}
+                  class={`board ${shown ? "done" : ""} ${pending ? "pending" : ""} ${b.phone?.state === "unconfirmed" ? "from-phone" : ""}`}
                   id={`board-${b.id}`}
-                  disabled={b.bye || t.read_only}
-                  onClick={() => setBoard(b)}
+                  disabled={t.read_only || ((b.bye || b.vacant || b.empty) && !deskRole)}
+                  onClick={() => (b.bye || b.vacant || b.empty ? setEditing(b) : setBoard(b))}
                 >
                   <span class="board-no">{b.label}</span>
                   <span class="players">
@@ -194,6 +228,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
                   <span class="result">
                     {shown ? resultLabel(shown) : "–"}
                     {pending && <span class="state">Waiting</span>}
+                    {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">Phone</span>}
+                    {!pending && b.phone?.state === "confirmed" && <span class="state">Checked</span>}
                   </span>
                 </button>
               </li>
@@ -208,9 +244,11 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
         </p>
       ) : null}
 
+      {round && deskRole && !t.read_only && <PoolPanel ctx={ctx} t={t} round={round} onDone={edited} />}
+
       <div class="round-actions">
         {t.can.includes("incidents") && (
-          <IncidentButton onLog={(type, note) => incident(null, type, note)} />
+          <IncidentButton onLog={(type, note, photo) => incident(null, type, note, photo)} />
         )}
         {(t.can.includes("pair") || t.can.includes("publish")) && (
           <button type="button" class="btn block" id="desk-actions" onClick={() => setDesk(true)}>
@@ -224,14 +262,25 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
           board={board}
           codes={round.results}
           canIncident={t.can.includes("incidents")}
+          canEdit={deskRole}
           onResult={(r) => enter(board, r)}
           onClear={() => clear(board)}
-          onIncident={(type, note) => {
+          onConfirm={() => verdict(board, true)}
+          onReject={() => verdict(board, false)}
+          onEdit={() => {
             setBoard(null);
-            incident(board, type, note);
+            setEditing(board);
+          }}
+          onIncident={(type, note, photo) => {
+            setBoard(null);
+            incident(board, type, note, photo);
           }}
           onClose={() => setBoard(null)}
         />
+      )}
+
+      {editing && round && (
+        <BoardEditSheet ctx={ctx} t={t} round={round} board={editing} onClose={() => setEditing(null)} onDone={edited} />
       )}
 
       {desk && round && (
@@ -270,9 +319,13 @@ function ResultSheet(props: {
   board: Board;
   codes: string[];
   canIncident: boolean;
+  canEdit: boolean;
   onResult: (r: string) => void;
   onClear: () => void;
-  onIncident: (type: string, note: string) => void;
+  onConfirm: () => void;
+  onReject: () => void;
+  onEdit: () => void;
+  onIncident: (type: string, note: string, photo: string | null) => void;
   onClose: () => void;
 }) {
   const { board } = props;
@@ -293,6 +346,21 @@ function ResultSheet(props: {
       <p class="sheet-sub">
         {board.white?.name} – {board.black?.name}
       </p>
+      {board.phone?.state === "unconfirmed" && (
+        <div class="phone-check" id="phone-check">
+          <p>
+            <strong>{resultLabel(board.result)}</strong> was entered on the phone “{board.phone.by}”. Is it right?
+          </p>
+          <div class="two-btn">
+            <button type="button" class="btn danger" id="reject-result" onClick={props.onReject}>
+              Reject
+            </button>
+            <button type="button" class="btn primary" id="confirm-result" onClick={props.onConfirm}>
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
       <div class="result-grid">
         {MAIN_RESULTS.filter((c) => props.codes.includes(c)).map((c) => (
           <button type="button" key={c} class={`btn big ${board.result === c ? "primary" : ""}`} onClick={() => props.onResult(c)}>
@@ -326,12 +394,17 @@ function ResultSheet(props: {
             Log an incident
           </button>
         )}
+        {props.canEdit && (
+          <button type="button" class="btn ghost block" id="edit-pairing" onClick={props.onEdit}>
+            Change the pairing
+          </button>
+        )}
       </div>
     </Sheet>
   );
 }
 
-function IncidentButton(props: { onLog: (type: string, note: string) => void }) {
+function IncidentButton(props: { onLog: (type: string, note: string, photo: string | null) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -341,9 +414,9 @@ function IncidentButton(props: { onLog: (type: string, note: string) => void }) 
       {open && (
         <Sheet title="Incident" onClose={() => setOpen(false)}>
           <IncidentForm
-            onLog={(type, note) => {
+            onLog={(type, note, photo) => {
               setOpen(false);
-              props.onLog(type, note);
+              props.onLog(type, note, photo);
             }}
           />
         </Sheet>
@@ -352,15 +425,16 @@ function IncidentButton(props: { onLog: (type: string, note: string) => void }) 
   );
 }
 
-function IncidentForm(props: { onLog: (type: string, note: string) => void }) {
+export function IncidentForm(props: { onLog: (type: string, note: string, photo: string | null) => void }) {
   const [type, setType] = useState("arbiter_call");
   const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
   return (
     <form
       class="form"
       onSubmit={(e) => {
         e.preventDefault();
-        props.onLog(type, note.trim());
+        props.onLog(type, note.trim(), photo);
       }}
     >
       <label for="incident-type">What happened</label>
@@ -373,6 +447,18 @@ function IncidentForm(props: { onLog: (type: string, note: string) => void }) {
       </select>
       <label for="incident-note">Note</label>
       <textarea id="incident-note" rows={3} maxLength={500} value={note} onInput={(e) => setNote((e.target as HTMLTextAreaElement).value)} />
+      {photo ? (
+        <div class="photo-preview">
+          <img src={`data:image/jpeg;base64,${photo}`} alt="The photo to send with the incident" />
+          <button type="button" class="btn ghost" id="incident-photo-drop" onClick={() => setPhoto(null)}>
+            Remove the photo
+          </button>
+        </div>
+      ) : (
+        <button type="button" class="btn block" id="incident-photo" onClick={async () => setPhoto(await takePhoto())}>
+          Take a photo
+        </button>
+      )}
       <button type="submit" class="btn primary block">
         Log it
       </button>
