@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, client, connect, OfflineError, type FetchLike } from "./api";
+import { ApiError, client, connect, needsAcknowledgement, OfflineError, type FetchLike } from "./api";
 
 interface Seen {
   url: string;
@@ -102,6 +102,68 @@ describe("client", () => {
     expect(seen[3].body).toEqual({ expected: "1-0" });
     expect(seen[4].body).toEqual({ acknowledged: ["recorded_missing"] });
     expect(seen[10].body).toEqual({ player: { withdrawn: true }, acknowledged: ["second_half_bye"] });
+  });
+
+  it("builds the hand-edit, verdict, settings and photo routes", async () => {
+    const { fetch, seen } = fake(200, { round: { number: 2 }, pibe: null, settings: { time_control: "90+30" }, incident: { id: 4 } });
+    const api = client(BASE, "t", fetch);
+
+    expect(await api.edit(7, 2, { kind: "swap", a: 1, b: 2 }, ["pairing_rules"])).toEqual({ number: 2 });
+    expect(await api.finishEdits(7, 2, ["mpa_pibe"])).toMatchObject({ pibe: null });
+    await api.confirmResult(7, 2, 99, "1-0");
+    await api.rejectResult(7, 2, 99, "0-1");
+    expect(await api.updateSettings(7, { time_control: "90+30" })).toEqual({ time_control: "90+30" });
+    expect(await api.attachPhoto(7, 4, "/9j/4AAQ")).toEqual({ id: 4 });
+
+    expect(seen.map((s) => `${s.method} ${s.url.replace(`${BASE}/api/manubrium/v1`, "")}`)).toEqual([
+      "POST /tournaments/7/rounds/2/edits",
+      "POST /tournaments/7/rounds/2/edits/finish",
+      "POST /tournaments/7/rounds/2/boards/99/confirm",
+      "POST /tournaments/7/rounds/2/boards/99/reject",
+      "PATCH /tournaments/7/settings",
+      "POST /tournaments/7/incidents/4/photo",
+    ]);
+    expect(seen[0].body).toEqual({ edit: { kind: "swap", a: 1, b: 2 }, acknowledged: ["pairing_rules"] });
+    expect(seen[1].body).toEqual({ acknowledged: ["mpa_pibe"] });
+    expect(seen[2].body).toEqual({ expected: "1-0" });
+    expect(seen[3].body).toEqual({ expected: "0-1" });
+    expect(seen[4].body).toEqual({ settings: { time_control: "90+30" } });
+    expect(seen[5].body).toEqual({ photo: "/9j/4AAQ" });
+  });
+
+  it("fetches a photo as bytes, with the token, and 404 as an error", async () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    const seen: { url: string; headers: Record<string, string> }[] = [];
+    const ok: FetchLike = async (url, init = {}) => {
+      seen.push({ url, headers: init.headers as Record<string, string> });
+      return new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } });
+    };
+
+    const blob = await client(BASE, "tok", ok).photo(7, 4);
+    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(jpeg);
+    expect(seen[0].url).toBe(`${BASE}/api/manubrium/v1/tournaments/7/incidents/4/photo`);
+    expect(seen[0].headers.authorization).toBe("Bearer tok");
+
+    const gone: FetchLike = async () => new Response('{"error":"not_found"}', { status: 404 });
+    await expect(client(BASE, "tok", gone).photo(7, 4)).rejects.toMatchObject({ status: 404, code: "not_found" });
+  });
+
+  it("reads a question the server wants answered", () => {
+    const ask = needsAcknowledgement(
+      new ApiError(409, "needs_acknowledgement", "Confirm?", {
+        confirm: ["pairing_rules"],
+        summary: "A  ⇄  B",
+        warnings: ["A and B already played each other, in round 1."],
+      }),
+    );
+    expect(ask).toEqual({
+      confirm: ["pairing_rules"],
+      summary: "A  ⇄  B",
+      warnings: ["A and B already played each other, in round 1."],
+      checker: undefined,
+    });
+    expect(needsAcknowledgement(new ApiError(422, "same_player", "No."))).toBeNull();
+    expect(needsAcknowledgement(new Error("x"))).toBeNull();
   });
 
   it("answers 204 with nothing", async () => {

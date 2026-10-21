@@ -39,6 +39,25 @@ export interface FlushOutcome {
 const KEY = "manubrium.outbox.v1";
 const BATCH = 25; // the server's Mobile.Sync.max_batch
 
+// Up to BATCH entries a request, in order - except that an incident with a
+// photo travels alone: a megabyte or two of base64 is enough for one request,
+// and twenty-five of them would be more than the server reads.
+function batches(waiting: Queued[]): Queued[][] {
+  const out: Queued[][] = [];
+  let current: Queued[] = [];
+  for (const q of waiting) {
+    const heavy = q.entry.kind === "incident" && !!q.entry.photo;
+    if (heavy || current.length === BATCH) {
+      if (current.length) out.push(current);
+      current = [];
+    }
+    if (heavy) out.push([q]);
+    else current.push(q);
+  }
+  if (current.length) out.push(current);
+  return out;
+}
+
 export class Outbox {
   private items: Queued[] = [];
   private loaded = false;
@@ -167,8 +186,7 @@ export class Outbox {
     const outcome: FlushOutcome = { saved: 0, refused: 0, waiting: 0, offline: false };
 
     const waiting = this.list(server, tournament).filter((q) => q.state === "waiting");
-    for (let i = 0; i < waiting.length; i += BATCH) {
-      const batch = waiting.slice(i, i + BATCH);
+    for (const batch of batches(waiting)) {
       let answers: EntryAnswer[];
       try {
         answers = await send(batch.map((q) => q.entry));

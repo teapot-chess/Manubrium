@@ -48,9 +48,17 @@ export interface Board {
   white: BoardPlayer | null;
   black: BoardPlayer | null;
   bye: boolean;
+  /** One seat empty and no bye: the board waits for a player or a bye. */
+  vacant?: boolean;
+  /** Both seats empty: only a last board left so can be removed. */
+  empty?: boolean;
   result: string;
   clearable: boolean;
+  /** Entered on a Manubrium Lite phone (`/m`): waiting for the arbiter's word, or confirmed. */
+  phone?: { by: string; state: "unconfirmed" | "confirmed"; at: string } | null;
 }
+
+export interface PoolEntry { player: BoardPlayer; type: string | null; absent: boolean }
 
 export interface Round {
   number: number;
@@ -58,8 +66,36 @@ export interface Round {
   publish_level: number;
   boards: Board[];
   byes: { player: BoardPlayer; type: string }[];
+  /** Everyone not on a board, and why: what a seat is filled from. */
+  pool?: PoolEntry[];
+  /** Whether hand edits are open on this round, and the MPA PIBE recorded for it. */
+  hand_edits?: { open: boolean; pibe: string | null };
   results: string[];
 }
+
+/** One hand edit, as `POST /rounds/:n/edits` takes it. */
+export type HandEdit =
+  | { kind: "swap"; a: number; b: number }
+  | { kind: "vacate"; player: number; bye_type?: string }
+  | { kind: "bye"; pairing: number }
+  | { kind: "fill"; pairing: number; player: number }
+  | { kind: "pool_pair"; a: number; b: number; board?: number }
+  | { kind: "pool_bye"; player: number }
+  | { kind: "delete"; pairing: number };
+
+/** The settings a phone may change (`PATCH /settings`), by field. */
+export type SettingsChange = Partial<{
+  rounds_count: number;
+  tiebreaks: string[];
+  time_control: string;
+  chief_arbiter: string;
+  deputy_arbiter: string;
+  venue: string;
+  city: string;
+  bye_value: number;
+  ask_bye_type: boolean;
+  shared_places: boolean;
+}>;
 
 export interface StandingRow {
   rank: string | number | null;
@@ -123,6 +159,8 @@ export interface IncidentEntry {
   type: string;
   note: string;
   at?: string;
+  /** A JPEG, base64, without the `data:` prefix. */
+  photo?: string;
 }
 
 export type Entry = ResultEntry | IncidentEntry;
@@ -148,6 +186,27 @@ export class OfflineError extends Error {
   constructor(message = "No connection to the server.") {
     super(message);
   }
+}
+
+/**
+ * The server wants a question answered first (`409 needs_acknowledgement`):
+ * the ids to send back in `acknowledged`, and what the desk's dialog would
+ * show. Null for any other error.
+ */
+export function needsAcknowledgement(error: unknown): {
+  confirm: string[];
+  summary?: string;
+  warnings: string[];
+  checker?: { checked: boolean; line: string; missing: string[]; added: string[]; warnings: string[] };
+} | null {
+  if (!(error instanceof ApiError) || error.code !== "needs_acknowledgement") return null;
+  const b = error.body;
+  return {
+    confirm: Array.isArray(b.confirm) ? (b.confirm as string[]) : [],
+    summary: typeof b.summary === "string" ? b.summary : undefined,
+    warnings: Array.isArray(b.warnings) ? (b.warnings as string[]) : [],
+    checker: (b.checker as never) ?? undefined,
+  };
 }
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -227,6 +286,13 @@ export interface Client {
   players(id: number): Promise<Player[]>;
   createPlayer(id: number, player: Partial<Player> & { name: string }): Promise<Player>;
   updatePlayer(id: number, playerId: number, changes: Record<string, unknown>, acknowledged?: string[]): Promise<Player>;
+  edit(id: number, n: number, edit: HandEdit, acknowledged?: string[]): Promise<Round>;
+  finishEdits(id: number, n: number, acknowledged?: string[]): Promise<{ pibe: string | null; round: Round }>;
+  confirmResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
+  rejectResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
+  updateSettings(id: number, settings: SettingsChange): Promise<Record<string, unknown>>;
+  attachPhoto(id: number, incident: number, jpegBase64: string): Promise<Incident>;
+  photo(id: number, incident: number): Promise<Blob>;
 }
 
 export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
@@ -254,5 +320,32 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     createPlayer: async (id, player) => (await req<{ player: Player }>("POST", `${t(id)}/players`, { player })).player,
     updatePlayer: async (id, playerId, changes, acknowledged = []) =>
       (await req<{ player: Player }>("PATCH", `${t(id)}/players/${playerId}`, { player: changes, acknowledged })).player,
+    edit: async (id, n, edit, acknowledged = []) =>
+      (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/edits`, { edit, acknowledged })).round,
+    finishEdits: (id, n, acknowledged = []) => req("POST", `${t(id)}/rounds/${n}/edits/finish`, { acknowledged }),
+    confirmResult: async (id, n, pairing, expected) => {
+      await req("POST", `${t(id)}/rounds/${n}/boards/${pairing}/confirm`, { expected });
+    },
+    rejectResult: async (id, n, pairing, expected) => {
+      await req("POST", `${t(id)}/rounds/${n}/boards/${pairing}/reject`, { expected });
+    },
+    updateSettings: async (id, settings) =>
+      (await req<{ settings: Record<string, unknown> }>("PATCH", `${t(id)}/settings`, { settings })).settings,
+    attachPhoto: async (id, incident, jpegBase64) =>
+      (await req<{ incident: Incident }>("POST", `${t(id)}/incidents/${incident}/photo`, { photo: jpegBase64 })).incident,
+    photo: async (id, incident) => {
+      // Not JSON: the JPEG itself, so not through `call`.
+      let response: Response;
+      try {
+        response = await fetchImpl(`${base}${PREFIX}${t(id)}/incidents/${incident}/photo`, {
+          method: "GET",
+          headers: { authorization: `Bearer ${token}`, accept: "image/jpeg" },
+        });
+      } catch {
+        throw new OfflineError();
+      }
+      if (!response.ok) throw new ApiError(response.status, response.status === 404 ? "not_found" : `http_${response.status}`, "No photo to show.");
+      return response.blob();
+    },
   };
 }

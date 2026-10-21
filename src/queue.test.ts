@@ -71,6 +71,22 @@ describe("Outbox", () => {
     expect(box.list(S, 7)).toEqual([]);
   });
 
+  it("sends an incident with a photo in a request of its own", async () => {
+    await box.addResult(S, 7, result(10, "1-0"));
+    await box.addIncident(S, 7, { round: 1, type: "clock", note: "", photo: "/9j/AAAA" });
+    await box.addResult(S, 7, result(11, "0-1"));
+    const sent: Entry[][] = [];
+
+    const outcome = await box.flush(S, 7, async (entries) => {
+      sent.push(entries);
+      return entries.map((e) => ({ cid: e.cid, status: "saved", reason: null, message: "" }) as EntryAnswer);
+    });
+
+    expect(sent.map((b) => b.map((e) => e.cid))).toEqual([["cid-1"], ["cid-2"], ["cid-3"]]);
+    expect(sent[1][0]).toMatchObject({ kind: "incident", photo: "/9j/AAAA" });
+    expect(outcome.saved).toBe(3);
+  });
+
   it("keeps everything when the network is gone, and resends the same ids later", async () => {
     await box.addResult(S, 7, result(10, "1-0"));
 
