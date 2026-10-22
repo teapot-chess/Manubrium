@@ -370,4 +370,8 @@ export const fr: Record<Key, string> = {
   "more.incident_delete_text": "Il disparaît de la liste, avec sa photo. Le journal d'audit, à la table de l'arbitre, garde une ligne indiquant ce qu'il était.",
   "more.incident_delete_yes": "Supprimer",
   "more.incident_deleted": "Incident supprimé.",
+  "pe.discard": "Annuler les modifications manuelles",
+  "pe.discard_q": "Annuler les modifications manuelles de la ronde {n} ? Les échiquiers et les exemptions reviennent à leur état d'avant la première modification, et les modifications manuelles prennent fin.",
+  "pe.discard_yes": "Les annuler",
+  "pe.discarded": "Modifications manuelles de la ronde {n} annulées : les échiquiers sont revenus à leur état d'avant.",
 };

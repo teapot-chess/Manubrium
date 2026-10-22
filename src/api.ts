@@ -117,7 +117,8 @@ export interface Round {
   /** Everyone not on a board, and why: what a seat is filled from. */
   pool?: PoolEntry[];
   /** Whether hand edits are open on this round, and the MPA PIBE recorded for it. */
-  hand_edits?: { open: boolean; pibe: string | null };
+  /** `discardable`: the hand edits can still be undone (absent from older servers: no). */
+  hand_edits?: { open: boolean; pibe: string | null; discardable?: boolean };
   results: string[];
 }
 
@@ -378,6 +379,7 @@ export interface Client {
   updatePlayer(id: number, playerId: number, changes: Record<string, unknown>, acknowledged?: string[]): Promise<Player>;
   edit(id: number, n: number, edit: HandEdit, acknowledged?: string[]): Promise<Round>;
   finishEdits(id: number, n: number, acknowledged?: string[]): Promise<{ pibe: string | null; round: Round }>;
+  discardEdits(id: number, n: number): Promise<Round>;
   confirmResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
   rejectResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
   updateSettings(id: number, settings: SettingsChange): Promise<Record<string, unknown>>;
@@ -424,6 +426,7 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     edit: async (id, n, edit, acknowledged = []) =>
       (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/edits`, { edit, acknowledged })).round,
     finishEdits: (id, n, acknowledged = []) => req("POST", `${t(id)}/rounds/${n}/edits/finish`, { acknowledged }),
+    discardEdits: async (id, n) => (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/edits/discard`, {})).round,
     confirmResult: async (id, n, pairing, expected) => {
       await req("POST", `${t(id)}/rounds/${n}/boards/${pairing}/confirm`, { expected });
     },

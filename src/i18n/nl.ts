@@ -370,4 +370,8 @@ export const nl: Record<Key, string> = {
   "more.incident_delete_text": "Het verdwijnt uit de lijst, samen met de foto. Het auditlogboek aan de tafel houdt een regel bij met wat het was.",
   "more.incident_delete_yes": "Verwijderen",
   "more.incident_deleted": "Incident verwijderd.",
+  "pe.discard": "Handmatige wijzigingen ongedaan maken",
+  "pe.discard_q": "De handmatige wijzigingen aan ronde {n} ongedaan maken? De borden en byes gaan terug naar hoe ze waren vóór de eerste wijziging, en de handmatige wijzigingen stoppen.",
+  "pe.discard_yes": "Ongedaan maken",
+  "pe.discarded": "Handmatige wijzigingen aan ronde {n} ongedaan gemaakt: de borden staan terug zoals ze waren.",
 };

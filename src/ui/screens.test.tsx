@@ -112,6 +112,7 @@ function fakeApi(r: Round): FakeApi {
     rejectResult: vi.fn(async () => undefined),
     edit: vi.fn(async () => r),
     finishEdits: vi.fn(async () => ({ pibe: null, round: r })),
+    discardEdits: vi.fn(async () => r),
     updateSettings: vi.fn(async () => ({})),
     attachPhoto: vi.fn(async () => ({})),
     photo: vi.fn(async () => new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: "image/jpeg" })),
@@ -331,6 +332,35 @@ describe("hand edits", () => {
 
     await waitFor(() => expect(api.finishEdits).toHaveBeenLastCalledWith(7, 1, ["mpa_pibe"]));
     await screen.findByText(/recorded as MPA 1/);
+  });
+
+  it("are undone after a question, back to where they began", async () => {
+    const api = fakeApi(round([board(1, 1)], { hand_edits: { open: true, pibe: null, discardable: true } }));
+    api.discardEdits.mockRejectedValueOnce(new ApiError(409, "has_results", "A result was entered in this round since the hand edits began."));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#discard-edits"));
+    await screen.findByText(/go back to how they were before the first one/);
+    expect(api.discardEdits).not.toHaveBeenCalled();
+    fireEvent.click(document.querySelector("#discard-keep")!);
+    expect(document.querySelector("#discard-ask")).toBeNull();
+
+    fireEvent.click(document.querySelector("#discard-edits")!);
+    fireEvent.click(await el("#discard-yes"));
+    await screen.findByText(/since the hand edits began/);
+
+    fireEvent.click(document.querySelector("#discard-yes")!);
+    await waitFor(() => expect(api.discardEdits).toHaveBeenCalledTimes(2));
+    expect(api.discardEdits).toHaveBeenCalledWith(7, 1);
+    await screen.findByText(/round 1 undone/);
+  });
+
+  it("offer no undo where the server says there is none", async () => {
+    const api = fakeApi(round([board(1, 1)], { hand_edits: { open: true, pibe: null } }));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    await el("#finish-edits");
+    expect(document.querySelector("#discard-edits")).toBeNull();
   });
 
   it("are not offered to an arbiter", async () => {

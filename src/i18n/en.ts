@@ -368,6 +368,10 @@ export const en = {
   "more.incident_delete_text": "It goes from the list, its photo with it. The audit trail at the desk keeps a line saying what it was.",
   "more.incident_delete_yes": "Delete it",
   "more.incident_deleted": "Incident deleted.",
+  "pe.discard": "Undo the hand edits",
+  "pe.discard_q": "Undo the hand edits to round {n}? The boards and byes go back to how they were before the first one, and the hand edits end.",
+  "pe.discard_yes": "Undo them",
+  "pe.discarded": "Hand edits to round {n} undone: the boards are back as they were.",
 };
 
 export type Key = keyof typeof en;
