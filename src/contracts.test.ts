@@ -69,7 +69,7 @@ interface Route {
 const ROUTES: Route[] = [
   { method: "POST", path: /^\/connect$/, contract: "POST /connect", request: "connect-request", response: "connect-response" },
   { method: "GET", path: /^\/me$/, contract: "GET /me", response: "me-response" },
-  { method: "DELETE", path: /^\/me$/, contract: "DELETE /me" },
+  { method: "DELETE", path: /^\/me$/, contract: "DELETE /me", response: "sign-out-response" },
   { method: "GET", path: /^\/tournament-options$/, contract: "GET /tournament-options", response: "tournament-options-response" },
   { method: "GET", path: /^\/tournaments$/, contract: "GET /tournaments", response: "tournaments-response" },
   { method: "POST", path: /^\/tournaments$/, contract: "POST /tournaments", request: "tournament-create-request", response: "tournament-create-response" },
@@ -79,7 +79,7 @@ const ROUTES: Route[] = [
   { method: "POST", path: /^\/tournaments\/\d+\/sync$/, contract: "POST /tournaments/:id/sync", request: "sync-request", response: "sync-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/rounds$/, contract: "POST /tournaments/:id/rounds", request: "pair-request", response: "round-response" },
   { method: "GET", path: /^\/tournaments\/\d+\/rounds\/\d+$/, contract: "GET /tournaments/:id/rounds/:n", response: "round-response" },
-  { method: "DELETE", path: /^\/tournaments\/\d+\/rounds\/\d+$/, contract: "DELETE /tournaments/:id/rounds/:n" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/rounds\/\d+$/, contract: "DELETE /tournaments/:id/rounds/:n", response: "unpair-response" },
   { method: "PUT", path: /^\/tournaments\/\d+\/rounds\/\d+\/publish$/, contract: "PUT /rounds/:n/publish", request: "publish-request", response: "publish-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/boards\/\d+\/clear$/, contract: "POST /rounds/:n/boards/:pairing/clear", request: "expected-request", response: "board-verdict-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/boards\/\d+\/confirm$/, contract: "/confirm", request: "expected-request", response: "board-verdict-response" },
@@ -97,13 +97,12 @@ const ROUTES: Route[] = [
   { method: "PUT", path: /^\/tournaments\/\d+\/players\/\d+\/byes$/, contract: "PUT /tournaments/:id/players/:pid/byes", request: "byes-request", response: "player-response" },
   { method: "GET", path: /^\/tournaments\/\d+\/board-links$/, contract: "GET /tournaments/:id/board-links", response: "board-links-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/board-links$/, contract: "POST /tournaments/:id/board-links", request: "board-link-create-request", response: "board-link-create-response" },
-  { method: "DELETE", path: /^\/tournaments\/\d+\/board-links\/\d+$/, contract: "DELETE /tournaments/:id/board-links/:lid" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/board-links\/\d+$/, contract: "DELETE /tournaments/:id/board-links/:lid", response: "board-link-revoke-response" },
 ];
 
 // Routes the server has and the app uses, that the contract does not (yet)
-// describe: both answer 204 with no body. When the provider adds them, this
-// list must shrink - the test below says so.
-const NOT_IN_CONTRACT = ["DELETE /tournaments/:id/rounds/:n", "DELETE /tournaments/:id/board-links/:lid"];
+// describe. Empty, and the test below keeps it honest both ways.
+const NOT_IN_CONTRACT: string[] = [];
 
 // Schemas the app has no route for, and why. Anything else new in the
 // contract fails the test until it is mapped here or above.
@@ -135,13 +134,24 @@ interface Seen {
   body: unknown;
 }
 
-function server(answer: (route: Route, seen: Seen) => { status: number; body?: unknown }): { fetch: FetchLike; seen: Seen[] } {
+// A body-less answer (204) is described in the contract as {status, body}:
+// there is no JSON to describe. These are its examples, sent as they are.
+interface Bare {
+  status: number;
+  raw: string;
+}
+
+const bareSchema = (schema: string) => !!(schemas[schema]?.properties?.status as { const?: unknown } | undefined)?.const;
+const bare = (example: Record<string, unknown>): Bare => ({ status: example.status as number, raw: example.body as string });
+
+function server(answer: (route: Route, seen: Seen) => { status: number; body?: unknown; raw?: string }): { fetch: FetchLike; seen: Seen[] } {
   const seen: Seen[] = [];
   const fetchImpl: FetchLike = async (url, init = {}) => {
     const method = init.method ?? "GET";
     const s: Seen = { method, url, route: routeFor(method, url), body: init.body ? JSON.parse(init.body as string) : undefined };
     seen.push(s);
-    const { status, body } = answer(s.route, s);
+    const { status, body, raw } = answer(s.route, s);
+    if (raw !== undefined) return new Response(status === 204 ? null : raw, { status });
     return new Response(status === 204 || body === undefined ? null : JSON.stringify(body), { status });
   };
   return { fetch: fetchImpl, seen };
@@ -152,7 +162,7 @@ const byExample = (pick: Record<string, string> = {}) =>
   server((route) => {
     if (!route.response) return { status: 204 };
     const name = pick[route.response] ?? `${route.response}.json`;
-    return { status: 200, body: ex(name) };
+    return bareSchema(`${route.response}.schema.json`) ? bare(ex(name)) : { status: 200, body: ex(name) };
   });
 
 class MemoryStore implements KeyValue {
@@ -274,6 +284,10 @@ describe("every answer in the contract, through the app's client", () => {
     ["board-link-create-response", (c) => c.createBoardLink(2), (e) => e],
     ["board-verdict-response", (c) => c.clear(2, 1, 101, ""), () => undefined],
     ["connect-response", (c) => c.me(), (e) => e],
+    // 204, no body: the client must not try to read JSON out of nothing.
+    ["sign-out-response", (c) => c.signOut(), () => undefined],
+    ["unpair-response", (c) => c.unpair(2, 2), () => undefined],
+    ["board-link-revoke-response", (c) => c.revokeBoardLink(2, 1), () => undefined],
   ];
 
   it("covers every response schema in the contract", () => {
@@ -286,12 +300,25 @@ describe("every answer in the contract, through the app's client", () => {
     for (const name of variants) {
       it(`${name} comes out of the client as the app expects`, async () => {
         const body = ex(name);
-        const c = client(BASE, "mnb_tok", server(() => ({ status: 200, body })).fetch);
+        const c = client(BASE, "mnb_tok", server(() => (bareSchema(`${schema}.schema.json`) ? bare(body) : { status: 200, body })).fetch);
         const got = schema === "connect-response" ? await connect(BASE, "s", { name: "x", platform: "y" }, server(() => ({ status: 201, body })).fetch) : await call(c);
         expect(got).toEqual(unwrap(body));
       });
     }
   }
+
+  it("hears a refused unpair or revoke as the server words it", async () => {
+    const refusals: [string, number, (c: Client) => Promise<unknown>][] = [
+      ["error.refused.json", 422, (c) => c.unpair(2, 1)],
+      ["error.link-not-found.json", 404, (c) => c.revokeBoardLink(2, 99)],
+    ];
+    for (const [name, status, call] of refusals) {
+      const body = ex(name);
+      const error = await call(client(BASE, "mnb_tok", server(() => ({ status, body })).fetch)).catch((e) => e);
+      expect(error, name).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({ status, code: body.error, message: body.message });
+    }
+  });
 
   it("turns every error example into an ApiError the app reads", async () => {
     for (const name of Object.keys(examples).filter((n) => schemaFor(n) === "error.schema.json")) {
