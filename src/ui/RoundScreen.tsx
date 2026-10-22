@@ -376,7 +376,31 @@ function ResultSheet(props: {
   const { board } = props;
   const [more, setMore] = useState(false);
   const [incident, setIncident] = useState(false);
+  // A stray tap on a full board used to cost a walk to it: both ask first.
+  const [asking, setAsking] = useState<"clear" | "reject" | null>(null);
   const others = props.codes.filter((c) => !MAIN_RESULTS.includes(c));
+
+  if (asking) {
+    const clearing = asking === "clear";
+    return (
+      <Sheet title={tr(clearing ? "round.clear_title" : "round.reject_title", { label: board.label })} onClose={props.onClose}>
+        <p>{tr(clearing ? "round.clear_text" : "round.reject_text", { result: resultLabel(board.result) })}</p>
+        <div class="sheet-actions">
+          <button
+            type="button"
+            class="btn danger block"
+            id={clearing ? "clear-confirm" : "reject-confirm"}
+            onClick={clearing ? props.onClear : props.onReject}
+          >
+            {tr(clearing ? "round.clear_yes" : "round.reject_yes")}
+          </button>
+          <button type="button" class="btn block" id="ask-keep" onClick={() => setAsking(null)}>
+            {tr("common.keep")}
+          </button>
+        </div>
+      </Sheet>
+    );
+  }
 
   if (incident) {
     return (
@@ -398,7 +422,7 @@ function ResultSheet(props: {
             {tr("round.phone_entered", { by: board.phone.by ?? "" })}
           </p>
           <div class="two-btn">
-            <button type="button" class="btn danger" id="reject-result" onClick={props.onReject}>
+            <button type="button" class="btn danger" id="reject-result" onClick={() => setAsking("reject")}>
               {tr("round.reject")}
             </button>
             <button type="button" class="btn primary" id="confirm-result" onClick={props.onConfirm}>
@@ -431,7 +455,7 @@ function ResultSheet(props: {
       )}
       <div class="sheet-actions">
         {board.clearable && (
-          <button type="button" class="btn danger block" onClick={props.onClear}>
+          <button type="button" class="btn danger block" id="clear-result" onClick={() => setAsking("clear")}>
             {tr("round.clear")}
           </button>
         )}

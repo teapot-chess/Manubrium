@@ -88,6 +88,8 @@ const ROUTES: Route[] = [
   { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/edits\/finish$/, contract: "POST /rounds/:n/edits/finish", request: "finish-edits-request", response: "finish-edits-response" },
   { method: "PATCH", path: /^\/tournaments\/\d+\/settings$/, contract: "PATCH /tournaments/:id/settings", request: "settings-request", response: "settings-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/incidents\/\d+\/photo$/, contract: "POST /incidents/:iid/photo", request: "photo-request", response: "incident-response" },
+  { method: "PATCH", path: /^\/tournaments\/\d+\/incidents\/\d+$/, contract: "PATCH /tournaments/:id/incidents/:iid", request: "incident-update-request", response: "incident-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/incidents\/\d+$/, contract: "DELETE /tournaments/:id/incidents/:iid", response: "incident-delete-response" },
   // The JPEG itself: named in the contract, deliberately outside its schemas.
   { method: "GET", path: /^\/tournaments\/\d+\/incidents\/\d+\/photo$/, contract: "GET /tournaments/:id/incidents/:iid/photo" },
   { method: "GET", path: /^\/tournaments\/\d+\/players$/, contract: "GET /tournaments/:id/players", response: "players-response" },
@@ -244,6 +246,8 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   rejectResult: (c) => c.rejectResult(2, 1, 101, "1-0"),
   updateSettings: (c) => c.updateSettings(2, { venue: "Hall B" }),
   attachPhoto: (c) => c.attachPhoto(2, 4, "/9j/AAAA"),
+  updateIncident: (c) => c.updateIncident(2, 4, { kind: "time_added", note: "Two minutes to Black" }),
+  deleteIncident: (c) => c.deleteIncident(2, 4),
   photo: (c) => c.photo(2, 4).catch(() => null),
   tournamentOptions: (c) => c.tournamentOptions(),
   createTournament: (c) => c.createTournament(toFields({ ...startForm(null), name: "Hall Open" })),
@@ -288,6 +292,7 @@ describe("every answer in the contract, through the app's client", () => {
     ["sign-out-response", (c) => c.signOut(), () => undefined],
     ["unpair-response", (c) => c.unpair(2, 2), () => undefined],
     ["board-link-revoke-response", (c) => c.revokeBoardLink(2, 1), () => undefined],
+    ["incident-delete-response", (c) => c.deleteIncident(2, 4), () => undefined],
   ];
 
   it("covers every response schema in the contract", () => {

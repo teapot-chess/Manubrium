@@ -382,6 +382,8 @@ export interface Client {
   rejectResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
   updateSettings(id: number, settings: SettingsChange): Promise<Record<string, unknown>>;
   attachPhoto(id: number, incident: number, jpegBase64: string): Promise<Incident>;
+  updateIncident(id: number, incident: number, changes: { kind?: string; note?: string }): Promise<Incident>;
+  deleteIncident(id: number, incident: number): Promise<void>;
   photo(id: number, incident: number): Promise<Blob>;
   tournamentOptions(): Promise<TournamentOptions>;
   /** The new tournament as a line of the list; `tournament()` has the rest. */
@@ -432,6 +434,11 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
       (await req<{ settings: Record<string, unknown> }>("PATCH", `${t(id)}/settings`, { settings })).settings,
     attachPhoto: async (id, incident, jpegBase64) =>
       (await req<{ incident: Incident }>("POST", `${t(id)}/incidents/${incident}/photo`, { photo: jpegBase64 })).incident,
+    updateIncident: async (id, incident, changes) =>
+      (await req<{ incident: Incident }>("PATCH", `${t(id)}/incidents/${incident}`, changes)).incident,
+    deleteIncident: async (id, incident) => {
+      await req("DELETE", `${t(id)}/incidents/${incident}`);
+    },
     tournamentOptions: () => req("GET", "/tournament-options"),
     createTournament: async (tournament) => (await req<{ tournament: TournamentLine }>("POST", "/tournaments", { tournament })).tournament,
     searchPlayers: async (id, q, source) => {

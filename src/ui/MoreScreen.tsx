@@ -70,6 +70,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState<{ incident: Incident; url: string } | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const [amending, setAmending] = useState<Incident | null>(null);
   const desk = t.can.includes("settings");
   const canEdit = desk && Array.isArray(t.settings.editable) && !t.read_only;
   const queued = ctx.outbox.list(ctx.server.base, t.id);
@@ -100,6 +101,14 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
     } finally {
       setBusy(null);
     }
+  }
+
+  // An incident amended or deleted: the list is read again either way, so
+  // what it shows is what the server kept.
+  async function changed(message: string) {
+    setAmending(null);
+    setInfo(message);
+    await loadIncidents();
   }
 
   async function showPhoto(i: Incident) {
@@ -184,6 +193,11 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                       {[i.white && i.black ? `${i.white} – ${i.black}` : null, i.note, i.by].filter(Boolean).join(" · ")}
                     </span>
                   </span>
+                  {!t.read_only && (
+                    <button type="button" class="chip" id={`edit-incident-${i.id}`} disabled={busy === i.id} onClick={() => setAmending(i)}>
+                      {tr("more.edit_incident")}
+                    </button>
+                  )}
                   {i.has_photo ? (
                     <button type="button" class="chip" id={`photo-${i.id}`} disabled={busy === i.id} onClick={() => showPhoto(i)}>
                       {tr("more.photo")}
@@ -248,6 +262,8 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
         />
       )}
 
+      {amending && <IncidentEditor ctx={ctx} t={t} incident={amending} onClose={() => setAmending(null)} onDone={changed} />}
+
       {viewing && (
         <Sheet
           title={
@@ -269,5 +285,90 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
         </p>
       </section>
     </div>
+  );
+}
+
+// An incident put right: its type and note changed, or the whole thing
+// deleted (after a question - the photo goes with it). The server checks
+// who may; a refusal is shown here and nothing moves.
+function IncidentEditor(props: { ctx: Ctx; t: Tournament; incident: Incident; onClose: () => void; onDone: (message: string) => Promise<void> }) {
+  const { ctx, t, incident } = props;
+  const [kind, setKind] = useState(incident.kind);
+  const [note, setNote] = useState(incident.note ?? "");
+  const [deleting, setDeleting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const where = incident.board
+    ? tr("more.round_board", { round: incident.round, board: incident.board })
+    : tr("more.round", { round: incident.round });
+
+  async function run(action: () => Promise<unknown>, message: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      await props.onDone(message);
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
+  }
+
+  if (deleting) {
+    return (
+      <Sheet title={tr("more.incident_delete_title")} onClose={props.onClose}>
+        <p>
+          {where}: {incidentKind(incident.kind)}
+          {incident.note ? ` · ${incident.note}` : ""}
+        </p>
+        <p>{tr("more.incident_delete_text")}</p>
+        <div class="sheet-actions">
+          <button
+            type="button"
+            class="btn danger block"
+            id="incident-delete-confirm"
+            disabled={busy}
+            onClick={() => run(() => ctx.api.deleteIncident(t.id, incident.id), tr("more.incident_deleted"))}
+          >
+            {tr("more.incident_delete_yes")}
+          </button>
+          <button type="button" class="btn block" id="incident-delete-keep" onClick={() => setDeleting(false)}>
+            {tr("common.keep")}
+          </button>
+        </div>
+        {error && <Notice kind="error">{error}</Notice>}
+      </Sheet>
+    );
+  }
+
+  return (
+    <Sheet title={`${where}: ${tr("round.incident")}`} onClose={props.onClose}>
+      <form
+        class="form"
+        id="incident-edit-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(() => ctx.api.updateIncident(t.id, incident.id, { kind, note: note.trim() }), tr("more.incident_saved"));
+        }}
+      >
+        <label for="incident-edit-type">{tr("round.what")}</label>
+        <select id="incident-edit-type" value={kind} onChange={(e) => setKind((e.target as HTMLSelectElement).value)}>
+          {incidentKinds().map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <label for="incident-edit-note">{tr("round.note")}</label>
+        <textarea id="incident-edit-note" rows={3} maxLength={280} value={note} onInput={(e) => setNote((e.target as HTMLTextAreaElement).value)} />
+        <button type="submit" class="btn primary block" id="incident-save" disabled={busy}>
+          {busy ? tr("set.saving") : tr("more.incident_save")}
+        </button>
+      </form>
+      <button type="button" class="btn danger block" id="incident-delete" disabled={busy} onClick={() => setDeleting(true)}>
+        {tr("more.incident_delete")}
+      </button>
+      {error && <Notice kind="error">{error}</Notice>}
+    </Sheet>
   );
 }
