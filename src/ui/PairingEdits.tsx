@@ -13,20 +13,21 @@ import { useState } from "preact/hooks";
 import { needsAcknowledgement, type Board, type BoardPlayer, type HandEdit, type Round, type Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Notice, Sheet } from "./common";
+import { t as tr } from "../i18n";
 
-const ACK_LABELS: Record<string, string> = {
-  frozen_round: "This is not the latest round. Change it anyway.",
-  sent_round_changed: "This round was already sent for rating. Change it anyway.",
-  pairing_rules: "Keep these boards although they break the pairing rules.",
-  second_half_bye: "This is the player's second half-point bye. Give it anyway.",
-  mpa_pibe: "Keep the boards as they are; the difference is recorded with the round.",
-};
+const ackLabels = (): Record<string, string> => ({
+  frozen_round: tr("pe.ack.frozen_round"),
+  sent_round_changed: tr("pe.ack.sent_round_changed"),
+  pairing_rules: tr("pe.ack.pairing_rules"),
+  second_half_bye: tr("pe.ack.second_half_bye"),
+  mpa_pibe: tr("pe.ack.mpa_pibe"),
+});
 
-const BYE_TYPES: [string, string][] = [
-  ["absent", "Absent"],
-  ["requested-half", "Half-point bye"],
-  ["requested-zero", "Zero-point bye"],
-  ["full-point", "Full-point bye"],
+const byeTypes = (): [string, string][] => [
+  ["absent", tr("pe.bye.absent")],
+  ["requested-half", tr("pe.bye.requested-half")],
+  ["requested-zero", tr("pe.bye.requested-zero")],
+  ["full-point", tr("pe.bye.full-point")],
 ];
 
 export type Ask = NonNullable<ReturnType<typeof needsAcknowledgement>>;
@@ -71,17 +72,17 @@ export function AskBox(props: { ask: Ask; busy: boolean; onYes: () => void; onNo
   const { ask } = props;
   const checker = ask.checker;
   return (
-    <div class="ask" id="ask" role="alertdialog" aria-label="Confirm">
+    <div class="ask" id="ask" role="alertdialog" aria-label={tr("round.confirm")}>
       {ask.summary && <p class="ask-summary">{ask.summary}</p>}
       {checker && (
         <>
           <p>
             {checker.checked
-              ? "The pairing checker would pair this round differently."
-              : "This round cannot be checked; the change itself is recorded."}
+              ? tr("pe.checker_would")
+              : tr("pe.checker_cannot")}
           </p>
-          {checker.missing.length > 0 && <p class="fine">Checker's boards not here: {checker.missing.join("; ")}</p>}
-          {checker.added.length > 0 && <p class="fine">Boards the checker would not make: {checker.added.join("; ")}</p>}
+          {checker.missing.length > 0 && <p class="fine">{tr("pe.checker_missing", { list: checker.missing.join("; ") })}</p>}
+          {checker.added.length > 0 && <p class="fine">{tr("pe.checker_added", { list: checker.added.join("; ") })}</p>}
         </>
       )}
       {[...ask.warnings, ...(checker?.warnings ?? [])].map((w) => (
@@ -91,15 +92,15 @@ export function AskBox(props: { ask: Ask; busy: boolean; onYes: () => void; onNo
       ))}
       <ul class="ask-list">
         {ask.confirm.map((id) => (
-          <li key={id}>{ACK_LABELS[id] ?? id}</li>
+          <li key={id}>{ackLabels()[id] ?? id}</li>
         ))}
       </ul>
       <div class="two-btn">
         <button type="button" class="btn" onClick={props.onNo} disabled={props.busy}>
-          Cancel
+          {tr("common.cancel")}
         </button>
         <button type="button" class="btn primary" id="ask-yes" onClick={props.onYes} disabled={props.busy}>
-          Do it anyway
+          {tr("pe.do_anyway")}
         </button>
       </div>
     </div>
@@ -146,7 +147,7 @@ export function BoardEditSheet(props: {
     ];
     body = (
       <>
-        <p class="sheet-sub">Swap {swapFrom.name} with:</p>
+        <p class="sheet-sub">{tr("pe.swap_with", { name: swapFrom.name })}</p>
         <ul class="list compact" id="swap-targets">
           {others.map((p) => (
             <li key={p.id} class="row">
@@ -155,16 +156,16 @@ export function BoardEditSheet(props: {
                 class="row-main"
                 id={`swap-with-${p.id}`}
                 disabled={flow.busy}
-                onClick={() => apply({ kind: "swap", a: swapFrom.id, b: p.id }, `${swapFrom.name} and ${p.name} swapped.`)}
+                onClick={() => apply({ kind: "swap", a: swapFrom.id, b: p.id }, tr("pe.swapped", { a: swapFrom.name, b: p.name }))}
               >
                 <span class="row-title">{p.name}</span>
-                <span class="row-sub">{boardOf(round, p.id) ?? "Not on a board"}</span>
+                <span class="row-sub">{boardOf(round, p.id) ?? tr("pe.not_on_board")}</span>
               </button>
             </li>
           ))}
         </ul>
         <button type="button" class="btn ghost block" onClick={() => setSwapFrom(null)}>
-          Back
+          {tr("common.back")}
         </button>
       </>
     );
@@ -176,15 +177,15 @@ export function BoardEditSheet(props: {
         busy={flow.busy}
         onBack={() => setVacating(null)}
         onVacate={(type) =>
-          apply({ kind: "vacate", player: vacating.id, ...(type ? { bye_type: type } : {}) }, `${vacating.name} is not playing this round.`)
+          apply({ kind: "vacate", player: vacating.id, ...(type ? { bye_type: type } : {}) }, tr("pe.not_playing_msg", { name: vacating.name }))
         }
       />
     );
   } else if (filling) {
     body = (
       <>
-        <p class="sheet-sub">Who takes the empty seat?</p>
-        {pool.length === 0 && <p class="fine">Everyone is on a board.</p>}
+        <p class="sheet-sub">{tr("pe.who_fills")}</p>
+        {pool.length === 0 && <p class="fine">{tr("pe.everyone_on_board")}</p>}
         <ul class="list compact" id="fill-from">
           {pool.map((e) => (
             <li key={e.player.id} class="row">
@@ -193,16 +194,16 @@ export function BoardEditSheet(props: {
                 class="row-main"
                 id={`fill-with-${e.player.id}`}
                 disabled={flow.busy}
-                onClick={() => apply({ kind: "fill", pairing: board.id, player: e.player.id }, `${e.player.name} joins board ${board.label}.`)}
+                onClick={() => apply({ kind: "fill", pairing: board.id, player: e.player.id }, tr("pe.joins", { name: e.player.name, label: board.label }))}
               >
                 <span class="row-title">{e.player.name}</span>
-                <span class="row-sub">{e.type ?? (e.absent ? "absent" : "unpaired")}</span>
+                <span class="row-sub">{e.type ?? (e.absent ? tr("pe.absent") : tr("pe.unpaired"))}</span>
               </button>
             </li>
           ))}
         </ul>
         <button type="button" class="btn ghost block" onClick={() => setFilling(false)}>
-          Back
+          {tr("common.back")}
         </button>
       </>
     );
@@ -213,29 +214,29 @@ export function BoardEditSheet(props: {
         class="btn danger block"
         id="delete-board"
         disabled={flow.busy}
-        onClick={() => apply({ kind: "delete", pairing: board.id }, `Board ${board.label} removed.`)}
+        onClick={() => apply({ kind: "delete", pairing: board.id }, tr("pe.board_removed", { label: board.label }))}
       >
-        Remove this board
+        {tr("pe.remove_board")}
       </button>
     );
   } else if (board.vacant && lone) {
     body = (
       <>
-        <p class="sheet-sub">{lone.name} has no opponent.</p>
+        <p class="sheet-sub">{tr("pe.no_opponent", { name: lone.name })}</p>
         <button
           type="button"
           class="btn primary block"
           id="give-bye"
           disabled={flow.busy}
-          onClick={() => apply({ kind: "bye", pairing: board.id }, `${lone.name} gets the bye.`)}
+          onClick={() => apply({ kind: "bye", pairing: board.id }, tr("pe.gets_bye", { name: lone.name }))}
         >
-          Give {lone.name} the bye
+          {tr("pe.give_bye", { name: lone.name })}
         </button>
         <button type="button" class="btn block" id="fill-seat" onClick={() => setFilling(true)}>
-          Fill the empty seat
+          {tr("pe.fill_seat")}
         </button>
         <button type="button" class="btn block" onClick={() => setSwapFrom(lone)}>
-          Swap {lone.name} with…
+          {tr("pe.swap_with_dots", { name: lone.name })}
         </button>
       </>
     );
@@ -247,11 +248,11 @@ export function BoardEditSheet(props: {
           <div key={p.id} class="edit-player">
             <h3>{p.name}</h3>
             <button type="button" class="btn block" id={`swap-${p.id}`} onClick={() => setSwapFrom(p)}>
-              Swap with another player
+              {tr("pe.swap_another")}
             </button>
             {!board.bye && (
               <button type="button" class="btn ghost block" id={`vacate-${p.id}`} onClick={() => setVacating(p)}>
-                Not playing this round
+                {tr("pe.not_playing_round")}
               </button>
             )}
           </div>
@@ -261,7 +262,7 @@ export function BoardEditSheet(props: {
   }
 
   return (
-    <Sheet title={`Board ${board.label}: change the pairing`} onClose={props.onClose}>
+    <Sheet title={tr("pe.change_title", { label: board.label })} onClose={props.onClose}>
       {body}
       {error && (
         <Notice kind="error" onClose={() => setError(null)}>
@@ -274,7 +275,7 @@ export function BoardEditSheet(props: {
 
 function boardOf(round: Round, playerId: number): string | null {
   const b = round.boards.find((x) => x.white?.id === playerId || x.black?.id === playerId);
-  return b ? `Board ${b.label}` : null;
+  return b ? tr("round.board", { label: b.label }) : null;
 }
 
 function VacateForm(props: {
@@ -293,12 +294,12 @@ function VacateForm(props: {
         props.onVacate(props.askType ? type : null);
       }}
     >
-      <p class="sheet-sub">{props.player.name} leaves the board; the opponent waits for a new one or a bye.</p>
+      <p class="sheet-sub">{tr("pe.leaves", { name: props.player.name })}</p>
       {props.askType && (
         <>
-          <label for="vacate-type">Recorded as</label>
+          <label for="vacate-type">{tr("pe.recorded_as")}</label>
           <select id="vacate-type" value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value)}>
-            {BYE_TYPES.map(([v, l]) => (
+            {byeTypes().map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
               </option>
@@ -307,10 +308,10 @@ function VacateForm(props: {
         </>
       )}
       <button type="submit" class="btn primary block" id="vacate-confirm" disabled={props.busy}>
-        {props.player.name} is not playing
+        {tr("pe.vacate_confirm", { name: props.player.name })}
       </button>
       <button type="button" class="btn ghost block" onClick={props.onBack}>
-        Back
+        {tr("common.back")}
       </button>
     </form>
   );
@@ -335,7 +336,7 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
 
   return (
     <section class="pool" id="pool">
-      <h3>Not on a board</h3>
+      <h3>{tr("pe.not_on_board")}</h3>
       <ul class="list compact">
         {pool.map((e) => (
           <li key={e.player.id} class="row">
@@ -351,7 +352,7 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
               />
               <span>
                 <span class="row-title">{e.player.name}</span>
-                <span class="row-sub">{e.type ?? (e.absent ? "absent" : "unpaired")}</span>
+                <span class="row-sub">{e.type ?? (e.absent ? tr("pe.absent") : tr("pe.unpaired"))}</span>
               </span>
             </label>
           </li>
@@ -366,10 +367,10 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
           disabled={flow.busy}
           onClick={() => {
             const [a, b] = picked;
-            apply({ kind: "pool_pair", a, b }, `${name(a)} – ${name(b)} on a new board.`);
+            apply({ kind: "pool_pair", a, b }, tr("pe.pair_done", { a: name(a), b: name(b) }));
           }}
         >
-          Pair {name(picked[0])} – {name(picked[1])} on a new board
+          {tr("pe.pair_two", { a: name(picked[0]), b: name(picked[1]) })}
         </button>
       )}
       {!flow.asking && picked.length === 1 && (
@@ -378,9 +379,9 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
           class="btn block"
           id="pool-bye"
           disabled={flow.busy}
-          onClick={() => apply({ kind: "pool_bye", player: picked[0] }, `${name(picked[0])} gets the bye.`)}
+          onClick={() => apply({ kind: "pool_bye", player: picked[0] }, tr("pe.gets_bye", { name: name(picked[0]) }))}
         >
-          Give {name(picked[0])} the bye
+          {tr("pe.give_bye", { name: name(picked[0]) })}
         </button>
       )}
       {error && (
@@ -401,7 +402,7 @@ export function FinishEdits(props: { ctx: Ctx; t: Tournament; round: Round; onDo
 
   return (
     <div class="hand-edits" id="hand-edits">
-      <Notice kind="info">Round {round.number} has hand edits open. Finish them when the boards are right: the pairing checker looks at the round then.</Notice>
+      <Notice kind="info">{tr("pe.hand_edits_open", { n: round.number })}</Notice>
       {flow.asking ? (
         <AskBox ask={flow.asking.ask} busy={flow.busy} onYes={flow.answer} onNo={flow.cancel} />
       ) : (
@@ -413,11 +414,11 @@ export function FinishEdits(props: { ctx: Ctx; t: Tournament; round: Round; onDo
           onClick={() =>
             flow.run(async (acks) => {
               const { pibe } = await ctx.api.finishEdits(t.id, round.number, acks);
-              props.onDone(pibe ? `Hand edits finished; recorded as ${pibe}.` : "Hand edits finished.");
+              props.onDone(pibe ? tr("pe.finished_pibe", { pibe }) : tr("pe.finished"));
             })
           }
         >
-          Finish hand edits
+          {tr("pe.finish")}
         </button>
       )}
       {error && (

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, OfflineError } from "../api";
 import { pushBack } from "../back";
 import { shareText } from "../platform";
+import { t } from "../i18n";
 
 // The nine-square mark (brand/manubrium-mark.svg), inline: the handle - one
 // filled column down an empty board - in currentColor, the centre square in
@@ -39,7 +40,7 @@ export function TopBar(props: {
   return (
     <header class="topbar">
       {props.onBack ? (
-        <button type="button" class="icon-btn" onClick={props.onBack} aria-label={props.backLabel ?? "Back"}>
+        <button type="button" class="icon-btn" onClick={props.onBack} aria-label={props.backLabel ?? t("common.back")}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" />
           </svg>
@@ -58,10 +59,10 @@ export function TopBar(props: {
 
 /** A sentence for the person holding the phone, whatever went wrong. */
 export function describeError(error: unknown): string {
-  if (error instanceof OfflineError) return "No connection. This needs the server; try again when the phone has a signal.";
+  if (error instanceof OfflineError) return t("common.no_connection");
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
-  return "Something went wrong.";
+  return t("common.something_went_wrong");
 }
 
 export function Notice(props: { kind?: "error" | "info" | "ok"; children: ComponentChildren; onClose?: () => void }) {
@@ -69,7 +70,7 @@ export function Notice(props: { kind?: "error" | "info" | "ok"; children: Compon
     <div class={`notice ${props.kind ?? "info"}`} role={props.kind === "error" ? "alert" : "status"}>
       <span>{props.children}</span>
       {props.onClose && (
-        <button type="button" class="notice-close" onClick={props.onClose} aria-label="Dismiss">
+        <button type="button" class="notice-close" onClick={props.onClose} aria-label={t("common.dismiss")}>
           ×
         </button>
       )}
@@ -120,13 +121,13 @@ export function Empty(props: { children: ComponentChildren }) {
 export function TryAgain(props: { onClick: () => void; id?: string }) {
   return (
     <button type="button" class="btn block" id={props.id} onClick={props.onClick}>
-      Try again
+      {t("common.try_again")}
     </button>
   );
 }
 
 export function Loading() {
-  return <div class="loading" aria-busy="true" aria-label="Loading" />;
+  return <div class="loading" aria-busy="true" aria-label={t("common.loading")} />;
 }
 
 /** "1/2-1/2" is how the server spells it; a phone can afford the glyph. */
@@ -144,7 +145,7 @@ export function ShareButton(props: { id: string; title: string; text: () => stri
     const text = props.text();
     if (!text) return;
     const outcome = await shareText(props.title, text);
-    setSaid(outcome === "copied" ? "Copied" : outcome === "failed" ? "Could not share" : null);
+    setSaid(outcome === "copied" ? t("common.copied") : outcome === "failed" ? t("common.could_not_share") : null);
     if (outcome === "copied" || outcome === "failed") setTimeout(() => setSaid(null), 2500);
   }
   return (
@@ -152,7 +153,7 @@ export function ShareButton(props: { id: string; title: string; text: () => stri
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
       </svg>
-      {said ?? props.label ?? "Share"}
+      {said ?? props.label ?? t("common.share")}
     </button>
   );
 }

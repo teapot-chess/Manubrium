@@ -4,6 +4,7 @@
 // are no worse off for it.
 
 import type { Board, Round, Standings, Tournament } from "./api";
+import { t as tr } from "./i18n";
 
 /** "1/2-1/2" is how the server spells it; a message can afford the glyph. */
 export function shareResult(code: string): string {
@@ -28,7 +29,7 @@ function footer(t: Pick<Tournament, "openresults_url">): string[] {
 }
 
 function boardResult(b: Board): string {
-  if (b.bye) return "bye";
+  if (b.bye) return tr("round.bye");
   return b.result ? shareResult(b.result) : "–";
 }
 
@@ -44,14 +45,14 @@ export function pairingsText(t: Pick<Tournament, "name" | "openresults_url">, ro
   const whiteW = Math.max(5, ...rows.map((r) => [...r.white].length));
   const resW = Math.max(3, ...rows.map((r) => [...r.result].length));
 
-  const lines = [`${t.name}`, `Round ${round.number}`, ""];
-  if (rows.length === 0) lines.push("No boards in this round.");
+  const lines = [`${t.name}`, tr("more.round", { round: round.number }), ""];
+  if (rows.length === 0) lines.push(tr("round.no_boards"));
   else {
-    lines.push(`${pad("Bd", noW, true)}  ${pad("White", whiteW)}  ${pad("Res", resW)}  Black`);
+    lines.push(`${pad(tr("share.bd"), noW, true)}  ${pad(tr("share.white"), whiteW)}  ${pad(tr("share.res"), resW)}  ${tr("share.black")}`);
     for (const r of rows) lines.push(`${pad(r.no, noW, true)}  ${pad(r.white, whiteW)}  ${pad(r.result, resW)}  ${r.black}`.trimEnd());
   }
   if (round.byes.length > 0) {
-    lines.push("", `Not playing: ${round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ")}`);
+    lines.push("", tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ") }));
   }
   return [...lines, ...footer(t)].join("\n");
 }
@@ -64,13 +65,13 @@ export function standingsText(t: Pick<Tournament, "name" | "openresults_url">, s
     formatNumber(r.points),
     ...s.tiebreaks.map((tb) => formatNumber(r.tiebreaks[tb.code])),
   ]);
-  const head = ["#", "Name", "Pts", ...s.tiebreaks.map((tb) => tb.code)];
+  const head = ["#", tr("share.name"), tr("standings.pts"), ...s.tiebreaks.map((tb) => tb.code)];
   const widths = head.map((h, i) => Math.max([...h].length, ...rows.map((r) => [...r[i]].length)));
   // Place and the numbers line up on the right, the name on the left.
   const line = (cells: string[]) => cells.map((c, i) => pad(c, widths[i], i !== 1)).join("  ").trimEnd();
 
-  const lines = [`${t.name}`, "Standings", ""];
-  if (rows.length === 0) lines.push("No players yet.");
+  const lines = [`${t.name}`, tr("tabs.standings"), ""];
+  if (rows.length === 0) lines.push(tr("standings.none"));
   else lines.push(line(head), ...rows.map(line));
   if (s.tiebreaks.length > 0) lines.push("", s.tiebreaks.map((tb) => `${tb.code}: ${tb.name}`).join("; "));
   return [...lines, ...footer(t)].join("\n");

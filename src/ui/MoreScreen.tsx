@@ -10,52 +10,55 @@ import { describeError, Empty, Loading, Notice, resultLabel, Sheet, TryAgain } f
 import { SettingsEditor } from "./SettingsEditor";
 import { BoardLinks } from "./BoardLinks";
 import { refusalText } from "../queue";
-import { INCIDENT_KINDS } from "./RoundScreen";
+import { incidentKinds } from "./RoundScreen";
+import { t as tr } from "./../i18n";
 
-const SETTING_LABELS: Record<string, string> = {
-  type: "Type",
-  venue: "Venue",
-  city: "City",
-  federation: "Federation",
-  start_date: "Starts",
-  end_date: "Ends",
-  chief_arbiter: "Chief arbiter",
-  deputy_arbiter: "Deputy arbiter",
-  time_control: "Time control",
-  rounds_count: "Rounds",
-  bye_value: "Pairing bye scores",
-  shared_places: "Shared places",
-  fide_rated: "FIDE rated",
-  postponed_games: "Postponed games",
-  ask_bye_type: "Asks the bye type",
-  publish_mode: "Publishing",
-};
+/** The labels of the settings the account page lists, in the order it lists them. */
+const settingLabels = (): Record<string, string> => ({
+  type: tr("more.setting.type"),
+  venue: tr("more.setting.venue"),
+  city: tr("more.setting.city"),
+  federation: tr("more.setting.federation"),
+  start_date: tr("more.setting.start_date"),
+  end_date: tr("more.setting.end_date"),
+  chief_arbiter: tr("more.setting.chief_arbiter"),
+  deputy_arbiter: tr("more.setting.deputy_arbiter"),
+  time_control: tr("more.setting.time_control"),
+  rounds_count: tr("more.setting.rounds_count"),
+  bye_value: tr("more.setting.bye_value"),
+  shared_places: tr("more.setting.shared_places"),
+  fide_rated: tr("more.setting.fide_rated"),
+  postponed_games: tr("more.setting.postponed_games"),
+  ask_bye_type: tr("more.setting.ask_bye_type"),
+  publish_mode: tr("more.setting.publish_mode"),
+});
 
-const TYPES: Record<string, string> = {
-  swiss: "Swiss",
-  roundrobin: "Round robin",
-  "team-swiss": "Team Swiss",
-  "team-roundrobin": "Team round robin",
-};
+const typeNames = (): Record<string, string> => ({
+  swiss: tr("more.type.swiss"),
+  roundrobin: tr("more.type.roundrobin"),
+  "team-swiss": tr("more.type.team_swiss"),
+  "team-roundrobin": tr("more.type.team_roundrobin"),
+});
 
-const PUBLISH_MODES: Record<string, string> = {
-  manual: "By hand",
-  pairings: "Pairings as soon as a round is paired",
-  results: "Pairings, and results as they come in",
-  standings: "Pairings, results, and standings after each round",
-};
+const publishModes = (): Record<string, string> => ({
+  manual: tr("more.publish.manual"),
+  pairings: tr("more.publish.pairings"),
+  results: tr("more.publish.results"),
+  standings: tr("more.publish.standings"),
+});
 
 /** An incident kind as the incident dialog named it, not as the database spells it. */
 export function incidentKind(kind: string): string {
-  return INCIDENT_KINDS.find(([v]) => v === kind)?.[1] ?? kind.replace(/_/g, " ");
+  return incidentKinds().find(([v]) => v === kind)?.[1] ?? kind.replace(/_/g, " ");
 }
 
 /** A setting as a person reads it; the server's tokens stay the server's. */
 export function settingValue(key: string, v: unknown): string {
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  if (key === "type") return TYPES[String(v)] ?? String(v);
-  if (key === "publish_mode") return PUBLISH_MODES[String(v)] ?? String(v);
-  if (key === "bye_value" && typeof v === "number") return v === 1 ? "1 point" : v === 0.5 ? "½ point" : `${v} points`;
+  if (typeof v === "boolean") return v ? tr("common.yes") : tr("common.no");
+  if (key === "type") return typeNames()[String(v)] ?? String(v);
+  if (key === "publish_mode") return publishModes()[String(v)] ?? String(v);
+  if (key === "bye_value" && typeof v === "number")
+    return v === 1 ? tr("common.points_one") : v === 0.5 ? tr("common.points_half") : tr("common.points_other", { n: v });
   return String(v);
 }
 
@@ -90,7 +93,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
     setError(null);
     try {
       await ctx.api.attachPhoto(t.id, i.id, photo);
-      setInfo("Photo added.");
+      setInfo(tr("more.photo_added"));
       await loadIncidents();
     } catch (e) {
       setError(describeError(e));
@@ -115,25 +118,33 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
   return (
     <div class="more">
       <section>
-        <h2>On this phone</h2>
+        <h2>{tr("more.on_phone")}</h2>
         {queued.length === 0 ? (
-          <Empty>Nothing waiting to be sent.</Empty>
+          <Empty>{tr("more.nothing_waiting")}</Empty>
         ) : (
           <ul class="list compact">
             {queued.map((q) => (
               <li key={q.entry.cid} class="row">
                 <span class="row-main static">
                   <span class="row-title">
-                    Round {q.entry.round}
                     {q.entry.kind === "result"
-                      ? `, board ${q.label ?? q.entry.board}: ${resultLabel(q.entry.result)}`
-                      : `${q.label ?? q.entry.board ? `, board ${q.label ?? q.entry.board}` : ""}: incident (${incidentKind(q.entry.type).toLowerCase()})`}
+                      ? tr("more.queued_result", {
+                          where: tr("more.round_board", { round: q.entry.round, board: String(q.label ?? q.entry.board) }),
+                          result: resultLabel(q.entry.result),
+                        })
+                      : tr("more.queued_incident", {
+                          where:
+                            q.label ?? q.entry.board
+                              ? tr("more.round_board", { round: q.entry.round, board: String(q.label ?? q.entry.board) })
+                              : tr("more.round", { round: q.entry.round }),
+                          kind: incidentKind(q.entry.type).toLowerCase(),
+                        })}
                   </span>
-                  <span class="row-sub">{q.state === "waiting" ? "Waiting to send" : `Not accepted: ${refusalText(q)}`}</span>
+                  <span class="row-sub">{q.state === "waiting" ? tr("more.waiting_to_send") : tr("more.not_accepted", { reason: refusalText(q) })}</span>
                 </span>
                 {q.state === "refused" && (
                   <button type="button" class="chip" id={`dismiss-${q.entry.cid}`} onClick={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
-                    Dismiss
+                    {tr("more.dismiss")}
                   </button>
                 )}
               </li>
@@ -144,7 +155,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
 
       {desk && (
         <section>
-          <h2>Incidents</h2>
+          <h2>{tr("more.incidents")}</h2>
           {error && (
             <Notice kind="error" onClose={() => setError(null)}>
               {error}
@@ -160,15 +171,14 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
             setError(null);
             loadIncidents();
           }} />}
-          {incidents && incidents.length === 0 && <Empty>None logged.</Empty>}
+          {incidents && incidents.length === 0 && <Empty>{tr("more.none_logged")}</Empty>}
           {incidents && incidents.length > 0 && (
             <ul class="list compact" id="incident-list">
               {incidents.map((i) => (
                 <li key={i.id} class="row">
                   <span class="row-main static">
                     <span class="row-title">
-                      Round {i.round}
-                      {i.board ? `, board ${i.board}` : ""}: {incidentKind(i.kind)}
+                      {i.board ? tr("more.round_board", { round: i.round, board: i.board }) : tr("more.round", { round: i.round })}: {incidentKind(i.kind)}
                     </span>
                     <span class="row-sub">
                       {[i.white && i.black ? `${i.white} – ${i.black}` : null, i.note, i.by].filter(Boolean).join(" · ")}
@@ -176,12 +186,12 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                   </span>
                   {i.has_photo ? (
                     <button type="button" class="chip" id={`photo-${i.id}`} disabled={busy === i.id} onClick={() => showPhoto(i)}>
-                      Photo
+                      {tr("more.photo")}
                     </button>
                   ) : (
                     !t.read_only && (
                       <button type="button" class="chip" id={`add-photo-${i.id}`} disabled={busy === i.id} onClick={() => addPhoto(i)}>
-                        Add photo
+                        {tr("more.add_photo")}
                       </button>
                     )
                   )}
@@ -196,16 +206,16 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
 
       {desk && (
         <section>
-          <h2>Settings</h2>
+          <h2>{tr("set.title")}</h2>
           {canEdit ? (
             <button type="button" class="btn block" id="edit-settings" onClick={() => setEditing(true)}>
-              Change the mid-event settings
+              {tr("more.change_settings")}
             </button>
           ) : (
-            <p class="fine">Read only here; change them at the desk.</p>
+            <p class="fine">{tr("more.read_only_settings")}</p>
           )}
           <dl class="settings" id="settings">
-            {Object.entries(SETTING_LABELS).map(([key, label]) => {
+            {Object.entries(settingLabels()).map(([key, label]) => {
               const v = t.settings[key];
               if (v === null || v === undefined || v === "") return null;
               return (
@@ -217,7 +227,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
             })}
             {Array.isArray(t.settings.tiebreaks) && (
               <div>
-                <dt>Tie-breaks</dt>
+                <dt>{tr("set.tiebreaks")}</dt>
                 <dd>{(t.settings.tiebreaks as string[]).map(tiebreakName).join(", ")}</dd>
               </div>
             )}
@@ -232,23 +242,30 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
           onClose={() => setEditing(false)}
           onSaved={async () => {
             setEditing(false);
-            setInfo("Settings saved.");
+            setInfo(tr("set.saved"));
             await props.reloadTournament?.();
           }}
         />
       )}
 
       {viewing && (
-        <Sheet title={`Round ${viewing.incident.round}${viewing.incident.board ? `, board ${viewing.incident.board}` : ""}`} onClose={() => setViewing(null)}>
-          <img class="incident-photo" id="incident-photo-view" src={viewing.url} alt="The incident's photo" />
+        <Sheet
+          title={
+            viewing.incident.board
+              ? tr("more.round_board", { round: viewing.incident.round, board: viewing.incident.board })
+              : tr("more.round", { round: viewing.incident.round })
+          }
+          onClose={() => setViewing(null)}
+        >
+          <img class="incident-photo" id="incident-photo-view" src={viewing.url} alt={tr("more.photo_alt")} />
         </Sheet>
       )}
 
       <section>
-        <h2>Signed in</h2>
+        <h2>{tr("more.signed_in")}</h2>
         <p class="fine">
-          {ctx.server.user.name || ctx.server.user.email} on {ctx.server.label}
-          {ctx.server.info.version && `, OpenPairings ${ctx.server.info.version}`}.
+          {tr("more.signed_in_line", { who: ctx.server.user.name || ctx.server.user.email, server: ctx.server.label })}
+          {ctx.server.info.version && tr("more.version", { version: ctx.server.info.version })}.
         </p>
       </section>
     </div>

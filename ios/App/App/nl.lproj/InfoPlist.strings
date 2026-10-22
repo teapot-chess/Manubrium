@@ -1,0 +1,4 @@
+"NSCameraUsageDescription" = "Manubrium gebruikt de camera om de verbindingscode op je OpenPairings-accountpagina te scannen en om een incident (een scoreblad, een klok) te fotograferen voor het logboek van de arbiter.";
+"NSPhotoLibraryUsageDescription" = "Manubrium kan een foto die je al hebt gemaakt aan een incident in het logboek van de arbiter toevoegen.";
+"NSPhotoLibraryAddUsageDescription" = "Manubrium kan een kopie van een incidentfoto bewaren in je fotobibliotheek.";
+"NSLocalNetworkUsageDescription" = "Manubrium verbindt met OpenPairings op een computer in de speelzaal, via het eigen netwerk van de zaal.";

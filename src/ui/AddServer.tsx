@@ -4,6 +4,7 @@ import { LinkError, parseConnectLink } from "../link";
 import { deviceName, native, platform, scanQr } from "../platform";
 import { labelFor, type SavedServer } from "../servers";
 import { describeError, Mark, Notice, TopBar } from "./common";
+import { t } from "../i18n";
 
 export function AddServer(props: {
   initialLink?: string;
@@ -59,19 +60,22 @@ export function AddServer(props: {
 
   return (
     <div class="screen">
-      <TopBar title="Add a server" onBack={props.canCancel ? props.onCancel : undefined} />
+      <TopBar title={t("addserver.title")} onBack={props.canCancel ? props.onCancel : undefined} />
       <main class="content narrow">
         <div class="welcome">
           <Mark big />
           <p>
-            On the OpenPairings server, open your account page, go to <strong>Manubrium app</strong> and choose{" "}
-            <strong>Connect a phone</strong>. Then scan the code it shows.
+            {t("addserver.welcome_1")}
+            <strong>{t("addserver.welcome_app")}</strong>
+            {t("addserver.welcome_2")}
+            <strong>{t("addserver.welcome_connect")}</strong>
+            {t("addserver.welcome_3")}
           </p>
         </div>
 
         {native && (
           <button type="button" class="btn primary block" id="scan" onClick={scan} disabled={busy}>
-            Scan the code
+            {t("addserver.scan")}
           </button>
         )}
 
@@ -82,7 +86,7 @@ export function AddServer(props: {
             go(link);
           }}
         >
-          <label for="link">{native ? "Or paste the link under the code" : "Paste the link under the code"}</label>
+          <label for="link">{native ? t("addserver.paste_native") : t("addserver.paste")}</label>
           <textarea
             id="link"
             rows={3}
@@ -93,15 +97,14 @@ export function AddServer(props: {
             spellcheck={false}
           />
           <button type="submit" class={`btn block ${native ? "" : "primary"}`} disabled={busy || !link.trim()}>
-            {busy ? "Connecting…" : "Connect"}
+            {busy ? t("addserver.connecting") : t("addserver.connect")}
           </button>
         </form>
 
         {error && <Notice kind="error">{error}</Notice>}
 
         <p class="fine">
-          The code works once, for ten minutes. A desktop copy of OpenPairings needs “Let phones on this network connect”
-          switched on, and this phone on the hall's network.
+          {t("addserver.fine")}
         </p>
       </main>
     </div>

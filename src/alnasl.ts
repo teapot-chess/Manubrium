@@ -4,6 +4,7 @@
 
 import type { BoardReport } from "./api";
 import { shareResult } from "./share";
+import { t } from "./i18n";
 
 /**
  * The small line beside a pairing: the board's result, or how far the game
@@ -12,21 +13,21 @@ import { shareResult } from "./share";
  */
 export function boardReportLabel(report: BoardReport | null | undefined): string | null {
   if (!report) return null;
-  if (report.result) return `board ${shareResult(report.result)}`;
+  if (report.result) return t("alnasl.board_result", { result: shareResult(report.result) });
   switch (report.status) {
     case "waiting":
-      return report.moves_count ? playing(report.moves_count) : "board waiting";
+      return report.moves_count ? playing(report.moves_count) : t("alnasl.waiting");
     case "live":
       return playing(report.moves_count ?? 0);
     case "finished":
       // Over, with no result the board could read: a flag, a resignation by
       // handshake. The arbiter's sheet will know.
-      return "board finished";
+      return t("alnasl.finished");
     default:
       return null;
   }
 }
 
 function playing(n: number): string {
-  return `playing · ${n} ${n === 1 ? "move" : "moves"}`;
+  return n === 1 ? t("alnasl.playing_one") : t("alnasl.playing_other", { n });
 }

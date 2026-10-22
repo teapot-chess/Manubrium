@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+
 // The connect link an OpenPairings account page shows as a QR code:
 //
 //   manubrium://connect?server=<base url>&secret=<one-time secret>
@@ -23,21 +25,21 @@ export function parseConnectLink(text: string): ConnectLink {
   try {
     url = new URL(raw);
   } catch {
-    throw new LinkError("That is not a Manubrium link. Scan the code on the account page, or copy its link.");
+    throw new LinkError(t("link.not_manubrium"));
   }
 
   if (url.protocol !== "manubrium:") {
-    throw new LinkError("That is not a Manubrium link. Scan the code on the account page, or copy its link.");
+    throw new LinkError(t("link.not_manubrium"));
   }
 
   // `manubrium://connect?...` parses with host "connect" in some engines and
   // pathname "//connect" in others.
   const target = (url.host || url.pathname.replace(/^\/+/, "")).toLowerCase();
-  if (target !== "connect") throw new LinkError("This Manubrium link is not a connect link.");
+  if (target !== "connect") throw new LinkError(t("link.not_connect"));
 
   const server = url.searchParams.get("server") ?? "";
   const secret = url.searchParams.get("secret") ?? "";
-  if (!server || !secret) throw new LinkError("The link is incomplete. Copy all of it.");
+  if (!server || !secret) throw new LinkError(t("link.incomplete"));
 
   return { server: normaliseServer(server), secret };
 }
@@ -49,15 +51,15 @@ export function normaliseServer(input: string): string {
   try {
     url = new URL(input.trim());
   } catch {
-    throw new LinkError("The server address in the link is not an address.");
+    throw new LinkError(t("link.bad_address"));
   }
 
   if (url.protocol === "https:") return url.origin;
   if (url.protocol === "http:" && isLocalHost(url.hostname)) return url.origin;
   if (url.protocol === "http:") {
-    throw new LinkError("This server is on the internet without https. Manubrium only speaks plain http inside the hall's own network.");
+    throw new LinkError(t("link.no_https"));
   }
-  throw new LinkError("The server address must start with https://.");
+  throw new LinkError(t("link.must_https"));
 }
 
 // Loopback, the private IPv4 ranges (RFC 1918), link-local, IPv6 unique

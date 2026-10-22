@@ -6,6 +6,7 @@ import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
 import { ServerList, type SavedServer } from "../servers";
 import { onBackButton, onOpenLink, secureStorage, storage } from "../platform";
+import { currentChoice, loadLanguage, onLanguageChange, saveLanguage } from "../i18n";
 import { goBack, pushBack } from "../back";
 import { AddServer } from "./AddServer";
 import { Servers } from "./Servers";
@@ -40,6 +41,7 @@ export function App() {
   const bump = useCallback(() => setTick((n) => n + 1), []);
 
   const reload = useCallback(async () => {
+    await loadLanguage(storage);
     await outbox.load();
     const all = await serverList.all();
     const cur = await serverList.current();
@@ -53,6 +55,9 @@ export function App() {
   }, [reload]);
 
   useEffect(() => onBackButton(goBack), []);
+
+  // A new language draws every screen again: the same as a state change.
+  useEffect(() => onLanguageChange(bump), [bump]);
 
   // Where the back button goes from each screen; the tournament list is
   // the root, and from there Android puts the app away.
@@ -106,6 +111,8 @@ export function App() {
           setScreen({ name: "tournaments" });
         }}
         onAdd={() => setScreen({ name: "add" })}
+        language={currentChoice()}
+        onLanguage={(choice) => void saveLanguage(storage, choice)}
         onRemove={async (s, signOut) => {
           if (signOut) await client(s.base, s.token).signOut().catch(() => undefined);
           await outbox.forgetServer(s.base);

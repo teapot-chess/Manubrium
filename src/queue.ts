@@ -14,6 +14,7 @@
 // and say so.
 
 import { OfflineError, type Entry, type EntryAnswer, type ResultEntry } from "./api";
+import { t } from "./i18n";
 
 export interface KeyValue {
   get(key: string): Promise<string | null>;
@@ -241,8 +242,8 @@ export class Outbox {
  */
 export function refusalText(q: Queued): string {
   const where = q.label ?? (q.entry.board ? String(q.entry.board) : null);
-  let text = q.message ?? "Not accepted by the server.";
-  text = text.replace(/^Board \?: ?/, where ? `Board ${where}: ` : `Round ${q.entry.round}: `);
-  text = text.replace(/ ?Check with the arbiter\.?$/, " Look at the board and enter it again if it still stands.");
+  let text = q.message ?? t("queue.not_accepted_default");
+  text = text.replace(/^Board \?: ?/, where ? t("queue.board_prefix", { where }) : t("queue.round_prefix", { n: q.entry.round }));
+  text = text.replace(/ ?Check with the arbiter\.?$/, " " + t("queue.look_again"));
   return text;
 }

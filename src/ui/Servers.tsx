@@ -2,8 +2,9 @@ import { useState } from "preact/hooks";
 import type { Outbox } from "../queue";
 import type { SavedServer } from "../servers";
 import { Sheet, TopBar } from "./common";
+import { t, LANGUAGES, LANGUAGE_NAMES, type LangChoice } from "../i18n";
 
-const unsent = (n: number) => (n === 1 ? "1 result or incident is" : `${n} results or incidents are`);
+const unsent = (n: number) => (n === 1 ? t("servers.unsent_one") : t("servers.unsent_other", { n }));
 
 export function Servers(props: {
   servers: SavedServer[];
@@ -14,12 +15,15 @@ export function Servers(props: {
   onBack?: () => void;
   onAdd: () => void;
   onRemove: (server: SavedServer, signOut: boolean) => void;
+  /** The app's language choice; with `onLanguage`, the picker is shown. */
+  language?: LangChoice;
+  onLanguage?: (choice: LangChoice) => void;
 }) {
   const [removing, setRemoving] = useState<SavedServer | null>(null);
 
   return (
     <div class="screen">
-      <TopBar title="Servers" subtitle="Each with its own sign-in" onBack={props.onBack} backLabel="Tournaments" />
+      <TopBar title={t("servers.title")} subtitle={t("servers.subtitle")} onBack={props.onBack} backLabel={t("tournaments.title")} />
       <main class="content">
         <ul class="list" id="server-list">
           {props.servers.map((s) => {
@@ -29,14 +33,14 @@ export function Servers(props: {
                 <button type="button" class="row-main" onClick={() => props.onPick(s.base)}>
                   <span class="row-title">
                     {s.label}
-                    {s.info.desktop && <span class="tag">Desktop</span>}
+                    {s.info.desktop && <span class="tag">{t("servers.desktop")}</span>}
                   </span>
                   <span class="row-sub">
                     {s.user.name || s.user.email}
-                    {waiting > 0 && ` · ${waiting} waiting to send`}
+                    {waiting > 0 && ` · ${t("servers.waiting_to_send", { n: waiting })}`}
                   </span>
                 </button>
-                <button type="button" class="icon-btn subtle" aria-label={`Remove ${s.label}`} onClick={() => setRemoving(s)}>
+                <button type="button" class="icon-btn subtle" aria-label={t("common.remove_server_aria", { label: s.label })} onClick={() => setRemoving(s)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" />
                   </svg>
@@ -46,16 +50,34 @@ export function Servers(props: {
           })}
         </ul>
         <button type="button" class="btn primary block" id="add-server" onClick={props.onAdd}>
-          Add a server
+          {t("servers.add")}
         </button>
+
+        {props.onLanguage && (
+          <div class="form language-choice">
+            <label for="language-choice">{t("settings.language")}</label>
+            <select
+              id="language-choice"
+              value={props.language ?? "auto"}
+              onChange={(e) => props.onLanguage?.((e.target as HTMLSelectElement).value as LangChoice)}
+            >
+              <option value="auto">{t("settings.language_auto")}</option>
+              {LANGUAGES.map((l) => (
+                <option key={l} value={l}>
+                  {LANGUAGE_NAMES[l]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </main>
 
       {removing && (
-        <Sheet title={`Remove ${removing.label}?`} onClose={() => setRemoving(null)}>
+        <Sheet title={t("servers.remove_title", { label: removing.label })} onClose={() => setRemoving(null)}>
           <p>
             {props.outbox.count(removing.base) > 0
-              ? `${unsent(props.outbox.count(removing.base))} on this phone not sent yet. Removing the server throws them away.`
-              : "This phone forgets the server. Signing out also withdraws its access on the server."}
+              ? t("servers.remove_unsent", { unsent: unsent(props.outbox.count(removing.base)) })
+              : t("servers.remove_plain")}
           </p>
           <div class="sheet-actions">
             <button
@@ -66,10 +88,10 @@ export function Servers(props: {
                 setRemoving(null);
               }}
             >
-              Sign out and remove
+              {t("servers.sign_out_and_remove")}
             </button>
             <button type="button" class="btn block" onClick={() => setRemoving(null)}>
-              Keep it
+              {t("servers.keep")}
             </button>
           </div>
         </Sheet>
