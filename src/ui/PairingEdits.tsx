@@ -393,12 +393,33 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
   );
 }
 
-/** Hand edits are open on this round: say so, and finish them under the checker. */
+/**
+ * Hand edits are open on this round: say so, and finish them under the
+ * checker - or undo them, back to where they began, while the server says
+ * that is still possible (the desk's "Discard hand edits"; one way back,
+ * not a step-by-step one).
+ */
 export function FinishEdits(props: { ctx: Ctx; t: Tournament; round: Round; onDone: (message: string) => void }) {
   const { ctx, t, round } = props;
   const [error, setError] = useState<string | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const flow = useAsking(setError);
   if (!round.hand_edits?.open) return null;
+
+  async function undo() {
+    setBusy(true);
+    setError(null);
+    try {
+      await ctx.api.discardEdits(t.id, round.number);
+      setUndoing(false);
+      props.onDone(tr("pe.discarded", { n: round.number }));
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div class="hand-edits" id="hand-edits">
@@ -420,6 +441,25 @@ export function FinishEdits(props: { ctx: Ctx; t: Tournament; round: Round; onDo
         >
           {tr("pe.finish")}
         </button>
+      )}
+      {round.hand_edits.discardable && !t.read_only && !flow.asking && (
+        undoing ? (
+          <div class="ask" id="discard-ask" role="alertdialog" aria-label={tr("pe.discard")}>
+            <p>{tr("pe.discard_q", { n: round.number })}</p>
+            <div class="two-btn">
+              <button type="button" class="btn" id="discard-keep" disabled={busy} onClick={() => setUndoing(false)}>
+                {tr("common.keep")}
+              </button>
+              <button type="button" class="btn danger" id="discard-yes" disabled={busy} onClick={undo}>
+                {tr("pe.discard_yes")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" class="btn ghost block" id="discard-edits" disabled={flow.busy} onClick={() => setUndoing(true)}>
+            {tr("pe.discard")}
+          </button>
+        )
       )}
       {error && (
         <Notice kind="error" onClose={() => setError(null)}>
