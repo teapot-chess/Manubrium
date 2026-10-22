@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import type { BoardLink, Tournament } from "../api";
 import { copyText } from "../share";
 import type { Ctx } from "./App";
-import { describeError, Empty, Notice, Sheet } from "./common";
+import { describeError, Empty, Loading, Notice, Sheet } from "./common";
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : null);
 
@@ -75,6 +75,7 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
           {error}
         </Notice>
       )}
+      {!links && !error && <Loading />}
       {links && links.length === 0 && <Empty>No board connected. A code lets the hall's boards report their games here.</Empty>}
       {links && links.length > 0 && (
         <ul class="list compact" id="board-links">
@@ -149,7 +150,8 @@ function FreshCode(props: { code: string; link: BoardLink; onClose: () => void }
   }, [props.code]);
 
   return (
-    <Sheet title={props.link.label || "Hall boards"} onClose={props.onClose}>
+    // Sticky: a tap beside it would throw away a code nobody can show again.
+    <Sheet title={props.link.label || "Hall boards"} onClose={props.onClose} sticky>
       <p class="sheet-sub">Scan it from the Alnasl bridge, or copy it there.</p>
       {/* The SVG is the qrcode library's own output for our own string. */}
       {svg && <div class="qr" id="board-link-qr" role="img" aria-label="QR code of the board code" dangerouslySetInnerHTML={{ __html: svg }} />}

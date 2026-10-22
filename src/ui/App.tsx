@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
 import { ServerList, type SavedServer } from "../servers";
-import { onOpenLink, secureStorage, storage } from "../platform";
+import { onBackButton, onOpenLink, secureStorage, storage } from "../platform";
+import { goBack, pushBack } from "../back";
 import { AddServer } from "./AddServer";
 import { Servers } from "./Servers";
 import { Mark } from "./common";
@@ -51,6 +52,19 @@ export function App() {
     onOpenLink((link) => setScreen({ name: "add", link }));
   }, [reload]);
 
+  useEffect(() => onBackButton(goBack), []);
+
+  // Where the back button goes from each screen; the tournament list is
+  // the root, and from there Android puts the app away.
+  const backTo: Screen | null =
+    screen.name === "tournament" || screen.name === "new" || (screen.name === "servers" && current)
+      ? { name: "tournaments" }
+      : screen.name === "add" && (servers?.length ?? 0) > 0
+        ? { name: "servers" }
+        : null;
+  const backKey = backTo ? `${screen.name}>${backTo.name}` : null;
+  useEffect(() => (backTo ? pushBack(() => setScreen(backTo), "screen") : undefined), [backKey]);
+
   const server = servers?.find((s) => s.base === current) ?? null;
   const ctx = useMemo<Ctx | null>(
     () => (server ? { server, api: client(server.base, server.token), outbox, bump } : null),
@@ -85,6 +99,7 @@ export function App() {
         servers={servers}
         current={current}
         outbox={outbox}
+        onBack={ctx ? () => setScreen({ name: "tournaments" }) : undefined}
         onPick={async (base) => {
           await serverList.setCurrent(base);
           setCurrent(base);

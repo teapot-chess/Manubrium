@@ -91,6 +91,27 @@ export function onOpenLink(handler: (url: string) => void): void {
   });
 }
 
+/**
+ * Android's back button, and Escape anywhere: `back()` takes one step back
+ * and says whether there was one. At the root Android puts the app away, as
+ * every other app does; a browser tab stays where it is.
+ */
+export function onBackButton(back: () => boolean): () => void {
+  const key = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && back()) e.preventDefault();
+  };
+  document.addEventListener("keydown", key);
+  const pending = native
+    ? App.addListener("backButton", () => {
+        if (!back()) App.minimizeApp().catch(() => undefined);
+      })
+    : null;
+  return () => {
+    document.removeEventListener("keydown", key);
+    pending?.then((h) => h.remove());
+  };
+}
+
 /** Calls `handler` when the app comes back to the foreground or online; returns the undo. */
 export function onResume(handler: () => void): () => void {
   let undoNative: (() => void) | null = null;

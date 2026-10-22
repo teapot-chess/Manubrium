@@ -3,11 +3,15 @@ import type { Outbox } from "../queue";
 import type { SavedServer } from "../servers";
 import { Sheet, TopBar } from "./common";
 
+const unsent = (n: number) => (n === 1 ? "1 result or incident is" : `${n} results or incidents are`);
+
 export function Servers(props: {
   servers: SavedServer[];
   current: string | null;
   outbox: Outbox;
   onPick: (base: string) => void;
+  /** Back to the tournaments of the server in use, when there is one. */
+  onBack?: () => void;
   onAdd: () => void;
   onRemove: (server: SavedServer, signOut: boolean) => void;
 }) {
@@ -15,7 +19,7 @@ export function Servers(props: {
 
   return (
     <div class="screen">
-      <TopBar title="Servers" subtitle="Each with its own sign-in" />
+      <TopBar title="Servers" subtitle="Each with its own sign-in" onBack={props.onBack} backLabel="Tournaments" />
       <main class="content">
         <ul class="list" id="server-list">
           {props.servers.map((s) => {
@@ -50,7 +54,7 @@ export function Servers(props: {
         <Sheet title={`Remove ${removing.label}?`} onClose={() => setRemoving(null)}>
           <p>
             {props.outbox.count(removing.base) > 0
-              ? `${props.outbox.count(removing.base)} results on this phone have not been sent yet. Removing the server throws them away.`
+              ? `${unsent(props.outbox.count(removing.base))} on this phone not sent yet. Removing the server throws them away.`
               : "This phone forgets the server. Signing out also withdraws its access on the server."}
           </p>
           <div class="sheet-actions">

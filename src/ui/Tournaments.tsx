@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, type TournamentLine } from "../api";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice, TopBar } from "./common";
+import { describeError, Empty, Loading, Notice, TopBar, TryAgain } from "./common";
 
 const ROLE: Record<string, string> = { owner: "Organiser", editor: "Editor", arbiter: "Arbiter" };
 
@@ -74,6 +74,7 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
             Refresh
           </button>
         )}
+        {!list && error && !signedOut && <TryAgain id="tournaments-retry" onClick={load} />}
       </main>
     </div>
   );

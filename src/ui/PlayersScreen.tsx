@@ -8,7 +8,7 @@ import { ApiError, type Bye, type Player, type SearchHit, type Tournament } from
 import { byeRows, byesChanged, byesToSend, setBye } from "../byes";
 import { DEBOUNCE_MS, hitDetails, MIN_QUERY, searchQuery, sourceOf } from "../search";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice, Sheet } from "./common";
+import { describeError, Empty, Loading, Notice, Sheet, TryAgain } from "./common";
 
 export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
   const { ctx, t } = props;
@@ -113,6 +113,15 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
         </Notice>
       )}
       {!players && !error && <Loading />}
+      {!players && error && (
+        <TryAgain
+          id="players-retry"
+          onClick={() => {
+            setError(null);
+            load();
+          }}
+        />
+      )}
       {players && shown.length === 0 && (
         <Empty>{checkIn && onlyMissing && !needle ? "Everybody is here." : filter ? "Nobody by that name." : "No players yet."}</Empty>
       )}
@@ -175,6 +184,7 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
             setEditing(null);
             load();
           }}
+          onChanged={load}
         />
       )}
     </div>
@@ -319,7 +329,15 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
   );
 }
 
-function PlayerSheet(props: { ctx: Ctx; t: Tournament; player: Player | null; onClose: () => void; onSaved: () => void }) {
+function PlayerSheet(props: {
+  ctx: Ctx;
+  t: Tournament;
+  player: Player | null;
+  onClose: () => void;
+  onSaved: () => void;
+  /** Saved without closing the sheet (the byes): the list should show it. */
+  onChanged: () => void;
+}) {
   const { ctx, t, player } = props;
   const [name, setName] = useState(player?.name ?? "");
   const [fideId, setFideId] = useState(player?.fide_id ? String(player.fide_id) : "");
@@ -425,7 +443,7 @@ function PlayerSheet(props: { ctx: Ctx; t: Tournament; player: Player | null; on
         </button>
       </form>
 
-      {byesMode && player && <ByesEditor ctx={ctx} t={t} player={player} byes={byes} onChange={setByes} onSaved={props.onSaved} />}
+      {byesMode && player && <ByesEditor ctx={ctx} t={t} player={player} byes={byes} onChange={setByes} onSaved={props.onChanged} />}
 
       {player && player.status !== "expelled" && (
         <button
@@ -444,20 +462,27 @@ function PlayerSheet(props: { ctx: Ctx; t: Tournament; player: Player | null; on
 
 // A player's requested byes, round by round. Paired rounds are shown, not
 // changed; what may be asked for is the server's call, and it says why not.
+// Saving them leaves the sheet open: closing it took the name or rating
+// typed above along with it, unsaved and unmourned.
 function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[]; onChange: (b: Bye[]) => void; onSaved: () => void }) {
   const { ctx, t, player, byes } = props;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<Bye[]>(player.byes ?? []);
+  const [said, setSaid] = useState<string | null>(null);
   const kinds = t.bye_kinds ?? [];
   const label = (id: string) => kinds.find((k) => k.id === id)?.label ?? id;
   const rows = byeRows(t.rounds_count ?? 0, t.paired_rounds, byes);
-  const changed = byesChanged(player.byes ?? [], byes, t.paired_rounds);
+  const changed = byesChanged(saved, byes, t.paired_rounds);
 
   async function save() {
     setBusy(true);
     setError(null);
+    setSaid(null);
     try {
       await ctx.api.setByes(t.id, player.id, byesToSend(byes, t.paired_rounds));
+      setSaved(byes);
+      setSaid("Byes saved.");
       props.onSaved();
     } catch (e) {
       setError(describeError(e));
@@ -501,6 +526,7 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
       <button type="button" class="btn block" id="save-byes" disabled={busy || !changed} onClick={save}>
         {busy ? "Saving…" : "Save the byes"}
       </button>
+      {said && !changed && <Notice kind="ok">{said}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
     </section>
   );
