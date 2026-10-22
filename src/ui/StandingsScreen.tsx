@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { Standings, Tournament } from "../api";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice, ShareButton } from "./common";
+import { describeError, Empty, Loading, Notice, ShareButton, TryAgain } from "./common";
 import { formatNumber as format, standingsText } from "../share";
 
 /**
@@ -38,6 +38,7 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   return (
     <div class="standings">
       {error && <Notice kind="error">{error}</Notice>}
+      {error && !s && <TryAgain id="standings-retry" onClick={load} />}
       {!s && !error && <Loading />}
       {s && s.rows.length === 0 && <Empty>No players yet.</Empty>}
       {s && s.rows.length > 0 && (

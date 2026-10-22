@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { Tournament, TournamentLine } from "../api";
 import type { Ctx } from "./App";
-import { describeError, Loading, Notice, TopBar } from "./common";
+import { describeError, Loading, Notice, TopBar, TryAgain } from "./common";
 import { RoundScreen } from "./RoundScreen";
 import { StandingsScreen } from "./StandingsScreen";
 import { PlayersScreen } from "./PlayersScreen";
@@ -41,6 +41,23 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
       <TopBar title={t?.name ?? line.name} subtitle={ctx.server.label} onBack={props.onBack} backLabel="Tournaments" />
       <main class="content">
         {error && !t && <Notice kind="error">{error}</Notice>}
+        {error && !t && (
+          <TryAgain
+            id="tournament-retry"
+            onClick={() => {
+              setError(null);
+              load();
+            }}
+          />
+        )}
+        {t?.read_only && (
+          <Notice kind="info">
+            {t.handed_off && !t.archived
+              ? "This tournament was handed to another copy of OpenPairings; it is run from there now."
+              : "This tournament is archived."}{" "}
+            Everything here can be read; nothing can be changed.
+          </Notice>
+        )}
         {!t && !error && <Loading />}
         {t && tab === "round" && <RoundScreen ctx={ctx} t={t} reloadTournament={load} />}
         {t && tab === "standings" && <StandingsScreen ctx={ctx} t={t} />}

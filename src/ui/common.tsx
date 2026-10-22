@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, OfflineError } from "../api";
+import { pushBack } from "../back";
 import { shareText } from "../platform";
 
 // The nine-square mark (brand/manubrium-mark.svg), inline: the handle - one
@@ -76,10 +77,33 @@ export function Notice(props: { kind?: "error" | "info" | "ok"; children: Compon
   );
 }
 
-export function Sheet(props: { title: string; onClose: () => void; children: ComponentChildren }) {
+/**
+ * A bottom sheet. It takes the focus when it opens and hands it back when
+ * it closes, and the back button or Escape closes it. `sticky` sheets close
+ * only by their own buttons: for what a stray tap on the backdrop must not
+ * throw away, like a code shown once.
+ */
+export function Sheet(props: { title: string; onClose: () => void; sticky?: boolean; children: ComponentChildren }) {
+  const box = useRef<HTMLElement>(null);
+  const close = useRef(props.onClose);
+  close.current = props.onClose;
+  const sticky = !!props.sticky;
+
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    box.current?.focus();
+    const undo = pushBack(() => {
+      if (!sticky) close.current();
+    });
+    return () => {
+      undo();
+      if (before && before.isConnected) before.focus();
+    };
+  }, [sticky]);
+
   return (
-    <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
-      <section class="sheet" role="dialog" aria-modal="true" aria-label={props.title}>
+    <div class="sheet-backdrop" onClick={(e) => !sticky && e.target === e.currentTarget && props.onClose()}>
+      <section class="sheet" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} ref={box}>
         <div class="sheet-grip" aria-hidden="true" />
         <h2>{props.title}</h2>
         {props.children}
@@ -90,6 +114,15 @@ export function Sheet(props: { title: string; onClose: () => void; children: Com
 
 export function Empty(props: { children: ComponentChildren }) {
   return <p class="empty">{props.children}</p>;
+}
+
+/** The way out of a failed load: the same request again. */
+export function TryAgain(props: { onClick: () => void; id?: string }) {
+  return (
+    <button type="button" class="btn block" id={props.id} onClick={props.onClick}>
+      Try again
+    </button>
+  );
 }
 
 export function Loading() {

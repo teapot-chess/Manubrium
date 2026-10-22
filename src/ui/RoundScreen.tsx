@@ -327,9 +327,7 @@ function Name(props: { p: Board["white"] }) {
     <span class="name">
       {props.p.title && <em>{props.p.title} </em>}
       {props.p.name}
-      <small>
-        {props.p.rating ?? ""} · {props.p.score}
-      </small>
+      <small>{props.p.rating ? `${props.p.rating} · ${props.p.score}` : props.p.score}</small>
     </span>
   );
 }
@@ -674,6 +672,9 @@ function DeskSheet(props: {
                 }
               >
                 Unpair round {round.number}
+              </button>
+              <button type="button" class="btn block" id="unpair-keep" disabled={busy} onClick={() => setConfirmUndo(false)}>
+                Keep it
               </button>
             </div>
           ) : (

@@ -10,7 +10,11 @@ import { ApiError, OfflineError, type Board, type Client, type Player, type Roun
 import { Outbox, type KeyValue } from "../queue";
 import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
-import { MoreScreen } from "./MoreScreen";
+import { incidentKind, MoreScreen, settingValue } from "./MoreScreen";
+import { goBack, pushBack, resetBack } from "../back";
+import { Sheet } from "./common";
+import { TournamentView } from "./TournamentView";
+import { Tournaments } from "./Tournaments";
 import { NewTournament } from "./NewTournament";
 import { PlayersScreen } from "./PlayersScreen";
 import { RoundScreen } from "./RoundScreen";
@@ -160,7 +164,10 @@ beforeEach(async () => {
   await outbox.load();
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetBack();
+});
 
 describe("a Lite phone's result in the round", () => {
   const fromPhone = () =>
@@ -729,5 +736,168 @@ describe("a new tournament", () => {
     render(<NewTournament ctx={ctxWith(api)} onCancel={() => undefined} onCreated={() => undefined} />);
     await screen.findByText(/No connection/);
     expect(document.querySelector("#new-tournament")).toBeNull();
+  });
+});
+
+describe("the way back", () => {
+  it("closes the sheet on top before it goes back a screen, and says when there is nothing left", () => {
+    const screenBack = vi.fn();
+    const sheetBack = vi.fn();
+    const undoScreen = pushBack(screenBack, "screen");
+    const undoSheet = pushBack(sheetBack);
+    expect(goBack()).toBe(true);
+    expect(sheetBack).toHaveBeenCalledTimes(1);
+    expect(screenBack).not.toHaveBeenCalled();
+    undoSheet();
+    expect(goBack()).toBe(true);
+    expect(screenBack).toHaveBeenCalledTimes(1);
+    undoScreen();
+    expect(goBack()).toBe(false);
+  });
+
+  it("closes a sheet, which takes the focus while it is open", async () => {
+    const closed = vi.fn();
+    render(
+      <Sheet title="A sheet" onClose={closed}>
+        <p>Inside</p>
+      </Sheet>,
+    );
+    await waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("dialog"));
+    expect(goBack()).toBe(true);
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a sticky sheet alone, from the back button and from the backdrop", () => {
+    const closed = vi.fn();
+    render(
+      <Sheet title="The code" onClose={closed} sticky>
+        <p>Shown once</p>
+      </Sheet>,
+    );
+    expect(goBack()).toBe(true); // the step is taken, and goes nowhere
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    expect(closed).not.toHaveBeenCalled();
+  });
+
+  it("keeps a hall board code on screen when the backdrop is tapped", async () => {
+    const api = fakeApi(round([]));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    fireEvent.click(await el("#new-board-link"));
+    fireEvent.submit(document.querySelector("#board-link-form")!);
+    await el("#board-link-code");
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    expect(document.querySelector("#board-link-code")).not.toBeNull();
+  });
+});
+
+describe("a load that failed", () => {
+  it("offers the tournaments again", async () => {
+    const api = fakeApi(round([]));
+    (api as unknown as { tournaments: Mock }).tournaments = vi.fn().mockRejectedValueOnce(new OfflineError()).mockResolvedValue([]);
+    render(<Tournaments ctx={ctxWith(api)} onServers={() => undefined} onNew={() => undefined} onOpen={() => undefined} />);
+    fireEvent.click(await el("#tournaments-retry"));
+    await screen.findByText(/No tournaments/);
+  });
+
+  it("offers the tournament again", async () => {
+    const api = fakeApi(round([]));
+    (api as unknown as { tournament: Mock }).tournament = vi.fn().mockRejectedValueOnce(new OfflineError()).mockResolvedValue(tournament("arbiter"));
+    render(<TournamentView ctx={ctxWith(api)} line={{ id: 7, name: "Hall Open" } as never} onBack={() => undefined} />);
+    fireEvent.click(await el("#tournament-retry"));
+    await el("#boards");
+  });
+
+  it("offers the standings and the players again", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockRejectedValueOnce(new OfflineError());
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    fireEvent.click(await el("#standings-retry"));
+    await screen.findByText("No players yet.");
+
+    cleanup();
+    api.players.mockRejectedValueOnce(new OfflineError());
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    fireEvent.click(await el("#players-retry"));
+    await screen.findByText("No players yet.");
+  });
+});
+
+describe("a read-only tournament", () => {
+  it("says why nothing can be tapped", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    (api as unknown as { tournament: Mock }).tournament = vi.fn().mockResolvedValue({ ...tournament("owner"), read_only: true, archived: true });
+    render(<TournamentView ctx={ctxWith(api)} line={{ id: 7, name: "Hall Open" } as never} onBack={() => undefined} />);
+    await screen.findByText(/This tournament is archived/);
+    expect(((await el("#board-1")) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("words, not tokens", () => {
+  it("names incident kinds and settings as a person would", () => {
+    expect(incidentKind("illegal_move")).toBe("Illegal move");
+    expect(incidentKind("brand_new")).toBe("brand new");
+    expect(settingValue("type", "team-swiss")).toBe("Team Swiss");
+    expect(settingValue("publish_mode", "manual")).toBe("By hand");
+    expect(settingValue("bye_value", 0.5)).toBe("½ point");
+    expect(settingValue("fide_rated", true)).toBe("Yes");
+    expect(settingValue("city", "Gent")).toBe("Gent");
+  });
+
+  it("shows the outbox's results with the glyph, and lets a refused one be dismissed under More", async () => {
+    const api = fakeApi(round([]));
+    await outbox.addResult(server.base, 7, { round: 1, pairing: 1, board: 1, white: 11, black: 12, result: "1/2-1/2", expected: "" }, "1");
+    await outbox.flush(server.base, 7, async (entries) =>
+      entries.map((e) => ({ cid: e.cid, status: "refused" as const, reason: "changed", message: "Board 1: changed meanwhile." })),
+    );
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("arbiter")} />);
+    await screen.findByText(/board 1: ½-½/);
+    fireEvent.click(await el("#dismiss-cid-1"));
+    await waitFor(() => expect(outbox.count(server.base, 7)).toBe(0));
+  });
+
+  it("shows tie-breaks by name and incident kinds by label", async () => {
+    const api = fakeApi(round([]));
+    api.incidents.mockResolvedValue([
+      { id: 1, round: 1, board: 2, kind: "illegal_move", note: "", white: null, black: null, occurred_at: "", by: null, has_photo: true },
+    ]);
+    const t = { ...tournament("owner"), settings: { tiebreaks: ["BH"], tiebreak_options: [{ code: "BH", name: "Buchholz" }] } };
+    render(<MoreScreen ctx={ctxWith(api)} t={t} />);
+    await screen.findByText(/Illegal move/);
+    expect(document.querySelector("#settings")!.textContent).toContain("Buchholz");
+  });
+
+  it("shows an unrated player's score without a stray dot", async () => {
+    const api = fakeApi(round([board(1, 1, { white: { id: 11, name: "Unrated", title: null, rating: null, score: 1.5 } })]));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    expect((await el("#board-1 .name small")).textContent).toBe("1.5");
+  });
+});
+
+describe("saving byes", () => {
+  it("keeps the player's sheet open, with what was typed above it", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(1, "Ann")]);
+    const t = { ...tournament("owner"), bye_kinds: [{ id: "half", label: "Half-point bye" }] };
+    render(<PlayersScreen ctx={ctxWith(api)} t={t} />);
+
+    fireEvent.click(await el("#player-1"));
+    fireEvent.input(await el("#p-club"), { target: { value: "KSK" } });
+    fireEvent.change(document.querySelector("#bye-3")!, { target: { value: "half" } });
+    fireEvent.click(document.querySelector("#save-byes")!);
+
+    await screen.findByText("Byes saved.");
+    expect((document.querySelector("#p-club") as HTMLInputElement).value).toBe("KSK");
+    expect((document.querySelector("#save-byes") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("undoing a round", () => {
+  it("can be called off from the question itself", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#desk-actions"));
+    fireEvent.click(await screen.findByText("Undo round 1"));
+    fireEvent.click(await el("#unpair-keep"));
+    await screen.findByText("Undo round 1");
   });
 });
