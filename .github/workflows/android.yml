@@ -14,6 +14,17 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+  # A pull request that touches the Android side builds it too, unsigned
+  # (no secrets reach a pull request) and unpublished (the release job is
+  # for tags). v1.0.0 found out about a plug-in's minimum Android only at
+  # the tag, which is the most expensive moment to find out anything.
+  pull_request:
+    paths:
+      - "android/**"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.*"
+      - ".github/workflows/android.yml"
 
 permissions:
   contents: read

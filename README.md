@@ -138,6 +138,9 @@ committed, with these changes:
   (QR scanning, incident photos; declared not required) and an intent
   filter for `manubrium://connect`, so a scanned or tapped connect link
   opens the app.
+- `android/variables.gradle`: `minSdkVersion = 26`, Android 8.0. The QR
+  scanner plug-in will not build for less, and said so only when v1.0.0 was
+  tagged.
 - `build.gradle`: the version from CI (`-PversionCode`, `-PversionName`)
   and a release signing config that is used only when CI hands it the
   upload keystore in the environment.
