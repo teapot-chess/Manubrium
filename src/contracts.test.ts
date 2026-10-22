@@ -48,7 +48,7 @@ import { hitDetails, sourceOf } from "./search";
 import { pairingsText, standingsText } from "./share";
 import { definition, enumOf, examples, files, index, problems, prose, schemaFor, schemas, shape, shapeMismatches } from "./contract.testkit";
 import { startForm, toFields } from "./ui/NewTournament";
-import { INCIDENT_KINDS } from "./ui/RoundScreen";
+import { incidentKinds } from "./ui/RoundScreen";
 import { changes, initial } from "./ui/SettingsEditor";
 
 const BASE = "https://pairings.example";
@@ -407,7 +407,7 @@ describe("what the answers mean to the app", () => {
 
   it("offers only incident kinds the server knows", () => {
     const kinds = enumOf(definition("incident").properties!.kind);
-    for (const [kind] of INCIDENT_KINDS) expect(kinds, kind).toContain(kind);
+    for (const [kind] of incidentKinds()) expect(kinds, kind).toContain(kind);
   });
 
   it("knows every value of the contract's closed sets", () => {

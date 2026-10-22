@@ -5,6 +5,7 @@
 // bundle is developed against a local server.
 
 import { normaliseServer } from "./link";
+import { t as tr } from "./i18n";
 
 export type Role = "owner" | "editor" | "arbiter";
 export type Capability = "results" | "incidents" | "pair" | "publish" | "players" | "standings" | "settings";
@@ -272,7 +273,7 @@ export class ApiError extends Error {
 
 /** The request never got an answer: no network, or the server is not there. */
 export class OfflineError extends Error {
-  constructor(message = "No connection to the server.") {
+  constructor(message = tr("api.no_connection")) {
     super(message);
   }
 }
@@ -322,7 +323,7 @@ async function call<T>(
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (error) {
-    throw new OfflineError(error instanceof Error && error.message ? `No connection to the server (${error.message}).` : undefined);
+    throw new OfflineError(error instanceof Error && error.message ? tr("api.no_connection_detail", { detail: error.message }) : undefined);
   }
 
   if (response.status === 204) return undefined as T;
@@ -334,14 +335,14 @@ async function call<T>(
       data = JSON.parse(text);
     } catch {
       // A proxy's HTML error page, a captive portal: not the API answering.
-      if (!response.ok) throw new ApiError(response.status, "not_api", `The server answered ${response.status}, and not as OpenPairings would.`);
-      throw new ApiError(response.status, "not_api", "The server's answer was not JSON. Is this an OpenPairings server?");
+      if (!response.ok) throw new ApiError(response.status, "not_api", tr("api.not_openpairings", { status: response.status }));
+      throw new ApiError(response.status, "not_api", tr("api.not_json"));
     }
   }
 
   if (!response.ok) {
     const code = typeof data.error === "string" ? data.error : `http_${response.status}`;
-    const message = typeof data.message === "string" ? data.message : `The server answered ${response.status}.`;
+    const message = typeof data.message === "string" ? data.message : tr("api.answered", { status: response.status });
     throw new ApiError(response.status, code, message, data);
   }
 
@@ -456,7 +457,7 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
       } catch {
         throw new OfflineError();
       }
-      if (!response.ok) throw new ApiError(response.status, response.status === 404 ? "not_found" : `http_${response.status}`, "No photo to show.");
+      if (!response.ok) throw new ApiError(response.status, response.status === 404 ? "not_found" : `http_${response.status}`, tr("api.no_photo"));
       return response.blob();
     },
   };

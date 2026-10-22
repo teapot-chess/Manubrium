@@ -9,6 +9,10 @@ import { byeRows, byesChanged, byesToSend, setBye } from "../byes";
 import { DEBOUNCE_MS, hitDetails, MIN_QUERY, searchQuery, sourceOf } from "../search";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, Sheet, TryAgain } from "./common";
+import { t as tr } from "../i18n";
+
+const statusName = (status: string): string =>
+  status === "withdrawn" ? tr("pl.status.withdrawn") : status === "expelled" ? tr("pl.status.expelled") : status;
 
 export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
   const { ctx, t } = props;
@@ -64,14 +68,14 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
       <div class="toolbar">
         <input
           type="search"
-          placeholder="Find a player"
+          placeholder={tr("pl.find")}
           value={filter}
           onInput={(e) => setFilter((e.target as HTMLInputElement).value)}
-          aria-label="Find a player"
+          aria-label={tr("pl.find")}
         />
         {!t.read_only && (
           <button type="button" class="btn primary" id="add-player" onClick={() => setAdding(true)}>
-            Add
+            {tr("pl.add")}
           </button>
         )}
       </div>
@@ -88,10 +92,10 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
               setOnlyMissing(false);
             }}
           >
-            {checkIn ? "Done" : "Check-in"}
+            {checkIn ? tr("common.done") : tr("pl.checkin")}
           </button>
           <span class="checkin-count" id="checkin-count">
-            {here} of {playing.length} present
+            {tr("pl.present_count", { here, total: playing.length })}
           </span>
           {checkIn && (
             <button
@@ -101,7 +105,7 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
               aria-pressed={onlyMissing}
               onClick={() => setOnlyMissing(!onlyMissing)}
             >
-              Not yet here
+              {tr("pl.not_yet")}
             </button>
           )}
         </div>
@@ -123,7 +127,7 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
         />
       )}
       {players && shown.length === 0 && (
-        <Empty>{checkIn && onlyMissing && !needle ? "Everybody is here." : filter ? "Nobody by that name." : "No players yet."}</Empty>
+        <Empty>{checkIn && onlyMissing && !needle ? tr("pl.everybody") : filter ? tr("pl.nobody") : tr("pl.none")}</Empty>
       )}
       <ul class="list" id="player-list">
         {shown.map((p) => (
@@ -140,14 +144,14 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
                 {p.pairing_number ? <span class="tpn">{p.pairing_number}</span> : null}
                 {p.title && <em>{p.title} </em>}
                 {p.name}
-                {p.status !== "active" && <span class="tag warn">{p.status}</span>}
-                {!checkIn && p.present && <span class="tag">here</span>}
+                {p.status !== "active" && <span class="tag warn">{statusName(p.status)}</span>}
+                {!checkIn && p.present && <span class="tag">{tr("pl.here")}</span>}
               </span>
               <span class="row-sub">
                 {[p.rating, p.federation, p.club].filter(Boolean).join(" · ")}
                 {p.byes && p.byes.length > 0
-                  ? ` · bye in round ${p.byes.map((b) => b.round).join(", ")}`
-                  : p.absent_rounds.length > 0 && ` · off in round ${p.absent_rounds.join(", ")}`}
+                  ? ` · ${tr("pl.bye_in_round", { rounds: p.byes.map((b) => b.round).join(", ") })}`
+                  : p.absent_rounds.length > 0 && ` · ${tr("pl.off_in_round", { rounds: p.absent_rounds.join(", ") })}`}
               </span>
             </button>
             {checkIn && p.status === "active" && (
@@ -243,12 +247,12 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
   }, [text, source]);
 
   const key = (h: SearchHit) => `${h.source}:${h.fide_id ?? ""}:${h.national_id ?? ""}`;
-  const listName = sources.find((s) => s.id === source)?.label ?? "the";
+  const listName = sources.find((s) => s.id === source)?.label ?? tr("pl.the");
 
   async function add(h: SearchHit) {
     const from = sourceOf(h);
     if (!from) {
-      setError("That entry has no id on the list to add by. Enter the player by hand.");
+      setError(tr("pl.no_id"));
       return;
     }
     setAdding(key(h));
@@ -265,9 +269,9 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
   }
 
   return (
-    <Sheet title="Add players" onClose={props.onClose}>
+    <Sheet title={tr("pl.add_players")} onClose={props.onClose}>
       {sources.length > 1 && (
-        <div class="segmented" role="group" aria-label="Which list">
+        <div class="segmented" role="group" aria-label={tr("pl.which_list")}>
           {sources.map((s) => (
             <button
               type="button"
@@ -282,20 +286,20 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
           ))}
         </div>
       )}
-      <label for="player-search">Name or ID on the {listName} list</label>
+      <label for="player-search">{tr("pl.search_label", { list: listName })}</label>
       <input
         id="player-search"
         type="search"
         value={text}
         autocomplete="off"
         spellcheck={false}
-        placeholder="Last name, first name"
+        placeholder={tr("pl.name_placeholder")}
         onInput={(e) => setText((e.target as HTMLInputElement).value)}
       />
       {error && <Notice kind="error">{error}</Notice>}
-      {!searchQuery(text) && <p class="fine">At least {MIN_QUERY} letters. Tap a name to add it; the list's details come along.</p>}
+      {!searchQuery(text) && <p class="fine">{tr("pl.min_letters", { n: MIN_QUERY })}</p>}
       {searching && !hits && <Loading />}
-      {hits && hits.length === 0 && !searching && <Empty>Nobody by that name on this list.</Empty>}
+      {hits && hits.length === 0 && !searching && <Empty>{tr("pl.nobody_list")}</Empty>}
       {hits && hits.length > 0 && (
         <ul class={`list compact search-hits ${searching ? "stale" : ""}`} id="search-hits">
           {hits.map((h, i) => {
@@ -307,8 +311,8 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
                   <span class="row-title">
                     {h.title && <em>{h.title} </em>}
                     {h.name}
-                    {h.already_in && <span class="tag">In the tournament</span>}
-                    {!h.already_in && added.includes(k) && <span class="tag">Added</span>}
+                    {h.already_in && <span class="tag">{tr("pl.in_tournament")}</span>}
+                    {!h.already_in && added.includes(k) && <span class="tag">{tr("pl.added")}</span>}
                   </span>
                   <span class="row-sub">{hitDetails(h)}</span>
                 </button>
@@ -323,7 +327,7 @@ export function AddPlayersSheet(props: { ctx: Ctx; t: Tournament; onAdded: () =>
         </ul>
       )}
       <button type="button" class="btn ghost block" id="add-by-hand" onClick={props.onManual}>
-        Not on a list? Enter by hand
+        {tr("pl.by_hand")}
       </button>
     </Sheet>
   );
@@ -375,14 +379,14 @@ function PlayerSheet(props: {
 
   if (confirm) {
     return (
-      <Sheet title="Confirm" onClose={props.onClose}>
+      <Sheet title={tr("round.confirm")} onClose={props.onClose}>
         <p>{confirm.message}</p>
         <div class="sheet-actions">
           <button type="button" class="btn primary block" disabled={busy} onClick={() => save(confirm.changes, confirm.ids)}>
-            Confirm
+            {tr("round.confirm")}
           </button>
           <button type="button" class="btn block" onClick={() => setConfirm(null)}>
-            Back
+            {tr("common.back")}
           </button>
         </div>
         {error && <Notice kind="error">{error}</Notice>}
@@ -391,7 +395,7 @@ function PlayerSheet(props: {
   }
 
   return (
-    <Sheet title={player ? player.name : "Late entry"} onClose={props.onClose}>
+    <Sheet title={player ? player.name : tr("pl.late_entry")} onClose={props.onClose}>
       <form
         class="form"
         onSubmit={(e) => {
@@ -399,32 +403,32 @@ function PlayerSheet(props: {
           save(player && !byesMode ? { ...basic, absent_rounds: off } : basic);
         }}
       >
-        <label for="p-name">Name (Last, First)</label>
+        <label for="p-name">{tr("pl.name_label")}</label>
         <input id="p-name" value={name} required onInput={(e) => setName((e.target as HTMLInputElement).value)} />
         <div class="two">
           <div>
-            <label for="p-fide">FIDE ID</label>
+            <label for="p-fide">{tr("pl.fide_id")}</label>
             <input id="p-fide" inputMode="numeric" value={fideId} onInput={(e) => setFideId((e.target as HTMLInputElement).value)} />
           </div>
           <div>
-            <label for="p-rating">FIDE rating</label>
+            <label for="p-rating">{tr("pl.fide_rating")}</label>
             <input id="p-rating" inputMode="numeric" value={rating} onInput={(e) => setRating((e.target as HTMLInputElement).value)} />
           </div>
         </div>
         <div class="two">
           <div>
-            <label for="p-fed">Federation</label>
+            <label for="p-fed">{tr("newt.federation")}</label>
             <input id="p-fed" maxLength={3} value={federation} onInput={(e) => setFederation((e.target as HTMLInputElement).value.toUpperCase())} />
           </div>
           <div>
-            <label for="p-club">Club</label>
+            <label for="p-club">{tr("pl.club")}</label>
             <input id="p-club" value={club} onInput={(e) => setClub((e.target as HTMLInputElement).value)} />
           </div>
         </div>
 
         {player && !byesMode && rounds.length > 0 && (
           <fieldset class="rounds-off">
-            <legend>Rounds off (asked for)</legend>
+            <legend>{tr("pl.rounds_off")}</legend>
             {rounds.map((r) => (
               <label key={r} class={`round-chip ${off.includes(r) ? "on" : ""}`}>
                 <input
@@ -439,7 +443,7 @@ function PlayerSheet(props: {
         )}
 
         <button type="submit" class="btn primary block" disabled={busy || !name.trim()}>
-          {busy ? "Saving…" : player ? "Save" : "Add to the tournament"}
+          {busy ? tr("set.saving") : player ? tr("set.save") : tr("pl.add_to")}
         </button>
       </form>
 
@@ -452,7 +456,7 @@ function PlayerSheet(props: {
           disabled={busy}
           onClick={() => save({ withdrawn: player.status !== "withdrawn" })}
         >
-          {player.status === "withdrawn" ? "Re-enter the tournament" : "Withdraw from the tournament"}
+          {player.status === "withdrawn" ? tr("pl.reenter") : tr("pl.withdraw")}
         </button>
       )}
       {error && <Notice kind="error">{error}</Notice>}
@@ -482,7 +486,7 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
     try {
       await ctx.api.setByes(t.id, player.id, byesToSend(byes, t.paired_rounds));
       setSaved(byes);
-      setSaid("Byes saved.");
+      setSaid(tr("pl.byes_saved"));
       props.onSaved();
     } catch (e) {
       setError(describeError(e));
@@ -493,25 +497,25 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
 
   return (
     <section class="byes-editor" id="byes-editor">
-      <h3>Byes</h3>
-      {rows.length === 0 && <p class="fine">The number of rounds is not set yet.</p>}
+      <h3>{tr("pl.byes")}</h3>
+      {rows.length === 0 && <p class="fine">{tr("pl.no_rounds")}</p>}
       <ul class="bye-rows">
         {rows.map((r) => (
           <li key={r.round} class={r.locked ? "locked" : r.kind ? "on" : ""}>
-            <span class="bye-round">Round {r.round}</span>
+            <span class="bye-round">{tr("more.round", { round: r.round })}</span>
             {r.locked ? (
               <span class="bye-fixed" id={`bye-${r.round}`}>
-                {r.kind ? label(r.kind) : "Plays"}
-                <small>paired</small>
+                {r.kind ? label(r.kind) : tr("pl.plays")}
+                <small>{tr("pl.paired")}</small>
               </span>
             ) : (
               <select
                 id={`bye-${r.round}`}
-                aria-label={`Round ${r.round}`}
+                aria-label={tr("more.round", { round: r.round })}
                 value={r.kind ?? ""}
                 onChange={(e) => props.onChange(setBye(byes, r.round, (e.target as HTMLSelectElement).value || null, t.paired_rounds))}
               >
-                <option value="">Plays</option>
+                <option value="">{tr("pl.plays")}</option>
                 {kinds.map((k) => (
                   <option key={k.id} value={k.id}>
                     {k.label}
@@ -524,7 +528,7 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
         ))}
       </ul>
       <button type="button" class="btn block" id="save-byes" disabled={busy || !changed} onClick={save}>
-        {busy ? "Saving…" : "Save the byes"}
+        {busy ? tr("set.saving") : tr("pl.save_byes")}
       </button>
       {said && !changed && <Notice kind="ok">{said}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}

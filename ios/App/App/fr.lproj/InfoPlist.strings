@@ -1,0 +1,4 @@
+"NSCameraUsageDescription" = "Manubrium utilise l'appareil photo pour scanner le code de connexion sur la page de votre compte OpenPairings et pour photographier un incident (une feuille de partie, une pendule) pour le journal de l'arbitre.";
+"NSPhotoLibraryUsageDescription" = "Manubrium peut joindre une photo que vous avez déjà prise à un incident du journal de l'arbitre.";
+"NSPhotoLibraryAddUsageDescription" = "Manubrium peut conserver une copie d'une photo d'incident dans votre photothèque.";
+"NSLocalNetworkUsageDescription" = "Manubrium se connecte à OpenPairings sur un ordinateur de la salle de jeu, via le réseau propre à la salle.";

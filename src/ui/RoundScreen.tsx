@@ -7,23 +7,24 @@ import { ApiError, OfflineError, type Board, type Round, type Tournament } from 
 import { onResume, takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
+import { t as tr } from "../i18n";
 import { boardReportLabel } from "../alnasl";
 import { pairingsText } from "../share";
 import { refusalText } from "../queue";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
-const PUBLISH = ["Not public", "Pairings", "Pairings and results", "Results and standings"];
+const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
 /** The incident kinds the app offers; the contract's incident.kind must know every one. */
-export const INCIDENT_KINDS: [string, string][] = [
-  ["illegal_move", "Illegal move"],
-  ["clock", "Clock"],
-  ["device", "Phone or device"],
-  ["complaint", "Complaint"],
-  ["time_added", "Time added"],
-  ["game_rewound", "Game rewound"],
-  ["arbiter_call", "Arbiter call"],
-  ["other", "Something else"],
+export const incidentKinds = (): [string, string][] => [
+  ["illegal_move", tr("incident.kind.illegal_move")],
+  ["clock", tr("incident.kind.clock")],
+  ["device", tr("incident.kind.device")],
+  ["complaint", tr("incident.kind.complaint")],
+  ["time_added", tr("incident.kind.time_added")],
+  ["game_rewound", tr("incident.kind.game_rewound")],
+  ["arbiter_call", tr("incident.kind.arbiter_call")],
+  ["other", tr("incident.kind.other")],
 ];
 
 export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: () => Promise<void> }) {
@@ -105,7 +106,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     setBoard(null);
     try {
       await ctx.api.clear(t.id, number, b.id, b.result);
-      setInfo(`Board ${b.label}: cleared.`);
+      setInfo(tr("round.board_cleared", { label: b.label }));
     } catch (e) {
       setError(describeError(e));
     }
@@ -120,7 +121,11 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     try {
       if (confirm) await ctx.api.confirmResult(t.id, number, b.id, b.result);
       else await ctx.api.rejectResult(t.id, number, b.id, b.result);
-      setInfo(confirm ? `Board ${b.label}: ${resultLabel(b.result)} confirmed.` : `Board ${b.label}: rejected and cleared.`);
+      setInfo(
+        confirm
+          ? tr("round.board_confirmed", { label: b.label, result: resultLabel(b.result) })
+          : tr("round.board_rejected", { label: b.label }),
+      );
     } catch (e) {
       setError(describeError(e));
     }
@@ -151,7 +156,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     );
     ctx.bump();
     flush();
-    setInfo(`Board ${b.label}: incident queued.`);
+    setInfo(tr("round.board_incident_queued", { label: b.label }));
   }
 
   if (latest < 1) {
@@ -169,19 +174,19 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   return (
     <div class="round">
       <div class="round-head">
-        <button type="button" class="icon-btn" aria-label="Previous round" disabled={number <= 1} onClick={() => setNumber(number - 1)}>
+        <button type="button" class="icon-btn" aria-label={tr("round.prev")} disabled={number <= 1} onClick={() => setNumber(number - 1)}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" />
           </svg>
         </button>
         <div class="round-title">
-          <strong>Round {number}</strong>
+          <strong>{tr("round.title", { n: number })}</strong>
           <span>
-            {round ? (missing ? `${missing} to go` : "All results in") : "…"}
-            {round && ` · ${PUBLISH[round.publish_level] ?? ""}`}
+            {round ? (missing ? tr("round.to_go", { n: missing }) : tr("round.all_in")) : "…"}
+            {round && ` · ${publishLabels()[round.publish_level] ?? ""}`}
           </span>
         </div>
-        <button type="button" class="icon-btn" aria-label="Next round" disabled={number >= latest} onClick={() => setNumber(number + 1)}>
+        <button type="button" class="icon-btn" aria-label={tr("round.next")} disabled={number >= latest} onClick={() => setNumber(number + 1)}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 5l7 7-7 7" />
           </svg>
@@ -190,7 +195,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {offline && (
         <Notice kind="info">
-          No connection. Results you enter wait on this phone{waitingFor.size ? ` (${waitingFor.size} now)` : ""} and are sent when the signal is back.
+          {tr("round.offline", { now: waitingFor.size ? tr("round.offline_now", { n: waitingFor.size }) : "" })}
         </Notice>
       )}
       {error && (
@@ -205,25 +210,25 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       )}
       {refused.map((q) => (
         <Notice key={q.entry.cid} kind="error" onClose={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
-          Not accepted: {refusalText(q)}
+          {tr("more.not_accepted", { reason: refusalText(q) })}
         </Notice>
       ))}
 
       {toCheck > 0 && t.can.includes("results") && (
         <Notice kind="info">
-          {toCheck === 1 ? "1 result" : `${toCheck} results`} from a phone to check. Tap the board to confirm or reject.
+          {toCheck === 1 ? tr("round.check_one") : tr("round.check_other", { n: toCheck })}
         </Notice>
       )}
       {round && deskRole && <FinishEdits ctx={ctx} t={t} round={round} onDone={edited} />}
 
       {round && round.boards.length > 0 && (
         <div class="view-tools">
-          <ShareButton id="share-round" title={`${t.name}, round ${round.number}`} text={() => pairingsText(t, round)} />
+          <ShareButton id="share-round" title={tr("round.share_title", { name: t.name, n: round.number })} text={() => pairingsText(t, round)} />
         </div>
       )}
 
       {!round && !error && <Loading />}
-      {round && round.boards.length === 0 && <Empty>No boards in this round.</Empty>}
+      {round && round.boards.length === 0 && <Empty>{tr("round.no_boards")}</Empty>}
       {round && (
         <ul class="boards" id="boards">
           {round.boards.map((b) => {
@@ -241,14 +246,14 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
                   <span class="board-no">{b.label}</span>
                   <span class="players">
                     <Name p={b.white} />
-                    {b.bye ? <span class="bye">bye</span> : <Name p={b.black} />}
+                    {b.bye ? <span class="bye">{tr("round.bye")}</span> : <Name p={b.black} />}
                     <BoardReportLine board={b} />
                   </span>
                   <span class="result">
                     {shown ? resultLabel(shown) : "–"}
-                    {pending && <span class="state">Waiting</span>}
-                    {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">Phone</span>}
-                    {!pending && b.phone?.state === "confirmed" && <span class="state">Checked</span>}
+                    {pending && <span class="state">{tr("round.waiting")}</span>}
+                    {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">{tr("round.phone")}</span>}
+                    {!pending && b.phone?.state === "confirmed" && <span class="state">{tr("round.checked")}</span>}
                   </span>
                 </button>
               </li>
@@ -259,7 +264,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {round?.byes.length ? (
         <p class="byes">
-          Not playing: {round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ")}
+          {tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ") })}
         </p>
       ) : null}
 
@@ -271,7 +276,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
         )}
         {(t.can.includes("pair") || t.can.includes("publish")) && (
           <button type="button" class="btn block" id="desk-actions" onClick={() => setDesk(true)}>
-            Pair and publish
+            {tr("round.pair_publish")}
           </button>
         )}
       </div>
@@ -343,14 +348,14 @@ function BoardReportLine(props: { board: Board }) {
     <span
       class={`board-report ${report.mismatch ? "mismatch" : ""}`}
       id={`board-report-${props.board.id}`}
-      title={report.mismatch ? "The board in the hall reports something else than the result entered." : "What the board in the hall reports."}
+      title={report.mismatch ? tr("round.board_report_mismatch") : tr("round.board_report_title")}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="4" y="4" width="16" height="16" rx="2" />
         <path d="M4 12h16M12 4v16" />
       </svg>
       {label}
-      {report.mismatch && " · differs"}
+      {report.mismatch && ` · ${tr("round.differs")}`}
     </span>
   );
 }
@@ -375,28 +380,29 @@ function ResultSheet(props: {
 
   if (incident) {
     return (
-      <Sheet title={`Board ${board.label}: incident`} onClose={props.onClose}>
+      <Sheet title={tr("round.board_incident", { label: board.label })} onClose={props.onClose}>
         <IncidentForm onLog={props.onIncident} />
       </Sheet>
     );
   }
 
   return (
-    <Sheet title={`Board ${board.label}`} onClose={props.onClose}>
+    <Sheet title={tr("round.board", { label: board.label })} onClose={props.onClose}>
       <p class="sheet-sub">
         {board.white?.name} – {board.black?.name}
       </p>
       {board.phone?.state === "unconfirmed" && (
         <div class="phone-check" id="phone-check">
           <p>
-            <strong>{resultLabel(board.result)}</strong> was entered on the phone “{board.phone.by}”. Is it right?
+            <strong>{resultLabel(board.result)}</strong>{" "}
+            {tr("round.phone_entered", { by: board.phone.by ?? "" })}
           </p>
           <div class="two-btn">
             <button type="button" class="btn danger" id="reject-result" onClick={props.onReject}>
-              Reject
+              {tr("round.reject")}
             </button>
             <button type="button" class="btn primary" id="confirm-result" onClick={props.onConfirm}>
-              Confirm
+              {tr("round.confirm")}
             </button>
           </div>
         </div>
@@ -419,24 +425,24 @@ function ResultSheet(props: {
       ) : (
         others.length > 0 && (
           <button type="button" class="btn ghost block" onClick={() => setMore(true)}>
-            Forfeits and other results
+            {tr("round.more_results")}
           </button>
         )
       )}
       <div class="sheet-actions">
         {board.clearable && (
           <button type="button" class="btn danger block" onClick={props.onClear}>
-            Clear the result (needs a connection)
+            {tr("round.clear")}
           </button>
         )}
         {props.canIncident && (
           <button type="button" class="btn block" onClick={() => setIncident(true)}>
-            Log an incident
+            {tr("round.log_incident")}
           </button>
         )}
         {props.canEdit && (
           <button type="button" class="btn ghost block" id="edit-pairing" onClick={props.onEdit}>
-            Change the pairing
+            {tr("round.change_pairing")}
           </button>
         )}
       </div>
@@ -449,10 +455,10 @@ function IncidentButton(props: { boards: Board[]; onLog: (b: Board, type: string
   return (
     <>
       <button type="button" class="btn block" id="log-incident" onClick={() => setOpen(true)}>
-        Log an incident
+        {tr("round.log_incident")}
       </button>
       {open && (
-        <Sheet title="Incident" onClose={() => setOpen(false)}>
+        <Sheet title={tr("round.incident")} onClose={() => setOpen(false)}>
           <IncidentForm
             boards={props.boards}
             onLog={(type, note, photo, b) => {
@@ -491,9 +497,9 @@ export function IncidentForm(props: {
     >
       {props.boards && (
         <>
-          <label for="incident-board">Board</label>
+          <label for="incident-board">{tr("round.board_label")}</label>
           <select id="incident-board" required value={boardId} onChange={(e) => setBoardId((e.target as HTMLSelectElement).value)}>
-            <option value="">Which board?</option>
+            <option value="">{tr("round.which_board")}</option>
             {props.boards.map((b) => (
               <option key={b.id} value={String(b.id)}>
                 {b.label}: {b.white?.name ?? "-"} - {b.black?.name ?? "-"}
@@ -502,30 +508,30 @@ export function IncidentForm(props: {
           </select>
         </>
       )}
-      <label for="incident-type">What happened</label>
+      <label for="incident-type">{tr("round.what")}</label>
       <select id="incident-type" value={type} onChange={(e) => setType((e.target as HTMLSelectElement).value)}>
-        {INCIDENT_KINDS.map(([v, l]) => (
+        {incidentKinds().map(([v, l]) => (
           <option key={v} value={v}>
             {l}
           </option>
         ))}
       </select>
-      <label for="incident-note">Note</label>
+      <label for="incident-note">{tr("round.note")}</label>
       <textarea id="incident-note" rows={3} maxLength={500} value={note} onInput={(e) => setNote((e.target as HTMLTextAreaElement).value)} />
       {photo ? (
         <div class="photo-preview">
-          <img src={`data:image/jpeg;base64,${photo}`} alt="The photo to send with the incident" />
+          <img src={`data:image/jpeg;base64,${photo}`} alt={tr("round.photo_alt")} />
           <button type="button" class="btn ghost" id="incident-photo-drop" onClick={() => setPhoto(null)}>
-            Remove the photo
+            {tr("round.remove_photo")}
           </button>
         </div>
       ) : (
         <button type="button" class="btn block" id="incident-photo" onClick={async () => setPhoto(await takePhoto())}>
-          Take a photo
+          {tr("round.take_photo")}
         </button>
       )}
       <button type="submit" class="btn primary block" disabled={!ready}>
-        Log it
+        {tr("round.log_it")}
       </button>
     </form>
   );
@@ -534,7 +540,7 @@ export function IncidentForm(props: {
 function NothingPaired(props: { ctx: Ctx; t: Tournament; onPaired: () => Promise<void> }) {
   return (
     <div class="round">
-      <Empty>No round is paired yet.</Empty>
+      <Empty>{tr("round.none_paired")}</Empty>
       {props.t.can.includes("pair") && <PairButton ctx={props.ctx} t={props.t} onPaired={() => props.onPaired()} />}
     </div>
   );
@@ -548,15 +554,15 @@ function PairButton(props: { ctx: Ctx; t: Tournament; onPaired: (n: number) => v
   const [acks, setAcks] = useState<string[]>([]);
 
   if (!next) return null;
-  if (next.blocker === "all_rounds_paired") return <p class="fine">Every round is paired.</p>;
+  if (next.blocker === "all_rounds_paired") return <p class="fine">{tr("round.all_paired")}</p>;
   if (next.blocker) {
     return (
       <Notice kind="info">
         {next.blocker === "setup_incomplete"
-          ? "Finish the tournament setup at the desk before pairing."
+          ? tr("round.blocker_setup")
           : next.blocker === "read_only"
-            ? "This tournament is read-only."
-            : "This tournament is paired at the desk."}
+            ? tr("round.blocker_read_only")
+            : tr("round.blocker_desk")}
       </Notice>
     );
   }
@@ -595,7 +601,7 @@ function PairButton(props: { ctx: Ctx; t: Tournament; onPaired: (n: number) => v
       ))}
       {error && <Notice kind="error">{error}</Notice>}
       <button type="button" class="btn primary block" id="pair-next" disabled={busy || !ready} onClick={pair}>
-        {busy ? "Pairing…" : `Pair round ${next.number}`}
+        {busy ? tr("round.pairing") : tr("round.pair_n", { n: next.number })}
       </button>
     </div>
   );
@@ -626,12 +632,12 @@ function DeskSheet(props: {
   }
 
   return (
-    <Sheet title={`Round ${round.number}`} onClose={props.onClose}>
+    <Sheet title={tr("more.round", { round: round.number })} onClose={props.onClose}>
       {t.can.includes("publish") && (
         <>
-          <h3>Public</h3>
-          <div class="segmented" role="radiogroup" aria-label="Published">
-            {PUBLISH.map((label, level) => (
+          <h3>{tr("round.public")}</h3>
+          <div class="segmented" role="radiogroup" aria-label={tr("round.published_aria")}>
+            {publishLabels().map((label, level) => (
               <button
                 type="button"
                 key={level}
@@ -642,7 +648,7 @@ function DeskSheet(props: {
                 onClick={() =>
                   run(async () => {
                     await ctx.api.publish(t.id, round.number, level as 0 | 1 | 2 | 3);
-                    props.onChanged(`Round ${round.number}: ${label.toLowerCase()}.`);
+                    props.onChanged(tr("round.published_msg", { n: round.number, label: label.toLowerCase() }));
                   })
                 }
               >
@@ -655,11 +661,11 @@ function DeskSheet(props: {
 
       {t.can.includes("pair") && round.latest && (
         <>
-          <h3>Next round</h3>
-          <PairButton ctx={ctx} t={t} onPaired={(n) => props.onChanged(`Round ${n} paired.`, n)} />
+          <h3>{tr("round.next_round")}</h3>
+          <PairButton ctx={ctx} t={t} onPaired={(n) => props.onChanged(tr("round.paired_msg", { n }), n)} />
           {confirmUndo ? (
             <div class="confirm">
-              <p>Unpair round {round.number}? Its pairings and results are deleted; a snapshot is kept at the desk.</p>
+              <p>{tr("round.unpair_q", { n: round.number })}</p>
               <button
                 type="button"
                 class="btn danger block"
@@ -667,19 +673,19 @@ function DeskSheet(props: {
                 onClick={() =>
                   run(async () => {
                     await ctx.api.unpair(t.id, round.number);
-                    props.onChanged(`Round ${round.number} unpaired.`, round.number - 1);
+                    props.onChanged(tr("round.unpaired_msg", { n: round.number }), round.number - 1);
                   })
                 }
               >
-                Unpair round {round.number}
+                {tr("round.unpair_btn", { n: round.number })}
               </button>
               <button type="button" class="btn block" id="unpair-keep" disabled={busy} onClick={() => setConfirmUndo(false)}>
-                Keep it
+                {tr("common.keep")}
               </button>
             </div>
           ) : (
             <button type="button" class="btn ghost block" onClick={() => setConfirmUndo(true)}>
-              Undo round {round.number}
+              {tr("round.undo_btn", { n: round.number })}
             </button>
           )}
         </>

@@ -2,8 +2,10 @@ import { useEffect, useState } from "preact/hooks";
 import { ApiError, type TournamentLine } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, TopBar, TryAgain } from "./common";
+import { t as tr } from "../i18n";
 
-const ROLE: Record<string, string> = { owner: "Organiser", editor: "Editor", arbiter: "Arbiter" };
+const roleName = (role: string): string =>
+  role === "owner" ? tr("tournaments.role.owner") : role === "editor" ? tr("tournaments.role.editor") : role === "arbiter" ? tr("tournaments.role.arbiter") : role;
 
 export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () => void; onOpen: (t: TournamentLine) => void }) {
   const { ctx } = props;
@@ -28,11 +30,11 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
   return (
     <div class="screen">
       <TopBar
-        title="Tournaments"
+        title={tr("tournaments.title")}
         subtitle={ctx.server.label}
         right={
           <button type="button" class="chip" onClick={props.onServers} id="switch-server">
-            Servers
+            {tr("tournaments.servers")}
           </button>
         }
       />
@@ -40,11 +42,11 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
         {error && (
           <Notice kind="error">
             {error}
-            {signedOut && " Remove the server and connect it again."}
+            {signedOut && tr("tournaments.signed_out_hint")}
           </Notice>
         )}
         {list === null && !error && <Loading />}
-        {list && list.length === 0 && <Empty>No tournaments on this account yet.</Empty>}
+        {list && list.length === 0 && <Empty>{tr("tournaments.empty")}</Empty>}
         {list && list.length > 0 && (
           <ul class="list" id="tournament-list">
             {list.map((t) => {
@@ -54,9 +56,9 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
                   <button type="button" class="row-main" onClick={() => props.onOpen(t)}>
                     <span class="row-title">{t.name}</span>
                     <span class="row-sub">
-                      {ROLE[t.role] ?? t.role} · round {t.paired_rounds || "–"} of {t.rounds_count ?? "?"}
+                      {roleName(t.role)} · {tr("tournaments.row_round", { paired: t.paired_rounds || "–", total: t.rounds_count ?? "?" })}
                       {t.city ? ` · ${t.city}` : ""}
-                      {waiting > 0 && ` · ${waiting} waiting`}
+                      {waiting > 0 && ` · ${tr("tournaments.waiting", { n: waiting })}`}
                     </span>
                   </button>
                 </li>
@@ -66,12 +68,12 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
         )}
         {list && !signedOut && (
           <button type="button" class="btn primary block" id="new-tournament-btn" onClick={props.onNew}>
-            New tournament
+            {tr("tournaments.new")}
           </button>
         )}
         {list && (
           <button type="button" class="btn ghost block" onClick={load}>
-            Refresh
+            {tr("tournaments.refresh")}
           </button>
         )}
         {!list && error && !signedOut && <TryAgain id="tournaments-retry" onClick={load} />}

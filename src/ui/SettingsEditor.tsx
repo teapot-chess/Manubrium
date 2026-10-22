@@ -7,19 +7,20 @@ import { useState } from "preact/hooks";
 import type { SettingsChange, Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Notice, Sheet } from "./common";
+import { t as tr } from "../i18n";
 
-const TEXT_FIELDS: [keyof SettingsChange, string][] = [
-  ["time_control", "Time control"],
-  ["chief_arbiter", "Chief arbiter"],
-  ["deputy_arbiter", "Deputy arbiter"],
-  ["venue", "Venue"],
-  ["city", "City"],
+const textFields = (): [keyof SettingsChange, string][] => [
+  ["time_control", tr("set.time_control")],
+  ["chief_arbiter", tr("set.chief_arbiter")],
+  ["deputy_arbiter", tr("set.deputy_arbiter")],
+  ["venue", tr("set.venue")],
+  ["city", tr("set.city")],
 ];
 
-const BYE_VALUES: [number, string][] = [
-  [1, "1 point"],
-  [0.5, "½ point"],
-  [0, "0 points"],
+const byeValues = (): [number, string][] => [
+  [1, tr("set.bye_1")],
+  [0.5, tr("set.bye_half")],
+  [0, tr("set.bye_0")],
 ];
 
 type Draft = Record<string, unknown>;
@@ -85,9 +86,9 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
   }
 
   return (
-    <Sheet title="Settings" onClose={props.onClose}>
+    <Sheet title={tr("set.title")} onClose={props.onClose}>
       <form class="form" id="settings-form" onSubmit={save}>
-        {TEXT_FIELDS.map(([key, label]) => (
+        {textFields().map(([key, label]) => (
           <div key={key}>
             <label for={`set-${key}`}>{label}</label>
             <input
@@ -101,7 +102,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
 
         <div class="two">
           <div>
-            <label for="set-rounds_count">Rounds</label>
+            <label for="set-rounds_count">{tr("set.rounds")}</label>
             <input
               id="set-rounds_count"
               type="number"
@@ -113,14 +114,14 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
             />
           </div>
           <div>
-            <label for="set-bye_value">Pairing bye scores</label>
+            <label for="set-bye_value">{tr("set.bye_scores")}</label>
             <select
               id="set-bye_value"
               value={String(draft.bye_value)}
               disabled={!editable.has("bye_value")}
               onChange={(e) => set("bye_value", Number((e.target as HTMLSelectElement).value))}
             >
-              {BYE_VALUES.map(([v, l]) => (
+              {byeValues().map(([v, l]) => (
                 <option key={v} value={String(v)}>
                   {l}
                 </option>
@@ -137,7 +138,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
             disabled={!editable.has("ask_bye_type")}
             onChange={(e) => set("ask_bye_type", (e.target as HTMLInputElement).checked)}
           />
-          <span>Ask the bye type when a player is not playing</span>
+          <span>{tr("set.ask_bye_type")}</span>
         </label>
         <label class="check">
           <input
@@ -147,11 +148,11 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
             disabled={!editable.has("shared_places")}
             onChange={(e) => set("shared_places", (e.target as HTMLInputElement).checked)}
           />
-          <span>Shared places when the tie-breaks cannot separate players</span>
+          <span>{tr("set.shared_places")}</span>
         </label>
 
-        <h3>Tie-breaks</h3>
-        {!editable.has("tiebreaks") && <p class="fine">Locked now that the tournament is under way.</p>}
+        <h3>{tr("set.tiebreaks")}</h3>
+        {!editable.has("tiebreaks") && <p class="fine">{tr("set.tiebreaks_locked")}</p>}
         <ol class="list compact tiebreaks" id="set-tiebreaks">
           {tiebreaks.map((code, i) => (
             <li key={code} class="row">
@@ -160,10 +161,10 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
               </span>
               {editable.has("tiebreaks") && (
                 <span class="row-tools">
-                  <button type="button" class="icon-btn subtle" aria-label={`Move ${nameOf(code)} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                  <button type="button" class="icon-btn subtle" aria-label={tr("set.move_up", { name: nameOf(code) })} disabled={i === 0} onClick={() => move(i, -1)}>
                     ↑
                   </button>
-                  <button type="button" class="icon-btn subtle" aria-label={`Remove ${nameOf(code)}`} onClick={() => set("tiebreaks", tiebreaks.filter((c) => c !== code))}>
+                  <button type="button" class="icon-btn subtle" aria-label={tr("set.remove", { name: nameOf(code) })} onClick={() => set("tiebreaks", tiebreaks.filter((c) => c !== code))}>
                     ×
                   </button>
                 </span>
@@ -173,7 +174,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
         </ol>
         {editable.has("tiebreaks") && (
           <>
-            <label for="set-add-tiebreak">Add a tie-break</label>
+            <label for="set-add-tiebreak">{tr("set.add_tiebreak")}</label>
             <select
               id="set-add-tiebreak"
               value=""
@@ -182,7 +183,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
                 if (code) set("tiebreaks", [...tiebreaks, code]);
               }}
             >
-              <option value="">Choose…</option>
+              <option value="">{tr("set.choose")}</option>
               {options
                 .filter((o) => !tiebreaks.includes(o.code))
                 .map((o) => (
@@ -196,7 +197,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
 
         {error && <Notice kind="error">{error}</Notice>}
         <button type="submit" class="btn primary block" id="settings-save" disabled={busy || Object.keys(diff).length === 0}>
-          {busy ? "Saving…" : "Save"}
+          {busy ? tr("set.saving") : tr("set.save")}
         </button>
       </form>
     </Sheet>

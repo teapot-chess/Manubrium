@@ -3,6 +3,7 @@ import type { Standings, Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, ShareButton, TryAgain } from "./common";
 import { formatNumber as format, standingsText } from "../share";
+import { t } from "../i18n";
 
 /**
  * Mid-round, points already count the results entered, but tie-breaks only
@@ -13,9 +14,7 @@ export function tiebreakNote(s: Standings): string | null {
   const through = s.tiebreaks_through;
   const paired = s.rounds_paired;
   if (s.tiebreaks.length === 0 || through === undefined || paired === undefined || through >= paired) return null;
-  return through === 0
-    ? "Tie-breaks count complete rounds only, and no round is complete yet."
-    : `Tie-breaks count complete rounds only: up to round ${through}. Points include every result entered so far.`;
+  return through === 0 ? t("standings.tb_none") : t("standings.tb_some", { through });
 }
 
 export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
@@ -40,10 +39,10 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
       {error && <Notice kind="error">{error}</Notice>}
       {error && !s && <TryAgain id="standings-retry" onClick={load} />}
       {!s && !error && <Loading />}
-      {s && s.rows.length === 0 && <Empty>No players yet.</Empty>}
+      {s && s.rows.length === 0 && <Empty>{t("standings.none")}</Empty>}
       {s && s.rows.length > 0 && (
         <div class="view-tools">
-          <ShareButton id="share-standings" title={`${props.t.name}, standings`} text={() => standingsText(props.t, s)} />
+          <ShareButton id="share-standings" title={t("standings.share_title", { name: props.t.name })} text={() => standingsText(props.t, s)} />
         </div>
       )}
       {s && s.rows.length > 0 && (
@@ -52,8 +51,8 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Player</th>
-                <th scope="col" class="num">Pts</th>
+                <th scope="col">{t("standings.player")}</th>
+                <th scope="col" class="num">{t("standings.pts")}</th>
                 {s.tiebreaks.map((tb) => (
                   <th scope="col" class="num" key={tb.code} title={tb.name}>
                     {tb.code}
@@ -88,7 +87,7 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
       )}
       {s && (
         <button type="button" class="btn ghost block" onClick={load}>
-          Refresh
+          {t("tournaments.refresh")}
         </button>
       )}
     </div>

@@ -2,6 +2,7 @@
 // sending, what a hit becomes when tapped, and what the row says about it.
 
 import type { PlayerSource, SearchHit } from "./api";
+import { t } from "./i18n";
 
 /** Fewer letters than this finds half the country; the server would refuse it anyway. */
 export const MIN_QUERY = 3;
@@ -23,8 +24,8 @@ export function sourceOf(hit: SearchHit): PlayerSource | null {
 /** The line under a hit's name: ratings, federation, club, birth year. */
 export function hitDetails(hit: SearchHit): string {
   return [
-    hit.fide_rating ? `FIDE ${hit.fide_rating}` : null,
-    hit.national_rating ? `national ${hit.national_rating}` : null,
+    hit.fide_rating ? t("search.fide", { rating: hit.fide_rating }) : null,
+    hit.national_rating ? t("search.national", { rating: hit.national_rating }) : null,
     hit.federation,
     hit.club,
     hit.birth_year ? String(hit.birth_year) : null,

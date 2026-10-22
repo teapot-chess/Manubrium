@@ -9,8 +9,9 @@ import type { BoardLink, Tournament } from "../api";
 import { copyText } from "../share";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, Sheet } from "./common";
+import { t as tr, dateLocale } from "../i18n";
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : null);
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(dateLocale(), { dateStyle: "short", timeStyle: "short" }) : null);
 
 export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
   const { ctx, t } = props;
@@ -69,30 +70,30 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
 
   return (
     <section id="board-links-section">
-      <h2>Hall boards (Alnasl)</h2>
+      <h2>{tr("boards.title")}</h2>
       {error && (
         <Notice kind="error" onClose={() => setError(null)}>
           {error}
         </Notice>
       )}
       {!links && !error && <Loading />}
-      {links && links.length === 0 && <Empty>No board connected. A code lets the hall's boards report their games here.</Empty>}
+      {links && links.length === 0 && <Empty>{tr("boards.none")}</Empty>}
       {links && links.length > 0 && (
         <ul class="list compact" id="board-links">
           {links.map((l) => (
             <li key={l.id} class="row">
               <span class="row-main static">
                 <span class="row-title">
-                  {l.label || "Hall boards"}
+                  {l.label || tr("boards.default_label")}
                   <span class="tag">{l.kind}</span>
                 </span>
                 <span class="row-sub">
-                  {[l.reach, l.last_seen_at ? `last heard ${when(l.last_seen_at)}` : "not heard from yet"].filter(Boolean).join(" · ")}
+                  {[l.reach, l.last_seen_at ? tr("boards.last_heard", { when: when(l.last_seen_at) ?? "" }) : tr("boards.not_heard")].filter(Boolean).join(" · ")}
                 </span>
               </span>
               {!t.read_only && (
                 <button type="button" class="chip danger" id={`revoke-link-${l.id}`} onClick={() => setRevoking(l)}>
-                  Revoke
+                  {tr("boards.revoke")}
                 </button>
               )}
             </li>
@@ -101,18 +102,18 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
       )}
       {!t.read_only && (
         <button type="button" class="btn block" id="new-board-link" onClick={() => setMaking(true)}>
-          Connect hall boards
+          {tr("boards.connect")}
         </button>
       )}
-      <p class="fine">The boards' results are shown beside the pairings, in red where they differ. They are never entered: the arbiter does that.</p>
+      <p class="fine">{tr("boards.fine")}</p>
 
       {making && (
-        <Sheet title="Connect hall boards" onClose={() => setMaking(false)}>
+        <Sheet title={tr("boards.connect")} onClose={() => setMaking(false)}>
           <form class="form" id="board-link-form" onSubmit={create}>
-            <label for="board-link-label">A name for it (optional)</label>
-            <input id="board-link-label" value={label} maxLength={60} placeholder="Top boards" onInput={(e) => setLabel((e.target as HTMLInputElement).value)} />
+            <label for="board-link-label">{tr("boards.name_label")}</label>
+            <input id="board-link-label" value={label} maxLength={60} placeholder={tr("boards.name_placeholder")} onInput={(e) => setLabel((e.target as HTMLInputElement).value)} />
             <button type="submit" class="btn primary block" id="board-link-create" disabled={busy}>
-              {busy ? "Making the code…" : "Make a code"}
+              {busy ? tr("boards.making") : tr("boards.make")}
             </button>
           </form>
         </Sheet>
@@ -121,14 +122,14 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
       {fresh && <FreshCode code={fresh.code} link={fresh.link} onClose={() => setFresh(null)} />}
 
       {revoking && (
-        <Sheet title={`Revoke ${revoking.label || "these boards"}?`} onClose={() => setRevoking(null)}>
-          <p>The boards on this code stop reporting at once. A new code can connect them again.</p>
+        <Sheet title={tr("boards.revoke_title", { name: revoking.label || tr("boards.these") })} onClose={() => setRevoking(null)}>
+          <p>{tr("boards.revoke_text")}</p>
           <div class="sheet-actions">
             <button type="button" class="btn danger block" id="revoke-confirm" disabled={busy} onClick={() => revoke(revoking)}>
-              Revoke
+              {tr("boards.revoke")}
             </button>
             <button type="button" class="btn block" onClick={() => setRevoking(null)}>
-              Keep it
+              {tr("common.keep")}
             </button>
           </div>
         </Sheet>
@@ -151,10 +152,10 @@ function FreshCode(props: { code: string; link: BoardLink; onClose: () => void }
 
   return (
     // Sticky: a tap beside it would throw away a code nobody can show again.
-    <Sheet title={props.link.label || "Hall boards"} onClose={props.onClose} sticky>
-      <p class="sheet-sub">Scan it from the Alnasl bridge, or copy it there.</p>
+    <Sheet title={props.link.label || tr("boards.default_label")} onClose={props.onClose} sticky>
+      <p class="sheet-sub">{tr("boards.scan_hint")}</p>
       {/* The SVG is the qrcode library's own output for our own string. */}
-      {svg && <div class="qr" id="board-link-qr" role="img" aria-label="QR code of the board code" dangerouslySetInnerHTML={{ __html: svg }} />}
+      {svg && <div class="qr" id="board-link-qr" role="img" aria-label={tr("boards.qr_alt")} dangerouslySetInnerHTML={{ __html: svg }} />}
       <code class="code-once" id="board-link-code">
         {props.code}
       </code>
@@ -162,13 +163,13 @@ function FreshCode(props: { code: string; link: BoardLink; onClose: () => void }
         type="button"
         class="btn block"
         id="board-link-copy"
-        onClick={async () => setCopied((await copyText(props.code)) === "copied" ? "Copied." : "Could not copy; select the code instead.")}
+        onClick={async () => setCopied((await copyText(props.code)) === "copied" ? tr("boards.copied") : tr("boards.copy_failed"))}
       >
-        {copied ?? "Copy the code"}
+        {copied ?? tr("boards.copy_code")}
       </button>
-      <Notice kind="info">Shown once: it cannot be shown again. Lose it and make another, then revoke this one.</Notice>
+      <Notice kind="info">{tr("boards.shown_once")}</Notice>
       <button type="button" class="btn primary block" onClick={props.onClose}>
-        Done
+        {tr("common.done")}
       </button>
     </Sheet>
   );
