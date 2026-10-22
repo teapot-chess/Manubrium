@@ -351,6 +351,23 @@ export const en = {
   "api.no_photo": "No photo to show.",
   "settings.language": "Language",
   "settings.language_auto": "Same as the phone",
+  "round.clear_title": "Clear board {label}?",
+  "round.clear_text": "The result {result} goes, and the board waits for a result again.",
+  "round.clear_yes": "Clear it",
+  "round.reject_title": "Reject the result on board {label}?",
+  "round.reject_text": "The {result} the phone entered is cleared, and the board waits for a result again.",
+  "round.reject_yes": "Reject it",
+  "pl.withdraw_title": "Withdraw {name}?",
+  "pl.withdraw_text": "{name} is left out of the next pairing and every one after it. Games already played stay as they are.",
+  "pl.withdraw_yes": "Withdraw",
+  "more.edit_incident": "Change",
+  "more.incident_save": "Save the incident",
+  "more.incident_saved": "Incident changed.",
+  "more.incident_delete": "Delete the incident",
+  "more.incident_delete_title": "Delete this incident?",
+  "more.incident_delete_text": "It goes from the list, its photo with it. The audit trail at the desk keeps a line saying what it was.",
+  "more.incident_delete_yes": "Delete it",
+  "more.incident_deleted": "Incident deleted.",
 };
 
 export type Key = keyof typeof en;

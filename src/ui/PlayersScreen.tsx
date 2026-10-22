@@ -352,6 +352,7 @@ function PlayerSheet(props: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ ids: string[]; message: string; changes: Record<string, unknown> } | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
   // A server that names bye kinds keeps byes per round; an older one only knows "rounds off".
   const byesMode = !!player && (t.bye_kinds?.length ?? 0) > 0 && Array.isArray(player.byes);
   const [byes, setByes] = useState<Bye[]>(player?.byes ?? []);
@@ -387,6 +388,24 @@ function PlayerSheet(props: {
           </button>
           <button type="button" class="btn block" onClick={() => setConfirm(null)}>
             {tr("common.back")}
+          </button>
+        </div>
+        {error && <Notice kind="error">{error}</Notice>}
+      </Sheet>
+    );
+  }
+
+  // Withdrawing asks first; re-entering does not - it is the way back.
+  if (withdrawing && player) {
+    return (
+      <Sheet title={tr("pl.withdraw_title", { name: player.name })} onClose={props.onClose}>
+        <p>{tr("pl.withdraw_text", { name: player.name })}</p>
+        <div class="sheet-actions">
+          <button type="button" class="btn danger block" id="withdraw-confirm" disabled={busy} onClick={() => save({ withdrawn: true })}>
+            {tr("pl.withdraw_yes")}
+          </button>
+          <button type="button" class="btn block" id="withdraw-keep" onClick={() => setWithdrawing(false)}>
+            {tr("common.keep")}
           </button>
         </div>
         {error && <Notice kind="error">{error}</Notice>}
@@ -454,7 +473,8 @@ function PlayerSheet(props: {
           type="button"
           class={`btn block ${player.status === "withdrawn" ? "" : "danger"}`}
           disabled={busy}
-          onClick={() => save({ withdrawn: player.status !== "withdrawn" })}
+          id="withdraw-player"
+          onClick={() => (player.status === "withdrawn" ? save({ withdrawn: false }) : setWithdrawing(true))}
         >
           {player.status === "withdrawn" ? tr("pl.reenter") : tr("pl.withdraw")}
         </button>

@@ -194,9 +194,25 @@ describe("a Lite phone's result in the round", () => {
 
     fireEvent.click(await el("#board-1"));
     fireEvent.click(document.querySelector("#reject-result")!);
+    // It asks first: nothing has gone to the server yet.
+    await screen.findByText(/Reject the result on board 1\?/);
+    expect(api.rejectResult).not.toHaveBeenCalled();
+    fireEvent.click(document.querySelector("#reject-confirm")!);
 
     await waitFor(() => expect(api.rejectResult).toHaveBeenCalledWith(7, 1, 1, "1-0"));
     await screen.findByText(/rejected and cleared/);
+  });
+
+  it("is kept when the question is answered with Keep it", async () => {
+    const api = fakeApi(fromPhone());
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-1"));
+    fireEvent.click(document.querySelector("#reject-result")!);
+    fireEvent.click(await el("#ask-keep"));
+
+    expect(await el("#reject-result")).toBeTruthy();
+    expect(api.rejectResult).not.toHaveBeenCalled();
   });
 
   it("shows the server's refusal when the board changed meanwhile", async () => {
@@ -207,6 +223,23 @@ describe("a Lite phone's result in the round", () => {
     fireEvent.click(await el("#board-1"));
     fireEvent.click(document.querySelector("#confirm-result")!);
     await screen.findByText(/the board now says 0-1/);
+  });
+});
+
+describe("clearing a result", () => {
+  it("asks first, naming the result that goes", async () => {
+    const api = fakeApi(round([board(1, 1, { result: "1-0", clearable: true })]));
+    (api as unknown as { clear: Mock }).clear = vi.fn(async () => undefined);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-1"));
+    fireEvent.click(document.querySelector("#clear-result")!);
+    await screen.findByText(/Clear board 1\?/);
+    expect(api.clear).not.toHaveBeenCalled();
+
+    fireEvent.click(document.querySelector("#clear-confirm")!);
+    await waitFor(() => expect(api.clear).toHaveBeenCalledWith(7, 1, 1, "1-0"));
+    await screen.findByText("Board 1: cleared.");
   });
 });
 
@@ -344,6 +377,59 @@ describe("an incident photo", () => {
     fireEvent.click(document.querySelector("#photo-4")!);
     await waitFor(() => expect(api.photo).toHaveBeenCalledWith(7, 4));
     await waitFor(() => expect(document.querySelector("#incident-photo-view")!.getAttribute("src")).toBe("blob:photo"));
+  });
+});
+
+describe("an incident put right", () => {
+  const logged = { id: 3, round: 1, board: 2, kind: "clock", note: "Flag fell", white: null, black: null, occurred_at: "", by: null, has_photo: true };
+
+  it("is changed from the More tab: its type and its note", async () => {
+    const api = fakeApi(round([]));
+    api.incidents.mockResolvedValue([logged]);
+    (api as unknown as { updateIncident: Mock }).updateIncident = vi.fn(async () => ({ ...logged, kind: "time_added" }));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#edit-incident-3"));
+    fireEvent.change(await el("#incident-edit-type"), { target: { value: "time_added" } });
+    fireEvent.input(document.querySelector("#incident-edit-note")!, { target: { value: " Two minutes to Black " } });
+    fireEvent.submit(document.querySelector("#incident-edit-form")!);
+
+    await waitFor(() => expect(api.updateIncident).toHaveBeenCalledWith(7, 3, { kind: "time_added", note: "Two minutes to Black" }));
+    await screen.findByText("Incident changed.");
+    expect(api.incidents).toHaveBeenCalledTimes(2);
+  });
+
+  it("is deleted after a question, and a refusal is shown where it was asked", async () => {
+    const api = fakeApi(round([]));
+    api.incidents.mockResolvedValue([logged]);
+    const deleteIncident = vi
+      .fn()
+      .mockRejectedValueOnce(new ApiError(409, "archived", "The tournament is archived."))
+      .mockResolvedValue(undefined);
+    (api as unknown as { deleteIncident: Mock }).deleteIncident = deleteIncident;
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#edit-incident-3"));
+    fireEvent.click(await el("#incident-delete"));
+    await screen.findByText(/its photo with it/);
+    expect(deleteIncident).not.toHaveBeenCalled();
+
+    fireEvent.click(document.querySelector("#incident-delete-confirm")!);
+    await screen.findByText("The tournament is archived.");
+
+    fireEvent.click(document.querySelector("#incident-delete-confirm")!);
+    await waitFor(() => expect(deleteIncident).toHaveBeenCalledTimes(2));
+    expect(deleteIncident).toHaveBeenCalledWith(7, 3);
+    await screen.findByText("Incident deleted.");
+  });
+
+  it("is not offered on a read-only tournament", async () => {
+    const api = fakeApi(round([]));
+    api.incidents.mockResolvedValue([logged]);
+    render(<MoreScreen ctx={ctxWith(api)} t={{ ...tournament("owner"), read_only: true }} />);
+
+    await el("#incident-list");
+    expect(document.querySelector("#edit-incident-3")).toBeNull();
   });
 });
 
@@ -611,6 +697,33 @@ describe("adding players from a list", () => {
     fireEvent.input(await el("#p-name"), { target: { value: "Hand, Made" } });
     fireEvent.submit(document.querySelector("form.form")!);
     await waitFor(() => expect(api.createPlayer).toHaveBeenCalledWith(7, expect.objectContaining({ name: "Hand, Made" })));
+  });
+});
+
+describe("withdrawing a player", () => {
+  it("asks first; re-entering does not", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(1, "Ann"), player(2, "Bob", { status: "withdrawn" })]);
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#player-1"));
+    fireEvent.click(await el("#withdraw-player"));
+    await screen.findByText(/Ann is left out of the next pairing/);
+    expect(api.updatePlayer).not.toHaveBeenCalled();
+    fireEvent.click(document.querySelector("#withdraw-keep")!);
+    fireEvent.click(await el("#withdraw-player"));
+    fireEvent.click(await el("#withdraw-confirm"));
+    await waitFor(() => expect(api.updatePlayer).toHaveBeenCalledWith(7, 1, { withdrawn: true }, []));
+  });
+
+  it("re-enters at once", async () => {
+    const api = fakeApi(round([]));
+    api.players.mockResolvedValue([player(2, "Bob", { status: "withdrawn" })]);
+    render(<PlayersScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#player-2"));
+    fireEvent.click(await el("#withdraw-player"));
+    await waitFor(() => expect(api.updatePlayer).toHaveBeenCalledWith(7, 2, { withdrawn: false }, []));
   });
 });
 
