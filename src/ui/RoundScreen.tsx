@@ -14,7 +14,8 @@ import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const PUBLISH = ["Not public", "Pairings", "Pairings and results", "Results and standings"];
-const INCIDENT_KINDS: [string, string][] = [
+/** The incident kinds the app offers; the contract's incident.kind must know every one. */
+export const INCIDENT_KINDS: [string, string][] = [
   ["illegal_move", "Illegal move"],
   ["clock", "Clock"],
   ["device", "Phone or device"],

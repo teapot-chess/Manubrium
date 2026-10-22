@@ -81,10 +81,7 @@ function tournament(role: "owner" | "arbiter", settings: Record<string, unknown>
     id: 7,
     name: "Hall Open",
     role,
-    status: "active",
-    start_date: null,
-    end_date: null,
-    city: null,
+    status: "running",
     rounds_count: 5,
     paired_rounds: 1,
     can: role === "owner" ? ["results", "incidents", "pair", "publish", "players", "standings", "settings"] : ["results", "incidents"],
@@ -640,8 +637,8 @@ describe("byes", () => {
 describe("the hall boards' word", () => {
   it("is shown beside the pairing, red when it differs, and never entered", async () => {
     const r = round([
-      board(1, 1, { result: "1-0", board_report: { status: "finished", result: "0-1", mismatch: true, moves_count: 41, updated_at: null } }),
-      board(2, 2, { board_report: { status: "playing", result: null, mismatch: false, moves_count: 23, updated_at: null } }),
+      board(1, 1, { result: "1-0", board_report: { status: "finished", result: "0-1", mismatch: true, moves_count: 41, updated_at: "2026-11-07T14:32:05Z" } }),
+      board(2, 2, { board_report: { status: "live", result: null, mismatch: false, moves_count: 23, updated_at: "2026-11-07T14:32:05Z" } }),
     ]);
     const api = fakeApi(r);
     render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);

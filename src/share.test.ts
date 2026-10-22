@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Board, Round, Standings } from "./api";
+import type { Board, BoardReport, Round, Standings } from "./api";
 import { boardReportLabel } from "./alnasl";
 import { copyText, pairingsText, standingsText, webShare } from "./share";
 
@@ -131,13 +131,14 @@ describe("sharing in a browser", () => {
 });
 
 describe("a hall board's report", () => {
-  const r = { status: "playing", result: null, mismatch: false, moves_count: 23, updated_at: null };
+  const r: BoardReport = { status: "live", result: null, mismatch: false, moves_count: 23, updated_at: "2026-11-07T14:32:05Z" };
 
   it("says the board's result, or how far the game is", () => {
     expect(boardReportLabel({ ...r, status: "finished", result: "1/2-1/2" })).toBe("board ½-½");
     expect(boardReportLabel(r)).toBe("playing · 23 moves");
     expect(boardReportLabel({ ...r, moves_count: 1 })).toBe("playing · 1 move");
-    expect(boardReportLabel({ ...r, status: "no_signal", moves_count: null })).toBe("no signal");
+    expect(boardReportLabel({ ...r, status: "waiting", moves_count: 0 })).toBe("board waiting");
+    expect(boardReportLabel({ ...r, status: "finished" })).toBe("board finished");
   });
 
   it("says nothing without a report", () => {

@@ -10,14 +10,17 @@ export type Role = "owner" | "editor" | "arbiter";
 export type Capability = "results" | "incidents" | "pair" | "publish" | "players" | "standings" | "settings";
 
 export interface ServerInfo { name: string; version: string; api: number; desktop: boolean }
-export interface Device { id: number; name: string; platform: string }
+export interface Device { id: number; name: string | null; platform: string | null }
 export interface UserInfo { email: string; name: string | null }
 
+export type TournamentStatus = "setup" | "running" | "finished";
+
+/** One line of `GET /tournaments`, and what `POST /tournaments` answers. */
 export interface TournamentLine {
   id: number;
   name: string;
   role: Role;
-  status: string;
+  status: TournamentStatus;
   start_date: string | null;
   end_date: string | null;
   city: string | null;
@@ -27,7 +30,11 @@ export interface TournamentLine {
 
 export interface Warning { id: string; confirm: boolean; message: string }
 
-export interface Tournament extends TournamentLine {
+/**
+ * One tournament (`GET /tournaments/:id`). Not a TournamentLine with extras:
+ * its dates and city live in `settings`, and the server sends them nowhere else.
+ */
+export interface Tournament extends Omit<TournamentLine, "start_date" | "end_date" | "city"> {
   can: Capability[];
   read_only: boolean;
   archived: boolean;
@@ -68,7 +75,8 @@ export interface BoardPlayer { id: number; name: string; title: string | null; r
 
 export interface Board {
   id: number;
-  board: number;
+  /** Null for a board with a fixed table and no number; `label` is what to show. */
+  board: number | null;
   label: string;
   white: BoardPlayer | null;
   black: BoardPlayer | null;
@@ -85,12 +93,16 @@ export interface Board {
   board_report?: BoardReport | null;
 }
 
+/** The box's state of the game: set up and untouched, under way, or over. There is no "playing". */
+export type BoardStatus = "waiting" | "live" | "finished";
+
 export interface BoardReport {
-  status: string;
+  status: BoardStatus;
   result: string | null;
   mismatch: boolean;
-  moves_count: number | null;
-  updated_at: string | null;
+  /** FULL moves, not plies: the number of the move the game has reached. */
+  moves_count: number;
+  updated_at: string;
 }
 
 export interface PoolEntry { player: BoardPlayer; type: string | null; absent: boolean }
@@ -135,8 +147,8 @@ export type SettingsChange = Partial<{
 export interface StandingRow {
   rank: string | number | null;
   player: { id: number; name: string; title: string | null; rating: number | null } | null;
-  points: number;
-  tiebreaks: Record<string, number>;
+  points: number | null;
+  tiebreaks: Record<string, number | null>;
 }
 
 export interface Standings {
@@ -219,7 +231,7 @@ export interface ResultEntry {
   kind: "result";
   round: number;
   pairing: number;
-  board: number;
+  board: number | null;
   white: number | null;
   black: number | null;
   result: string;
@@ -230,8 +242,9 @@ export interface IncidentEntry {
   cid: string;
   kind: "incident";
   round: number;
-  pairing?: number;
-  board?: number;
+  /** Every incident names its board: the server refuses one without as `no_board`. */
+  pairing: number;
+  board?: number | null;
   type: string;
   note: string;
   at?: string;
@@ -241,7 +254,7 @@ export interface IncidentEntry {
 
 export type Entry = ResultEntry | IncidentEntry;
 
-export interface EntryAnswer { cid: string; status: "saved" | "refused" | "retry"; reason: string | null; message: string }
+export interface EntryAnswer { cid: string | null; status: "saved" | "refused" | "retry"; reason: string | null; message: string | null }
 
 export interface Connected { token: string; device: Device; user: UserInfo; server: ServerInfo }
 
@@ -273,7 +286,7 @@ export function needsAcknowledgement(error: unknown): {
   confirm: string[];
   summary?: string;
   warnings: string[];
-  checker?: { checked: boolean; line: string; missing: string[]; added: string[]; warnings: string[] };
+  checker?: { checked: boolean; line: string | null; missing: string[]; added: string[]; warnings: string[] };
 } | null {
   if (!(error instanceof ApiError) || error.code !== "needs_acknowledgement") return null;
   const b = error.body;
@@ -370,7 +383,8 @@ export interface Client {
   attachPhoto(id: number, incident: number, jpegBase64: string): Promise<Incident>;
   photo(id: number, incident: number): Promise<Blob>;
   tournamentOptions(): Promise<TournamentOptions>;
-  createTournament(tournament: NewTournament): Promise<Tournament>;
+  /** The new tournament as a line of the list; `tournament()` has the rest. */
+  createTournament(tournament: NewTournament): Promise<TournamentLine>;
   searchPlayers(id: number, q: string, source: string): Promise<SearchHit[]>;
   addPlayerFrom(id: number, from: PlayerSource): Promise<Player>;
   setByes(id: number, playerId: number, byes: Bye[]): Promise<Player | null>;
@@ -418,7 +432,7 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     attachPhoto: async (id, incident, jpegBase64) =>
       (await req<{ incident: Incident }>("POST", `${t(id)}/incidents/${incident}/photo`, { photo: jpegBase64 })).incident,
     tournamentOptions: () => req("GET", "/tournament-options"),
-    createTournament: async (tournament) => (await req<{ tournament: Tournament }>("POST", "/tournaments", { tournament })).tournament,
+    createTournament: async (tournament) => (await req<{ tournament: TournamentLine }>("POST", "/tournaments", { tournament })).tournament,
     searchPlayers: async (id, q, source) => {
       const query = new URLSearchParams({ q, source }).toString();
       return (await req<{ results: SearchHit[] }>("GET", `${t(id)}/player-search?${query}`)).results;

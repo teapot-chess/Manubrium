@@ -25,7 +25,7 @@ export interface Queued {
   tournament: number;
   entry: Entry;
   state: "waiting" | "refused";
-  message?: string;
+  message?: string | null;
   reason?: string | null;
   /** The board as the round showed it ("2", "12a"), kept for the refusal's sake. */
   label?: string;

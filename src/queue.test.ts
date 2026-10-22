@@ -73,7 +73,7 @@ describe("Outbox", () => {
 
   it("sends an incident with a photo in a request of its own", async () => {
     await box.addResult(S, 7, result(10, "1-0"));
-    await box.addIncident(S, 7, { round: 1, type: "clock", note: "", photo: "/9j/AAAA" });
+    await box.addIncident(S, 7, { round: 1, pairing: 10, type: "clock", note: "", photo: "/9j/AAAA" });
     await box.addResult(S, 7, result(11, "0-1"));
     const sent: Entry[][] = [];
 
@@ -146,7 +146,7 @@ describe("Outbox", () => {
   it("keeps servers and tournaments apart", async () => {
     await box.addResult(S, 7, result(10, "1-0"));
     await box.addResult(S, 8, result(10, "1-0"));
-    await box.addIncident("https://other.example", 7, { round: 1, type: "clock", note: "" });
+    await box.addIncident("https://other.example", 7, { round: 1, pairing: 10, type: "clock", note: "" });
 
     expect(box.count(S)).toBe(2);
     expect(box.count(S, 8)).toBe(1);
@@ -185,7 +185,7 @@ describe("refusalText", () => {
 
   it("falls back to the round for an entry with no board at all", () => {
     const q = refused("Board ?: not saved.", {
-      entry: { cid: "c", kind: "incident", round: 2, type: "arbiter_call", note: "" },
+      entry: { cid: "c", kind: "incident", round: 2, pairing: 5, type: "arbiter_call", note: "" },
     });
     expect(refusalText(q)).toBe("Round 2: not saved.");
   });
