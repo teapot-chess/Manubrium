@@ -1,21 +1,28 @@
 # The web bundle: types, unit tests, a build. No SDKs - the native shells are
 # only exercised by the store workflows (android.yml, testflight.yml).
+# Plus the contracts job: is the vendored OpenPairings contract still the one
+# OpenPairings publishes? Daily as well, because the provider changes its
+# mind without asking us first.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   web:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,3 +44,18 @@ jobs:
       # Both native projects accept the bundle and the plugin list: catches a
       # plugin without a Package.swift or a Gradle entry before a Mac does.
       - run: npx cap sync
+
+  # Network, so not part of `npm test`: fetches the providers' contracts and
+  # fails with a diff if the vendored copy has drifted. The fix is
+  # `npm run contracts:sync`, then whatever `npm test` says next.
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - run: npm run contracts:check

@@ -3,7 +3,7 @@
 // basement is nobody's friend.
 
 import { useEffect, useState } from "preact/hooks";
-import type { NewTournament as Fields, Tournament, TournamentOptions } from "../api";
+import type { NewTournament as Fields, TournamentLine, TournamentOptions } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, TopBar } from "./common";
 
@@ -58,7 +58,7 @@ export function toFields(f: Form): Fields {
   };
 }
 
-export function NewTournament(props: { ctx: Ctx; onCancel: () => void; onCreated: (t: Tournament) => void }) {
+export function NewTournament(props: { ctx: Ctx; onCancel: () => void; onCreated: (t: TournamentLine) => void }) {
   const { ctx } = props;
   const [options, setOptions] = useState<TournamentOptions | null>(null);
   const [form, setForm] = useState<Form | null>(null);

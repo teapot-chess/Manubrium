@@ -94,7 +94,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                 <span class="row-main static">
                   <span class="row-title">
                     Round {q.entry.round}
-                    {q.entry.kind === "result" ? `, board ${q.entry.board}: ${q.entry.result}` : `: incident (${q.entry.type})`}
+                    {q.entry.kind === "result" ? `, board ${q.label ?? q.entry.board}: ${q.entry.result}` : `: incident (${q.entry.type})`}
                   </span>
                   <span class="row-sub">{q.state === "waiting" ? "Waiting to send" : `Not accepted: ${refusalText(q)}`}</span>
                 </span>
