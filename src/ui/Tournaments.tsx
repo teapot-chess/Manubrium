@@ -17,6 +17,7 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
     setError(null);
     try {
       setList(await ctx.api.tournaments());
+      setSignedOut(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setSignedOut(true);
       setError(describeError(e));

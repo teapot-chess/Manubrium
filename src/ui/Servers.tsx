@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import type { Outbox } from "../queue";
 import type { SavedServer } from "../servers";
-import { Sheet, TopBar } from "./common";
+import { Notice, Sheet, TopBar } from "./common";
 import { t, LANGUAGES, LANGUAGE_NAMES, type LangChoice } from "../i18n";
 
 const unsent = (n: number) => (n === 1 ? t("servers.unsent_one") : t("servers.unsent_other", { n }));
@@ -16,6 +16,8 @@ export function Servers(props: {
   onAdd: () => void;
   onRemove: (server: SavedServer, signOut: boolean) => void;
   /** The app's language choice; with `onLanguage`, the picker is shown. */
+  notice?: string | null;
+  onNoticeClose?: () => void;
   language?: LangChoice;
   onLanguage?: (choice: LangChoice) => void;
 }) {
@@ -25,6 +27,11 @@ export function Servers(props: {
     <div class="screen">
       <TopBar title={t("servers.title")} subtitle={t("servers.subtitle")} onBack={props.onBack} backLabel={t("tournaments.title")} />
       <main class="content">
+        {props.notice && (
+          <Notice kind="info" onClose={props.onNoticeClose}>
+            {props.notice}
+          </Notice>
+        )}
         <ul class="list" id="server-list">
           {props.servers.map((s) => {
             const waiting = props.outbox.count(s.base);

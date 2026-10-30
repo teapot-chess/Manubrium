@@ -358,6 +358,13 @@ function PlayerSheet(props: {
   const [byes, setByes] = useState<Bye[]>(player?.byes ?? []);
 
   const rounds = Array.from({ length: t.rounds_count ?? 0 }, (_, i) => i + 1);
+  const dirty =
+    name !== (player?.name ?? "") ||
+    fideId !== (player?.fide_id ? String(player.fide_id) : "") ||
+    rating !== (player?.fide_rating ? String(player.fide_rating) : "") ||
+    federation !== (player?.federation ?? "") ||
+    club !== (player?.club ?? "") ||
+    JSON.stringify(off) !== JSON.stringify(player?.absent_rounds ?? []);
   const basic = { name: name.trim(), fide_id: fideId.trim(), fide_rating: rating.trim(), federation: federation.trim(), club: club.trim() };
 
   async function save(changes: Record<string, unknown>, acknowledged: string[] = []) {
@@ -414,7 +421,7 @@ function PlayerSheet(props: {
   }
 
   return (
-    <Sheet title={player ? player.name : tr("pl.late_entry")} onClose={props.onClose}>
+    <Sheet title={player ? player.name : tr("pl.late_entry")} onClose={props.onClose} dirty={dirty}>
       <form
         class="form"
         onSubmit={(e) => {

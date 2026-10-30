@@ -5,6 +5,7 @@
 
 import type { Board, Round, Standings, Tournament } from "./api";
 import { t as tr } from "./i18n";
+import { byeLabel } from "./byes";
 
 /** "1/2-1/2" is how the server spells it; a message can afford the glyph. */
 export function shareResult(code: string): string {
@@ -52,7 +53,7 @@ export function pairingsText(t: Pick<Tournament, "name" | "openresults_url">, ro
     for (const r of rows) lines.push(`${pad(r.no, noW, true)}  ${pad(r.white, whiteW)}  ${pad(r.result, resW)}  ${r.black}`.trimEnd());
   }
   if (round.byes.length > 0) {
-    lines.push("", tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ") }));
+    lines.push("", tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${byeLabel(b.type)})`).join(", ") }));
   }
   return [...lines, ...footer(t)].join("\n");
 }

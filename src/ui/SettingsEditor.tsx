@@ -86,7 +86,7 @@ export function SettingsEditor(props: { ctx: Ctx; t: Tournament; onClose: () => 
   }
 
   return (
-    <Sheet title={tr("set.title")} onClose={props.onClose}>
+    <Sheet title={tr("set.title")} onClose={props.onClose} dirty={Object.keys(diff).length > 0}>
       <form class="form" id="settings-form" onSubmit={save}>
         {textFields().map(([key, label]) => (
           <div key={key}>

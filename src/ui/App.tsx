@@ -2,15 +2,16 @@
 // a phone app with five screens needs a variable, not a library.
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import { client, type Client, type TournamentLine } from "../api";
+import { ApiError, client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
-import { ServerList, type SavedServer } from "../servers";
+import { labelFor, ServerList, type SavedServer } from "../servers";
 import { onBackButton, onOpenLink, secureStorage, storage } from "../platform";
-import { currentChoice, loadLanguage, onLanguageChange, saveLanguage } from "../i18n";
+import { currentChoice, loadLanguage, onLanguageChange, saveLanguage, t as tr } from "../i18n";
+import { LinkError, normaliseServer, parseConnectLink } from "../link";
 import { goBack, pushBack } from "../back";
 import { AddServer } from "./AddServer";
 import { Servers } from "./Servers";
-import { Mark } from "./common";
+import { Mark, Sheet } from "./common";
 import { NewTournament } from "./NewTournament";
 import { Tournaments } from "./Tournaments";
 import { TournamentView } from "./TournamentView";
@@ -37,13 +38,29 @@ export function App() {
   const [servers, setServers] = useState<SavedServer[] | null>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const [screen, setScreen] = useState<Screen>({ name: "tournaments" });
+  /** A connect link from outside the app, waiting for the arbiter's yes. */
+  const [pendingLink, setPendingLink] = useState<string | null>(null);
+  /** Something to tell the person on the screens that list servers. */
+  const [notice, setNotice] = useState<string | null>(null);
   const [, setTick] = useState(0);
   const bump = useCallback(() => setTick((n) => n + 1), []);
 
   const reload = useCallback(async () => {
     await loadLanguage(storage);
     await outbox.load();
-    const all = await serverList.all();
+    // A stored address is checked again on every load: the rule may be
+    // stricter than the version that saved it, and storage can be edited.
+    const stored = await serverList.all();
+    const all = stored.filter((s) => {
+      try {
+        normaliseServer(s.base);
+        return true;
+      } catch (e) {
+        if (!(e instanceof LinkError)) throw e;
+        setNotice(tr("servers.bad_address", { label: s.label || s.base }));
+        return false;
+      }
+    });
     const cur = await serverList.current();
     setServers(all);
     setCurrent(all.some((s) => s.base === cur) ? cur : (all[0]?.base ?? null));
@@ -51,7 +68,9 @@ export function App() {
 
   useEffect(() => {
     reload();
-    onOpenLink((link) => setScreen({ name: "add", link }));
+    // A link from outside the app (a browser, a chat) does nothing until
+    // the arbiter says yes: any page can open one.
+    onOpenLink((link) => setPendingLink(link));
   }, [reload]);
 
   useEffect(() => onBackButton(goBack), []);
@@ -83,9 +102,41 @@ export function App() {
       </div>
     );
 
+  // The screen stays where it is under the question, so a half-written
+  // incident survives a link that nobody meant to follow.
+  let pendingHost: string | null = null;
+  if (pendingLink) {
+    try {
+      pendingHost = labelFor(parseConnectLink(pendingLink).server);
+    } catch {
+      pendingHost = null;
+    }
+  }
+
+  return (
+    <>
+      {view(servers)}
+      {pendingLink && (
+        <ConnectAsk
+          link={pendingLink}
+          host={pendingHost}
+          onYes={() => {
+            setScreen({ name: "add", link: pendingLink });
+            setPendingLink(null);
+          }}
+          onNo={() => setPendingLink(null)}
+        />
+      )}
+    </>
+  );
+
+  function view(servers: SavedServer[]) {
   if (screen.name === "add" || servers.length === 0) {
     return (
       <AddServer
+        key={screen.name === "add" ? (screen.link ?? "") : ""}
+        notice={notice}
+        onNoticeClose={() => setNotice(null)}
         initialLink={screen.name === "add" ? screen.link : undefined}
         canCancel={servers.length > 0}
         onCancel={() => setScreen({ name: "servers" })}
@@ -113,8 +164,18 @@ export function App() {
         onAdd={() => setScreen({ name: "add" })}
         language={currentChoice()}
         onLanguage={(choice) => void saveLanguage(storage, choice)}
+        notice={notice}
+        onNoticeClose={() => setNotice(null)}
         onRemove={async (s, signOut) => {
-          if (signOut) await client(s.base, s.token).signOut().catch(() => undefined);
+          if (signOut) {
+            // Already revoked (401/403) is as good as signed out; anything
+            // else means the server still counts this phone as connected.
+            const failed = await client(s.base, s.token)
+              .signOut()
+              .then(() => false)
+              .catch((e) => !(e instanceof ApiError && (e.status === 401 || e.status === 403)));
+            if (failed) setNotice(tr("servers.signout_failed", { label: s.label }));
+          }
           await outbox.forgetServer(s.base);
           await serverList.remove(s.base);
           await reload();
@@ -151,5 +212,33 @@ export function App() {
       onNew={() => setScreen({ name: "new" })}
       onOpen={(t) => setScreen({ name: "tournament", tournament: t })}
     />
+  );
+  }
+}
+
+/**
+ * Asks before a link from outside the app connects anything. A link that is
+ * not a connect link at all has nothing to ask about: the add screen shows
+ * what is wrong with it, and connects to nothing.
+ */
+function ConnectAsk(props: { link: string; host: string | null; onYes: () => void; onNo: () => void }) {
+  const { host, onYes } = props;
+  // Not a usable link: let the add screen explain, once.
+  useEffect(() => {
+    if (host === null) onYes();
+  }, [host]);
+  if (host === null) return null;
+  return (
+    <Sheet title={tr("connect.ask_title", { host })} onClose={props.onNo}>
+      <p>{tr("connect.ask_text", { host })}</p>
+      <div class="sheet-actions">
+        <button type="button" class="btn primary block" id="connect-link-yes" onClick={props.onYes}>
+          {tr("connect.ask_yes")}
+        </button>
+        <button type="button" class="btn block" id="connect-link-no" onClick={props.onNo}>
+          {tr("connect.ask_no")}
+        </button>
+      </div>
+    </Sheet>
   );
 }

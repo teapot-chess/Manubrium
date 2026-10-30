@@ -45,8 +45,11 @@ First release: results, incidents, pairing, publishing, standings and players, w
   link-local, `.local`), where the server is in the same room.
 - Do you provide a way for users to request that their data is deleted?
   **Yes** - removing the server in the app deletes the phone's token
-  (the account page on the server also revokes it); the account is the
-  server's to delete.
+  (the account page on the server also revokes it); uninstalling the app
+  deletes everything it stored on the phone. The app opts out of Android
+  backup (`allowBackup="false"`), so nothing is copied to Google. Results
+  and incidents already sent live on the server, whose operator can delete
+  them; the account is the server's to delete.
 
 | Data type | Collected | Shared | Processed ephemerally | Required | Purpose |
 |---|---|---|---|---|---|

@@ -82,19 +82,38 @@ export function Notice(props: { kind?: "error" | "info" | "ok"; children: Compon
  * A bottom sheet. It takes the focus when it opens and hands it back when
  * it closes, and the back button or Escape closes it. `sticky` sheets close
  * only by their own buttons: for what a stray tap on the backdrop must not
- * throw away, like a code shown once.
+ * throw away, like a code shown once. A `dirty` sheet (a half-written
+ * incident, an edited player) asks before it lets go of what was typed:
+ * a tap beside it or the back button gets "Throw away?", and "Keep it"
+ * returns to the form with everything still in it.
  */
-export function Sheet(props: { title: string; onClose: () => void; sticky?: boolean; children: ComponentChildren }) {
+export function Sheet(props: { title: string; onClose: () => void; sticky?: boolean; dirty?: boolean; children: ComponentChildren }) {
   const box = useRef<HTMLElement>(null);
   const close = useRef(props.onClose);
   close.current = props.onClose;
+  const dirty = useRef(!!props.dirty);
+  dirty.current = !!props.dirty;
+  const [asking, setAsking] = useState(false);
+  const askingNow = useRef(false);
+  askingNow.current = asking;
   const sticky = !!props.sticky;
+
+  // A stray close: straight out when nothing is typed, a question when something is.
+  const dismiss = () => {
+    if (dirty.current) setAsking(true);
+    else close.current();
+  };
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
 
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     box.current?.focus();
     const undo = pushBack(() => {
-      if (!sticky) close.current();
+      if (sticky) return;
+      // Back while being asked is "keep it": the question is not a second sheet to leave.
+      if (askingNow.current) setAsking(false);
+      else dismissRef.current();
     });
     return () => {
       undo();
@@ -103,11 +122,24 @@ export function Sheet(props: { title: string; onClose: () => void; sticky?: bool
   }, [sticky]);
 
   return (
-    <div class="sheet-backdrop" onClick={(e) => !sticky && e.target === e.currentTarget && props.onClose()}>
+    <div class="sheet-backdrop" onClick={(e) => !sticky && e.target === e.currentTarget && dismiss()}>
       <section class="sheet" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} ref={box}>
         <div class="sheet-grip" aria-hidden="true" />
         <h2>{props.title}</h2>
-        {props.children}
+        {asking && (
+          <div class="confirm" id="discard-draft" role="alertdialog" aria-label={t("common.discard_title")}>
+            <p>
+              <strong>{t("common.discard_title")}</strong> {t("common.discard_text")}
+            </p>
+            <button type="button" class="btn danger block" id="discard-draft-yes" onClick={() => close.current()}>
+              {t("common.discard_yes")}
+            </button>
+            <button type="button" class="btn block" id="discard-draft-keep" onClick={() => setAsking(false)}>
+              {t("common.keep")}
+            </button>
+          </div>
+        )}
+        <div hidden={asking}>{props.children}</div>
       </section>
     </div>
   );

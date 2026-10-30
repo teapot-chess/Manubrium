@@ -1044,3 +1044,140 @@ describe("undoing a round", () => {
     await screen.findByText("Undo round 1");
   });
 });
+
+describe("the round follows the tournament record", () => {
+  const unpaired = (): Tournament => ({ ...tournament("owner"), paired_rounds: 0, next_round: null });
+
+  it("moves off 'Round 0' when the organiser pairs round 1 meanwhile", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    const ctx = ctxWith(api);
+    const reload = vi.fn(async () => undefined);
+    const view = render(<RoundScreen ctx={ctx} t={unpaired()} reloadTournament={reload} />);
+    await el("#round-refresh");
+    expect(api.round).not.toHaveBeenCalled();
+
+    view.rerender(<RoundScreen ctx={ctx} t={tournament("owner")} reloadTournament={reload} />);
+    await el("#board-1");
+    expect(api.round).toHaveBeenCalledWith(7, 1);
+    expect(screen.getByText("Round 1")).toBeTruthy();
+  });
+
+  it("has a Refresh button that reloads the tournament, also for an arbiter", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    const reload = vi.fn(async () => undefined);
+    render(<RoundScreen ctx={ctxWith(api)} t={{ ...unpaired(), can: ["results"] }} reloadTournament={reload} />);
+    fireEvent.click(await el("#round-refresh"));
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+  });
+
+  it("keeps an arbiter who looks at an older round there, and a follower on the last round following", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    api.round.mockImplementation(async (_id: number, number: number) => round([board(number, number)], { number }));
+    const ctx = ctxWith(api);
+    const reload = async () => undefined;
+    const at = (paired: number) => ({ ...tournament("owner"), paired_rounds: paired });
+    const view = render(<RoundScreen ctx={ctx} t={at(2)} reloadTournament={reload} />);
+    await el("#board-2");
+    fireEvent.click(screen.getByLabelText("Previous round"));
+    await el("#board-1");
+    view.rerender(<RoundScreen ctx={ctx} t={at(3)} reloadTournament={reload} />);
+    expect(screen.getByText("Round 1")).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText("Next round"));
+    fireEvent.click(screen.getByLabelText("Next round"));
+    await el("#board-3");
+    view.rerender(<RoundScreen ctx={ctx} t={at(4)} reloadTournament={reload} />);
+    await el("#board-4");
+    expect(screen.getByText("Round 4")).toBeTruthy();
+  });
+});
+
+describe("a slow answer for another round", () => {
+  it("is not drawn under this round's header, and entries carry the round shown", async () => {
+    const api = fakeApi(round([]));
+    let release: (r: Round) => void = () => undefined;
+    api.round.mockImplementation((_id: number, number: number) =>
+      number === 2
+        ? new Promise<Round>((resolve) => {
+            release = resolve;
+          })
+        : Promise.resolve(round([board(11, 1)], { number: 1, latest: false })),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={{ ...tournament("owner"), paired_rounds: 2 }} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(screen.getByLabelText("Previous round"));
+    await el("#board-11");
+    release(round([board(22, 1)], { number: 2 }));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(document.querySelector("#board-22")).toBeNull();
+    expect(screen.getByText("Round 1")).toBeTruthy();
+
+    fireEvent.click(document.querySelector("#board-11")!);
+    fireEvent.click(await screen.findByText("1-0"));
+    await waitFor(() => expect(api.sync).toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "result", round: 1, pairing: 11 })]));
+  });
+
+  it("shows no boards under a new header while its answer is on the way", async () => {
+    const api = fakeApi(round([]));
+    api.round.mockImplementation((_id: number, number: number) =>
+      number === 1 ? new Promise<Round>(() => undefined) : Promise.resolve(round([board(22, 1)], { number: 2 })),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={{ ...tournament("owner"), paired_rounds: 2 }} reloadTournament={async () => undefined} />);
+    await el("#board-22");
+    fireEvent.click(screen.getByLabelText("Previous round"));
+    expect(screen.getByText("Round 1")).toBeTruthy();
+    expect(document.querySelector("#board-22")).toBeNull();
+  });
+});
+
+describe("a sheet with something typed in it", () => {
+  it("asks before a tap beside it throws the text away, and keeps it on 'Keep it'", async () => {
+    const closed = vi.fn();
+    render(
+      <Sheet title="Edit" onClose={closed} dirty>
+        <input id="typed" defaultValue="" />
+      </Sheet>,
+    );
+    fireEvent.input(document.querySelector("#typed")!, { target: { value: "half a note" } });
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    expect(closed).not.toHaveBeenCalled();
+    await el("#discard-draft");
+    fireEvent.click(document.querySelector("#discard-draft-keep")!);
+    expect(document.querySelector("#discard-draft")).toBeNull();
+    expect((document.querySelector("#typed") as HTMLInputElement).value).toBe("half a note");
+
+    expect(goBack()).toBe(true);
+    await el("#discard-draft");
+    expect(closed).not.toHaveBeenCalled();
+    fireEvent.click(document.querySelector("#discard-draft-yes")!);
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes at once when nothing was typed", () => {
+    const closed = vi.fn();
+    render(
+      <Sheet title="Edit" onClose={closed} dirty={false}>
+        <p>Empty</p>
+      </Sheet>,
+    );
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it("guards a half-written incident", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#log-incident"));
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    expect(document.querySelector("#incident-note")).toBeNull(); // nothing typed: gone at once
+
+    fireEvent.click(await el("#log-incident"));
+    fireEvent.input(await el("#incident-note"), { target: { value: "clock stopped" } });
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    await el("#discard-draft");
+    fireEvent.click(document.querySelector("#discard-draft-keep")!);
+    expect((document.querySelector("#incident-note") as HTMLTextAreaElement).value).toBe("clock stopped");
+    expect((document.querySelector("#incident-note") as HTMLTextAreaElement).maxLength).toBe(280);
+  });
+});

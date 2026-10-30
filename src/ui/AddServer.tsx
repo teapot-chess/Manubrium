@@ -8,6 +8,8 @@ import { t } from "../i18n";
 
 export function AddServer(props: {
   initialLink?: string;
+  notice?: string | null;
+  onNoticeClose?: () => void;
   canCancel: boolean;
   onCancel: () => void;
   onAdded: (server: SavedServer) => void;
@@ -45,7 +47,9 @@ export function AddServer(props: {
     }
   }
 
-  // Opened by a manubrium:// link: connect straight away, once.
+  // Opened by a manubrium:// link the arbiter has just said yes to (App asks
+  // first): connect straight away, once. A later link remounts this screen
+  // (App keys it on the link), so each one gets its turn.
   useEffect(() => {
     if (props.initialLink) go(props.initialLink);
   }, []);
@@ -102,6 +106,11 @@ export function AddServer(props: {
         </form>
 
         {error && <Notice kind="error">{error}</Notice>}
+        {props.notice && (
+          <Notice kind="info" onClose={props.onNoticeClose}>
+            {props.notice}
+          </Notice>
+        )}
 
         <p class="fine">
           {t("addserver.fine")}

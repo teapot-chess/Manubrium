@@ -28,11 +28,15 @@ has no certificate; the app refuses plain HTTP to any public address.
 - **The server's name and address, and the name and role your account
   has there**, as the server reported them, so the app can show them.
 - **An outbox** of results and incidents entered while the phone had no
-  connection, until the server has accepted them.
-- **The current round and standings** of the tournament you have open,
-  as a cache.
+  connection (with the photo of an incident, if you took one), until the
+  server has accepted them. The outbox is kept in the app's own storage,
+  not in the Keychain or Keystore.
 
-Deleting the app deletes all of it.
+The app keeps no cache of rounds or standings: it asks the server each
+time. The app opts out of Android's cloud backup and device transfer, so
+none of this is copied to Google. Deleting the app deletes what it stored
+on the phone; what you sent to a server stays on that server, under its
+operator's terms.
 
 ## What the app sends to a server
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import type { Tournament, TournamentLine } from "../api";
+import { OfflineError, type Tournament, type TournamentLine } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, TopBar, TryAgain } from "./common";
 import { t as tr } from "../i18n";
@@ -21,7 +21,9 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
       setT(await ctx.api.tournament(line.id));
       setError(null);
     } catch (e) {
-      setError(describeError(e));
+      // Offline with a record already open is the round screen's business
+      // (it says so, and the outbox carries on); anything else is shown.
+      if (!(e instanceof OfflineError && t)) setError(describeError(e));
     }
   }
 
@@ -42,6 +44,11 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
       <TopBar title={t?.name ?? line.name} subtitle={ctx.server.label} onBack={props.onBack} backLabel={tr("tournaments.title")} />
       <main class="content">
         {error && !t && <Notice kind="error">{error}</Notice>}
+        {error && t && (
+          <Notice kind="error" onClose={() => setError(null)}>
+            {error}
+          </Notice>
+        )}
         {error && !t && (
           <TryAgain
             id="tournament-retry"

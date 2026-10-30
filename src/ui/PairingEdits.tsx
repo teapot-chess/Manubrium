@@ -13,6 +13,7 @@ import { useState } from "preact/hooks";
 import { needsAcknowledgement, type Board, type BoardPlayer, type HandEdit, type Round, type Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Notice, Sheet } from "./common";
+import { byeLabel } from "../byes";
 import { t as tr } from "../i18n";
 
 const ackLabels = (): Record<string, string> => ({
@@ -92,7 +93,7 @@ export function AskBox(props: { ask: Ask; busy: boolean; onYes: () => void; onNo
       ))}
       <ul class="ask-list">
         {ask.confirm.map((id) => (
-          <li key={id}>{ackLabels()[id] ?? id}</li>
+          <li key={id}>{Object.hasOwn(ackLabels(), id) ? ackLabels()[id] : id}</li>
         ))}
       </ul>
       <div class="two-btn">
@@ -197,7 +198,7 @@ export function BoardEditSheet(props: {
                 onClick={() => apply({ kind: "fill", pairing: board.id, player: e.player.id }, tr("pe.joins", { name: e.player.name, label: board.label }))}
               >
                 <span class="row-title">{e.player.name}</span>
-                <span class="row-sub">{e.type ?? (e.absent ? tr("pe.absent") : tr("pe.unpaired"))}</span>
+                <span class="row-sub">{e.type ? byeLabel(e.type) : e.absent ? tr("pe.absent") : tr("pe.unpaired")}</span>
               </button>
             </li>
           ))}
@@ -352,7 +353,7 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
               />
               <span>
                 <span class="row-title">{e.player.name}</span>
-                <span class="row-sub">{e.type ?? (e.absent ? tr("pe.absent") : tr("pe.unpaired"))}</span>
+                <span class="row-sub">{e.type ? byeLabel(e.type) : e.absent ? tr("pe.absent") : tr("pe.unpaired")}</span>
               </span>
             </label>
           </li>
