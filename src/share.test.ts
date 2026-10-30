@@ -49,7 +49,7 @@ describe("the pairings as text", () => {
         " 3  White 3             –    Black 3",
         " 4  White 4             bye",
         "",
-        "Not playing: Late, Larry (requested-half)",
+        "Not playing: Late, Larry (Half-point bye)",
         "",
         "https://openresults.cloud/t/hall-open",
       ].join("\n"),

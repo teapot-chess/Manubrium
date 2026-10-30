@@ -4,6 +4,19 @@
 // keeps the list straight.
 
 import type { Bye } from "./api";
+import { t as tr } from "./i18n";
+
+const BYE_LABELS = {
+  absent: "pe.bye.absent",
+  "requested-half": "pe.bye.requested-half",
+  "requested-zero": "pe.bye.requested-zero",
+  "full-point": "pe.bye.full-point",
+} as const;
+
+/** A bye's kind as the server spells it, in the app's language; a kind we do not know stays as the server wrote it. */
+export function byeLabel(kind: string): string {
+  return Object.hasOwn(BYE_LABELS, kind) ? tr(BYE_LABELS[kind as keyof typeof BYE_LABELS]) : kind;
+}
 
 export interface ByeRow {
   round: number;

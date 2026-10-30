@@ -342,7 +342,7 @@ function IncidentEditor(props: { ctx: Ctx; t: Tournament; incident: Incident; on
   }
 
   return (
-    <Sheet title={`${where}: ${tr("round.incident")}`} onClose={props.onClose}>
+    <Sheet title={`${where}: ${tr("round.incident")}`} onClose={props.onClose} dirty={kind !== incident.kind || note !== (incident.note ?? "")}>
       <form
         class="form"
         id="incident-edit-form"

@@ -372,6 +372,18 @@ export const en = {
   "pe.discard_q": "Undo the hand edits to round {n}? The boards and byes go back to how they were before the first one, and the hand edits end.",
   "pe.discard_yes": "Undo them",
   "pe.discarded": "Hand edits to round {n} undone: the boards are back as they were.",
+  "round.refresh": "Refresh",
+  "connect.ask_title": "Connect to {host}?",
+  "connect.ask_text": "A link from outside the app asks this phone to connect to {host}. Connect only if you started this yourself, from your account page on that server.",
+  "connect.ask_yes": "Connect",
+  "connect.ask_no": "Not now",
+  "common.discard_title": "Throw away what you typed?",
+  "common.discard_text": "Closing now loses the text and photo you have not saved.",
+  "common.discard_yes": "Throw it away",
+  "servers.signout_failed": "{label} was removed from this phone, but the server could not be reached, so this phone's access there may still be active. Revoke it on your account page on that server (Account, Manubrium app).",
+  "boards.kind.tournament": "Tournament",
+  "boards.kind.group": "Group",
+  "servers.bad_address": "{label} is saved with an address this app no longer accepts (plain http to a public address), so it is left out of the list. Add the server again with a new connect link over https.",
 };
 
 export type Key = keyof typeof en;

@@ -54,6 +54,8 @@ server it talks to, OpenPairings, has its own licence.
 ```
 src/
   link.ts        the connect link, and the "http only inside the building" rule
+  back.ts        the back button / Escape: sheets first, then screens
+  i18n/          English, Dutch and French dictionaries, and t()
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
   share.ts       the round and the standings as text, and the browser's share
@@ -63,6 +65,7 @@ src/
   servers.ts     the servers on this phone, one token each
   secure.ts      where the tokens live: Keychain / Keystore, Preferences in a browser
   platform.ts    phone-or-browser differences: storage, camera, deep links
+  contract.testkit.ts  test helper: the vendored contract schemas
   ui/            the screens
 ```
 
@@ -134,7 +137,9 @@ committed, with these changes:
   ranges. The app enforces the range itself: `src/link.ts` accepts http only
   for loopback, 10/8, 172.16/12, 192.168/16, link-local, IPv6 unique-local
   and `.local` names; everything else must be https.
-- `AndroidManifest.xml`: the network security config, the camera permission
+- `AndroidManifest.xml`: `allowBackup="false"` (the outbox and, in the
+  fallback case, the token must not reach Google backup), the network
+  security config, the camera permission
   (QR scanning, incident photos; declared not required) and an intent
   filter for `manubrium://connect`, so a scanned or tapped connect link
   opens the app.
@@ -151,7 +156,8 @@ committed, with these changes:
 - `NSAppTransportSecurity` / `NSAllowsLocalNetworking`: plain http to
   local-network addresses only. Everything else keeps ATS (https).
 - `NSCameraUsageDescription` (the QR scanner, incident photos),
-  `NSPhotoLibraryUsageDescription` (an existing photo for an incident),
+  `NSPhotoLibraryUsageDescription` (an existing photo for an incident; no
+  copy is written back, so there is no add-to-library string),
   `ITSAppUsesNonExemptEncryption` (standard HTTPS only, so TestFlight does
   not ask per build), and the `manubrium` URL scheme.
 
@@ -213,9 +219,11 @@ the privacy policy and the screenshot list are in `store/`.
 
 ## Known gaps
 
-- **No real-device run yet.** The web bundle, the API client and the outbox
-  are tested; the native shells have been generated, not built (no SDKs on
-  the machine that made them).
+- **Store review is the first outside test.** The native shells are built
+  and signed by CI and the iOS app is in App Store review; what the tests
+  cover is the web bundle, the API client and the outbox.
+- **Incident photos wait in the outbox as base64 text** in the app's
+  preferences, not as files. Fine for a few; a file store is the follow-up.
 - **Not in the app because the server does not offer it yet:** acknowledging
   from a phone the results Lite refuses for the desk (a decisive postponed
   game, a correction after the next round is paired, a round already sent to

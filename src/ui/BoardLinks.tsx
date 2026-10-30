@@ -85,7 +85,7 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
               <span class="row-main static">
                 <span class="row-title">
                   {l.label || tr("boards.default_label")}
-                  <span class="tag">{l.kind}</span>
+                  <span class="tag">{l.kind === "tournament" || l.kind === "group" ? tr(`boards.kind.${l.kind}`) : l.kind}</span>
                 </span>
                 <span class="row-sub">
                   {[l.reach, l.last_seen_at ? tr("boards.last_heard", { when: when(l.last_seen_at) ?? "" }) : tr("boards.not_heard")].filter(Boolean).join(" · ")}

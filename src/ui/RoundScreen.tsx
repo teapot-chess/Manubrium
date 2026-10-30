@@ -2,7 +2,7 @@
 // without a signal); clearing, pairing, publishing, hand edits and the word
 // on a Lite phone's result are online only.
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, OfflineError, type Board, type Round, type Tournament } from "../api";
 import { onResume, takePhoto } from "../platform";
 import type { Ctx } from "./App";
@@ -10,6 +10,7 @@ import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet 
 import { t as tr } from "../i18n";
 import { boardReportLabel } from "../alnasl";
 import { pairingsText } from "../share";
+import { byeLabel } from "../byes";
 import { refusalText } from "../queue";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 
@@ -31,7 +32,19 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const { ctx, t } = props;
   const latest = t.paired_rounds;
   const [number, setNumber] = useState(latest);
-  const [round, setRound] = useState<Round | null>(null);
+  // The tournament record is reloaded from outside (an organiser pairs round
+  // 1, someone undoes the last round): the round on screen follows `latest`
+  // when it was on the last round or on none, and never points past it.
+  const seenLatest = useRef(latest);
+  useEffect(() => {
+    const before = seenLatest.current;
+    seenLatest.current = latest;
+    setNumber((n) => (n < 1 || n === before || n > latest ? latest : n));
+  }, [latest]);
+  const [loaded, setRound] = useState<Round | null>(null);
+  // Never the boards of another round under this round's header, not even
+  // for the frame before the effect below clears them.
+  const round = loaded && loaded.number === number ? loaded : null;
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -42,17 +55,37 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
   const base = ctx.server.base;
 
+  // Only the newest request may land: on a slow link round 2's answer can
+  // arrive after the arbiter moved on to round 3, and must not be drawn
+  // under a "Round 3" header.
+  const requests = useRef(0);
+  const reloadTournament = useRef(props.reloadTournament);
+  reloadTournament.current = props.reloadTournament;
+
   const load = useCallback(async () => {
     if (number < 1) return;
+    const mine = ++requests.current;
     try {
-      setRound(await ctx.api.round(t.id, number));
+      const answer = await ctx.api.round(t.id, number);
+      if (mine !== requests.current) return;
+      setRound(answer);
       setOffline(false);
       setError(null);
     } catch (e) {
+      if (mine !== requests.current) return;
       if (e instanceof OfflineError) setOffline(true);
       else setError(describeError(e));
     }
   }, [ctx.api, t.id, number]);
+
+  // A new round number starts empty: the boards of the one before are not
+  // this round's, and a sheet open on one of them is not either.
+  useEffect(() => {
+    requests.current++;
+    setRound(null);
+    setBoard(null);
+    setEditing(null);
+  }, [number, t.id]);
 
   const flush = useCallback(async () => {
     const outcome = await ctx.outbox.flush(base, t.id, (entries) => ctx.api.sync(t.id, entries)).catch((e) => {
@@ -73,11 +106,14 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
   useEffect(() => {
     const undo = onResume(() => {
+      reloadTournament.current();
       flush();
       load();
     });
-    // Other phones and the desk enter results too; look again now and then.
+    // Other phones and the desk enter results too, and the desk pairs and
+    // unpairs rounds; look again now and then.
     const timer = setInterval(() => {
+      reloadTournament.current();
       if (ctx.outbox.count(base, t.id) > 0) flush();
       else load();
     }, 20_000);
@@ -89,8 +125,9 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
   async function enter(b: Board, result: string) {
     setBoard(null);
+    if (!round) return;
     await ctx.outbox.addResult(base, t.id, {
-      round: number,
+      round: round.number,
       pairing: b.id,
       board: b.board,
       white: b.white?.id ?? null,
@@ -141,11 +178,12 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // Every incident belongs to a board: the server has nowhere to put one
   // without, and refused the round-level ones as "Board ?".
   async function incident(b: Board, type: string, note: string, photo: string | null) {
+    if (!round) return;
     await ctx.outbox.addIncident(
       base,
       t.id,
       {
-        round: number,
+        round: round.number,
         pairing: b.id,
         board: b.board,
         type,
@@ -264,7 +302,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {round?.byes.length ? (
         <p class="byes">
-          {tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${b.type})`).join(", ") })}
+          {tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${byeLabel(b.type)})`).join(", ") })}
         </p>
       ) : null}
 
@@ -376,6 +414,7 @@ function ResultSheet(props: {
   const { board } = props;
   const [more, setMore] = useState(false);
   const [incident, setIncident] = useState(false);
+  const [incidentDirty, setIncidentDirty] = useState(false);
   // A stray tap on a full board used to cost a walk to it: both ask first.
   const [asking, setAsking] = useState<"clear" | "reject" | null>(null);
   const others = props.codes.filter((c) => !MAIN_RESULTS.includes(c));
@@ -404,8 +443,8 @@ function ResultSheet(props: {
 
   if (incident) {
     return (
-      <Sheet title={tr("round.board_incident", { label: board.label })} onClose={props.onClose}>
-        <IncidentForm onLog={props.onIncident} />
+      <Sheet title={tr("round.board_incident", { label: board.label })} onClose={props.onClose} dirty={incidentDirty}>
+        <IncidentForm onLog={props.onIncident} onDirty={setIncidentDirty} />
       </Sheet>
     );
   }
@@ -476,15 +515,17 @@ function ResultSheet(props: {
 
 function IncidentButton(props: { boards: Board[]; onLog: (b: Board, type: string, note: string, photo: string | null) => void }) {
   const [open, setOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
   return (
     <>
       <button type="button" class="btn block" id="log-incident" onClick={() => setOpen(true)}>
         {tr("round.log_incident")}
       </button>
       {open && (
-        <Sheet title={tr("round.incident")} onClose={() => setOpen(false)}>
+        <Sheet title={tr("round.incident")} onClose={() => setOpen(false)} dirty={dirty}>
           <IncidentForm
             boards={props.boards}
+            onDirty={setDirty}
             onLog={(type, note, photo, b) => {
               if (!b) return;
               setOpen(false);
@@ -504,11 +545,17 @@ function IncidentButton(props: { boards: Board[]; onLog: (b: Board, type: string
 export function IncidentForm(props: {
   boards?: Board[];
   onLog: (type: string, note: string, photo: string | null, board?: Board) => void;
+  /** Whether there is a note or a photo that closing would lose. */
+  onDirty?: (dirty: boolean) => void;
 }) {
   const [type, setType] = useState("arbiter_call");
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [boardId, setBoardId] = useState("");
+  const onDirty = props.onDirty;
+  useEffect(() => {
+    onDirty?.(note.trim() !== "" || photo !== null);
+  }, [note, photo]);
   const chosen = props.boards?.find((b) => String(b.id) === boardId);
   const ready = !props.boards || !!chosen;
   return (
@@ -541,7 +588,7 @@ export function IncidentForm(props: {
         ))}
       </select>
       <label for="incident-note">{tr("round.note")}</label>
-      <textarea id="incident-note" rows={3} maxLength={500} value={note} onInput={(e) => setNote((e.target as HTMLTextAreaElement).value)} />
+      <textarea id="incident-note" rows={3} maxLength={280} value={note} onInput={(e) => setNote((e.target as HTMLTextAreaElement).value)} />
       {photo ? (
         <div class="photo-preview">
           <img src={`data:image/jpeg;base64,${photo}`} alt={tr("round.photo_alt")} />
@@ -562,9 +609,26 @@ export function IncidentForm(props: {
 }
 
 function NothingPaired(props: { ctx: Ctx; t: Tournament; onPaired: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
   return (
     <div class="round">
       <Empty>{tr("round.none_paired")}</Empty>
+      <button
+        type="button"
+        class="btn block"
+        id="round-refresh"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await props.onPaired();
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {tr("round.refresh")}
+      </button>
       {props.t.can.includes("pair") && <PairButton ctx={props.ctx} t={props.t} onPaired={() => props.onPaired()} />}
     </div>
   );

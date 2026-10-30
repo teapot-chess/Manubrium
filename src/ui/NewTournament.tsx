@@ -7,6 +7,7 @@ import type { NewTournament as Fields, TournamentLine, TournamentOptions } from 
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, TopBar } from "./common";
 import { t } from "../i18n";
+import { today } from "../dates";
 
 type Form = {
   name: string;
@@ -21,7 +22,7 @@ type Form = {
   rated: boolean;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+
 
 /** The form's first state: the server's defaults where it gives them, today's date otherwise. */
 export function startForm(options: TournamentOptions | null): Form {
