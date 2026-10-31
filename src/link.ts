@@ -19,6 +19,67 @@ export interface ConnectLink {
 
 export class LinkError extends Error {}
 
+// The hall programs that run on a PC - Nunki, the announcer, and Polis, the
+// print station - are paired with a link of their own (OpenPairings'
+// hall-link-v1 contract, README "Pairing a device"):
+//
+//   https://<server>/p/<app>/join/<code>
+//
+// Their PCs have no camera worth the name, so the QR code OpenPairings shows
+// for them is scanned here. This app cannot join on their behalf - the key
+// has to end up on that PC - so it recognises the link, says whom it is for,
+// and hands it on. Nothing is sent: the code stays unspent for its program.
+export type HallApp = "nunki" | "polis";
+
+export const HALL_APP_NAMES: Record<HallApp, string> = { nunki: "Nunki", polis: "Polis" };
+
+export class HallLinkError extends LinkError {
+  constructor(
+    readonly app: HallApp,
+    readonly link: string,
+  ) {
+    super(t(app === "nunki" ? "link.hall_nunki" : "link.hall_polis"));
+  }
+}
+
+/** A pairing link of any hall app, as the contract describes it: whom it is for, the server and the code. */
+export interface PairingLink {
+  app: "manubrium" | HallApp;
+  server: string;
+  code: string;
+}
+
+/**
+ * Reads a hall program's join link (the last `/p/<app>/join/<code>` of an
+ * http(s) address; everything before that `/p/` is the server's), or null
+ * when the text is not one.
+ */
+export function readHallLink(text: string): (PairingLink & { app: HallApp; link: string }) | null {
+  const raw = text.trim();
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+
+  const at = url.pathname.lastIndexOf("/p/");
+  if (at < 0) return null;
+  const match = url.pathname.slice(at).match(/^\/p\/(nunki|polis)\/join\/([A-Za-z0-9_-]+)\/?$/);
+  if (!match) return null;
+
+  return { app: match[1] as HallApp, server: url.origin + url.pathname.slice(0, at), code: match[2], link: raw };
+}
+
+/** Any app's pairing link: this app's own connect link, or a hall program's join link. */
+export function readPairingLink(text: string): PairingLink {
+  const hall = readHallLink(text);
+  if (hall) return { app: hall.app, server: hall.server, code: hall.code };
+  const own = parseConnectLink(text);
+  return { app: "manubrium", server: own.server, code: own.secret };
+}
+
 export function parseConnectLink(text: string): ConnectLink {
   const raw = text.trim();
   let url: URL;
@@ -29,6 +90,8 @@ export function parseConnectLink(text: string): ConnectLink {
   }
 
   if (url.protocol !== "manubrium:") {
+    const hall = readHallLink(raw);
+    if (hall) throw new HallLinkError(hall.app, hall.link);
     throw new LinkError(t("link.not_manubrium"));
   }
 

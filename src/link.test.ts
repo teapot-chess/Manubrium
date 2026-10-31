@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLocalHost, LinkError, normaliseServer, parseConnectLink } from "./link";
+import { HallLinkError, isLocalHost, LinkError, normaliseServer, parseConnectLink, readHallLink } from "./link";
 
 describe("parseConnectLink", () => {
   it("reads the server and the secret", () => {
@@ -17,6 +17,15 @@ describe("parseConnectLink", () => {
     expect(() => parseConnectLink("manubrium://open?server=https://x&secret=s")).toThrow(LinkError);
     expect(() => parseConnectLink("manubrium://connect?server=https://x")).toThrow(/incomplete/);
     expect(() => parseConnectLink("not a link")).toThrow(LinkError);
+  });
+
+  it("recognises a hall program's join link and refuses it by name, sub-path and all", () => {
+    const link = "https://club.example.org/chess/p/polis/join/abc_DEF-123";
+    expect(() => parseConnectLink(link)).toThrow(HallLinkError);
+    expect(() => parseConnectLink(link)).toThrow(/Polis/);
+    expect(readHallLink(link)).toEqual({ app: "polis", server: "https://club.example.org/chess", code: "abc_DEF-123", link });
+    expect(readHallLink("https://x.example/p/nunki/join/")).toBeNull();
+    expect(readHallLink("https://x.example/p/alnasl/join/abc")).toBeNull();
   });
 
   it("refuses plain http to the internet", () => {
