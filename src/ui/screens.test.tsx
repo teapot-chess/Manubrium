@@ -135,6 +135,11 @@ function fakeApi(r: Round): FakeApi {
     searchPlayers: vi.fn(async () => []),
     addPlayerFrom: vi.fn(async () => ({})),
     boardLinks: vi.fn(async () => []),
+    hall: vi.fn(async () => ({ apps: ["polis", "nunki"], devices: [{ app: "polis", id: 4, name: "Printer desk", room: "Hall A", online: true, last_seen_at: "2026-11-08T13:05:10Z" }, { app: "nunki", id: 2, name: "Announcer PC", room: "", online: false, last_seen_at: null }], round: 3, countdown: null })),
+    hallPrint: vi.fn(async () => ({ sent_to: 1, round: 3 })),
+    hallCountdown: vi.fn(async () => ({ sent_to: 1, round: 3, countdown: { round: 3, seconds_left: 300 } })),
+    hallCancelCountdown: vi.fn(async () => ({ sent_to: 1, round: 3, countdown: null })),
+    hallAnnounce: vi.fn(async () => ({ sent_to: 1 })),
     createBoardLink: vi.fn(async () => ({ link: { id: 3, kind: "relay", label: "Top boards", reach: null, created_at: "", last_seen_at: null }, code: "alnasl_ONCE" })),
     revokeBoardLink: vi.fn(async () => undefined),
     createTournament: vi.fn(async () => ({ id: 9, name: "Hall Open" })),
@@ -844,6 +849,82 @@ describe("hall board codes", () => {
     render(<MoreScreen ctx={ctxWith(api)} t={tournament("arbiter")} />);
     expect(document.querySelector("#board-links-section")).toBeNull();
     expect(api.boardLinks).not.toHaveBeenCalled();
+  });
+});
+
+describe("the hall apps", () => {
+  it("lists who is online and sends each command, saying how many it reached", async () => {
+    const api = fakeApi(round([]));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    await el("#hall-device-polis-4");
+    expect(document.querySelector("#hall-device-polis-4")!.textContent).toContain("online");
+    expect(document.querySelector("#hall-device-nunki-2")!.textContent).toContain("offline");
+
+    fireEvent.change(document.querySelector("#hall-print-what")!, { target: { value: "standings" } });
+    fireEvent.click(document.querySelector("#hall-print")!);
+    await waitFor(() => expect(api.hallPrint).toHaveBeenCalledWith(7, "standings"));
+    await screen.findByText("Sent to 1 device.");
+
+    fireEvent.change(document.querySelector("#hall-minutes")!, { target: { value: "15" } });
+    fireEvent.click(document.querySelector("#hall-countdown-start")!);
+    await waitFor(() => expect(api.hallCountdown).toHaveBeenCalledWith(7, 15));
+
+    fireEvent.click(document.querySelector("#hall-canned-silence")!);
+    await waitFor(() => expect(api.hallAnnounce).toHaveBeenCalledWith(7, { canned: "silence" }));
+
+    fireEvent.input(document.querySelector("#hall-text")!, { target: { value: "  Boards 1 to 10, come over.  " } });
+    fireEvent.submit(document.querySelector("#hall-announce-form")!);
+    await waitFor(() => expect(api.hallAnnounce).toHaveBeenCalledWith(7, { text: "Boards 1 to 10, come over." }));
+  });
+
+  it("does not call zero devices a success", async () => {
+    const api = fakeApi(round([]));
+    api.hallPrint.mockResolvedValue({ sent_to: 0, round: 3 });
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#hall-print"));
+    await screen.findByText(/no print station or announcer is online/);
+  });
+
+  it("offers a running countdown to be cancelled", async () => {
+    const api = fakeApi(round([]));
+    api.hall.mockResolvedValue({ apps: ["nunki"], devices: [], round: 3, countdown: { round: 3, seconds_left: 170 } });
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    expect((await el("#hall-countdown-running")).textContent).toContain("3 min");
+    fireEvent.click(document.querySelector("#hall-countdown-cancel")!);
+    await waitFor(() => expect(api.hallCancelCountdown).toHaveBeenCalledWith(7));
+  });
+
+  it("says the hall apps are off when none is, and offers no command", async () => {
+    const api = fakeApi(round([]));
+    api.hall.mockResolvedValue({ apps: [], devices: [], round: null, countdown: null });
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    await screen.findByText(/No hall app is switched on/);
+    expect(document.querySelector("#hall-print")).toBeNull();
+    expect(document.querySelector("#hall-canned-silence")).toBeNull();
+  });
+
+  it("puts a refusal in the app's words, and the offline case in the offline words", async () => {
+    const api = fakeApi(round([]));
+    api.hallPrint.mockRejectedValueOnce(new ApiError(409, "hall_no_round", "Publish a round first (server)."));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+
+    fireEvent.click(await el("#hall-print"));
+    await screen.findByText("Publish a round first.");
+
+    api.hallAnnounce.mockRejectedValueOnce(new OfflineError());
+    fireEvent.click(document.querySelector("#hall-canned-phones")!);
+    await screen.findByText(/No connection/);
+  });
+
+  it("is not offered to an arbiter", async () => {
+    const api = fakeApi(round([]));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament("arbiter")} />);
+    expect(document.querySelector("#hall-section")).toBeNull();
+    expect(api.hall).not.toHaveBeenCalled();
   });
 });
 

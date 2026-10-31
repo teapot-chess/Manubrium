@@ -9,6 +9,7 @@ import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, Sheet, TryAgain } from "./common";
 import { SettingsEditor } from "./SettingsEditor";
 import { BoardLinks } from "./BoardLinks";
+import { HallPanel } from "./HallPanel";
 import { refusalText } from "../queue";
 import { incidentKinds } from "./RoundScreen";
 import { t as tr } from "./../i18n";
@@ -217,6 +218,8 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
       )}
 
       {desk && <BoardLinks ctx={ctx} t={t} />}
+
+      {desk && <HallPanel ctx={ctx} t={t} />}
 
       {desk && (
         <section>

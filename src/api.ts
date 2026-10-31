@@ -258,6 +258,37 @@ export type Entry = ResultEntry | IncidentEntry;
 
 export interface EntryAnswer { cid: string | null; status: "saved" | "refused" | "retry"; reason: string | null; message: string | null }
 
+
+export type HallApp = "polis" | "nunki";
+export type HallPrintWhat = "pairings" | "placecards" | "both" | "standings" | "playerlist" | "slips";
+export type HallCanned = "silence" | "phones" | "seats" | "results" | "arbiter";
+export const HALL_MINUTES = [1, 2, 5, 10, 15, 20, 30] as const;
+export const HALL_PRINT_WHATS: HallPrintWhat[] = ["pairings", "placecards", "both", "standings", "playerlist", "slips"];
+export const HALL_CANNED: HallCanned[] = ["silence", "phones", "seats", "results", "arbiter"];
+export const HALL_TEXT_MAX = 300;
+
+export interface HallCountdown { round: number; seconds_left: number }
+
+/** A print station or an announcer joined to the tournament (`GET /hall`). */
+export interface HallDevice {
+  app: HallApp;
+  id: number;
+  name: string;
+  room: string;
+  online: boolean;
+  last_seen_at: string | null;
+}
+
+export interface Hall {
+  /** The hall apps switched on for the owner's account. Empty: nobody to command. */
+  apps: HallApp[];
+  devices: HallDevice[];
+  round: number | null;
+  countdown: HallCountdown | null;
+}
+
+/** What a hall command answers: how many online devices it went to (0 is an answer, not a failure). */
+export interface HallSent { sent_to: number; round?: number | null; countdown?: HallCountdown | null }
 export interface Connected { token: string; device: Device; user: UserInfo; server: ServerInfo }
 
 /** The server said no, with a code and a sentence for the person holding the phone. */
@@ -396,6 +427,11 @@ export interface Client {
   boardLinks(id: number): Promise<BoardLink[]>;
   createBoardLink(id: number, label?: string): Promise<{ link: BoardLink; code: string }>;
   revokeBoardLink(id: number, linkId: number): Promise<void>;
+  hall(id: number): Promise<Hall>;
+  hallPrint(id: number, what: HallPrintWhat): Promise<HallSent>;
+  hallCountdown(id: number, minutes: number): Promise<HallSent>;
+  hallCancelCountdown(id: number): Promise<HallSent>;
+  hallAnnounce(id: number, what: { canned: HallCanned } | { text: string }): Promise<HallSent>;
 }
 
 export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
@@ -456,6 +492,11 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     revokeBoardLink: async (id, linkId) => {
       await req("DELETE", `${t(id)}/board-links/${linkId}`);
     },
+    hall: (id) => req("GET", `${t(id)}/hall`),
+    hallPrint: (id, what) => req("POST", `${t(id)}/hall/print`, { what }),
+    hallCountdown: (id, minutes) => req("POST", `${t(id)}/hall/countdown`, { minutes }),
+    hallCancelCountdown: (id) => req("POST", `${t(id)}/hall/countdown`, { cancel: true }),
+    hallAnnounce: (id, what) => req("POST", `${t(id)}/hall/announce`, what),
     photo: async (id, incident) => {
       // Not JSON: the JPEG itself, so not through `call`.
       let response: Response;
