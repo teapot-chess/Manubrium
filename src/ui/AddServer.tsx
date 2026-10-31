@@ -1,9 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
 import { connect } from "../api";
-import { LinkError, parseConnectLink } from "../link";
+import { HALL_APP_NAMES, HallLinkError, LinkError, parseConnectLink, type HallApp } from "../link";
 import { deviceName, native, platform, scanQr } from "../platform";
 import { labelFor, type SavedServer } from "../servers";
-import { describeError, Mark, Notice, TopBar } from "./common";
+import { copyText } from "../share";
+import { describeError, Mark, Notice, ShareButton, TopBar } from "./common";
 import { t } from "../i18n";
 
 export function AddServer(props: {
@@ -17,13 +18,22 @@ export function AddServer(props: {
   const [link, setLink] = useState(props.initialLink ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A hall program's join link (Nunki, Polis): not ours to spend, ours to pass on.
+  const [hall, setHall] = useState<{ app: HallApp; link: string } | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   async function go(text: string) {
     setError(null);
+    setHall(null);
+    setCopied(null);
     let parsed;
     try {
       parsed = parseConnectLink(text);
     } catch (e) {
+      if (e instanceof HallLinkError) {
+        setHall({ app: e.app, link: e.link });
+        return;
+      }
       setError(e instanceof LinkError ? e.message : describeError(e));
       return;
     }
@@ -106,6 +116,22 @@ export function AddServer(props: {
         </form>
 
         {error && <Notice kind="error">{error}</Notice>}
+        {hall && (
+          <div class="hall-link" id="hall-link">
+            <Notice kind="info">{new HallLinkError(hall.app, hall.link).message}</Notice>
+            <div class="actions">
+              <button
+                type="button"
+                class="chip"
+                id="hall-link-copy"
+                onClick={async () => setCopied((await copyText(hall.link)) === "copied" ? t("common.copied") : t("common.could_not_share"))}
+              >
+                {copied ?? t("addserver.hall_copy")}
+              </button>
+              <ShareButton id="hall-link-share" title={HALL_APP_NAMES[hall.app]} text={() => hall.link} />
+            </div>
+          </div>
+        )}
         {props.notice && (
           <Notice kind="info" onClose={props.onNoticeClose}>
             {props.notice}

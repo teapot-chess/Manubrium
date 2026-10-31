@@ -112,7 +112,12 @@ paste it into the app's **Add a server**.
 OpenPairings publishes the API this app talks to as JSON Schemas with
 examples (`priv/contracts/manubrium-v1/` in that repository). A byte-for-byte
 copy lives in `contracts/vendor/openpairings/manubrium-v1/`; the list of
-vendored contracts is `contracts/vendor/contracts.json`.
+vendored contracts is `contracts/vendor/contracts.json`. The second one,
+`hall-link-v1`, is the pairing flow every hall app shares: the app reads
+its own connect link from it, and recognises the join links of Nunki and
+Polis (which run on PCs without a camera), says whom they are for and
+offers to copy or share them on, never spending their code
+(`src/hall-link.test.ts` runs every pairing-link example through it).
 `npm run contracts:sync` fetches the current one from OpenPairings' main
 branch (`CONTRACTS_REF=<branch>` for another) and rewrites the copy, deleting
 files the provider dropped; `npm run contracts:check` does the same fetch and

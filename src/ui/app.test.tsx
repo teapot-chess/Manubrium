@@ -169,3 +169,19 @@ describe("a stored server address", () => {
     expect(screen.queryByLabelText("Remove public.example")).toBeNull();
   });
 });
+
+describe("a hall program's join link", () => {
+  it("is recognised, named and offered to pass on, and nothing is connected", async () => {
+    h.secure.data.clear();
+    render(<App />);
+    const box = (await el("#link")) as HTMLTextAreaElement;
+    fireEvent.input(box, { target: { value: "https://pairings.example/p/nunki/join/Xq3vN8pK2mW7tR4yB6cD9fH1jL5nP0sU-aE_gI2kM4o" } });
+    fireEvent.submit(box.closest("form")!);
+
+    await el("#hall-link");
+    await screen.findByText(/This is a join link for Nunki/);
+    expect(document.querySelector("#hall-link-copy")).not.toBeNull();
+    expect(document.querySelector("#hall-link-share")).not.toBeNull();
+    expect(h.connect).not.toHaveBeenCalled();
+  });
+});
