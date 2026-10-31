@@ -288,7 +288,7 @@ export interface Hall {
 }
 
 /** What a hall command answers: how many online devices it went to (0 is an answer, not a failure). */
-export interface HallSent { sent_to: number; round?: number; countdown?: HallCountdown | null }
+export interface HallSent { sent_to: number; round?: number | null; countdown?: HallCountdown | null }
 export interface Connected { token: string; device: Device; user: UserInfo; server: ServerInfo }
 
 /** The server said no, with a code and a sentence for the person holding the phone. */
