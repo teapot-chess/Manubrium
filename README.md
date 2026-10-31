@@ -26,6 +26,12 @@ Since the second batch it also:
   board's result or how far the game is, in red when it disagrees - and
   makes and revokes the boards' codes under More. A board never enters a
   result; the arbiter does.
+- gives the **hall apps** their orders from More: whether Polis (print)
+  and Nunki (announcer) stations are online, print the round again
+  (pairings, place cards, standings, player list, result slips), start or
+  cancel the countdown, and say a canned or free-text announcement. Like
+  everything that is not a result, it needs the server; a command that
+  reaches nobody says so instead of looking pleased with itself.
 
 The server side - the API, device tokens, roles - lives in OpenPairings
 (`docs/manubrium.md`, section "Full app"). This repository is only the app.
@@ -66,7 +72,7 @@ src/
   secure.ts      where the tokens live: Keychain / Keystore, Preferences in a browser
   platform.ts    phone-or-browser differences: storage, camera, deep links
   contract.testkit.ts  test helper: the vendored contract schemas
-  ui/            the screens
+  ui/            the screens (HallPanel.tsx: the hall apps under More)
 ```
 
 ## Offline
@@ -83,7 +89,7 @@ pixels by the camera, and is sent in a request of its own.
 
 Everything else - clearing a result, confirming a Lite phone's result,
 pairing and hand edits, publishing, players, check-in, byes, settings, a new
-tournament, the hall boards' codes - needs the server's
+tournament, the hall boards' codes, the hall apps' commands - needs the server's
 answer and is online only. The app says so when it is not. Where the desk
 would ask a question before a change (a rule the boards break, a round
 already sent), the server asks it and the app shows it; nothing is answered

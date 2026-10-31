@@ -101,6 +101,10 @@ const ROUTES: Route[] = [
   { method: "GET", path: /^\/tournaments\/\d+\/board-links$/, contract: "GET /tournaments/:id/board-links", response: "board-links-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/board-links$/, contract: "POST /tournaments/:id/board-links", request: "board-link-create-request", response: "board-link-create-response" },
   { method: "DELETE", path: /^\/tournaments\/\d+\/board-links\/\d+$/, contract: "DELETE /tournaments/:id/board-links/:lid", response: "board-link-revoke-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/hall$/, contract: "GET /tournaments/:id/hall", response: "hall-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/hall\/print$/, contract: "POST /tournaments/:id/hall/print", request: "hall-reprint-request", response: "hall-command-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/hall\/countdown$/, contract: "POST /tournaments/:id/hall/countdown", request: "hall-countdown-request", response: "hall-command-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/hall\/announce$/, contract: "POST /tournaments/:id/hall/announce", request: "hall-announce-request", response: "hall-command-response" },
 ];
 
 // Routes the server has and the app uses, that the contract does not (yet)
@@ -259,6 +263,11 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   boardLinks: (c) => c.boardLinks(2),
   createBoardLink: (c) => c.createBoardLink(2, "Hall A"),
   revokeBoardLink: (c) => c.revokeBoardLink(2, 1),
+  hall: (c) => c.hall(2),
+  hallPrint: (c) => c.hallPrint(2, "standings"),
+  hallCountdown: (c) => c.hallCountdown(2, 5),
+  hallCancelCountdown: (c) => c.hallCancelCountdown(2),
+  hallAnnounce: (c) => c.hallAnnounce(2, { canned: "silence" }),
 };
 
 async function everyCall(c: Client) {
@@ -288,6 +297,8 @@ describe("every answer in the contract, through the app's client", () => {
     ["player-response", (c) => c.setByes(2, 6, []), (e) => e.player],
     ["board-links-response", (c) => c.boardLinks(2), (e) => e.links],
     ["board-link-create-response", (c) => c.createBoardLink(2), (e) => e],
+    ["hall-response", (c) => c.hall(2), (e) => e],
+    ["hall-command-response", (c) => c.hallPrint(2, "both"), (e) => e],
     ["board-verdict-response", (c) => c.clear(2, 1, 101, ""), () => undefined],
     ["connect-response", (c) => c.me(), (e) => e],
     // 204, no body: the client must not try to read JSON out of nothing.
@@ -709,6 +720,14 @@ describe("every request the app builds", () => {
   it("asks for a board code with or without a name", async () => {
     valid(await captured((c) => c.createBoardLink(2)));
     valid(await captured((c) => c.createBoardLink(2, "Hall A")));
+  });
+
+  it("sends every hall command in the shape the schema takes", async () => {
+    for (const what of ["pairings", "placecards", "both", "standings", "playerlist", "slips"] as const) valid(await captured((c) => c.hallPrint(2, what)));
+    for (const minutes of [1, 2, 5, 10, 15, 20, 30]) valid(await captured((c) => c.hallCountdown(2, minutes)));
+    valid(await captured((c) => c.hallCancelCountdown(2)));
+    for (const canned of ["silence", "phones", "seats", "results", "arbiter"] as const) valid(await captured((c) => c.hallAnnounce(2, { canned })));
+    valid(await captured((c) => c.hallAnnounce(2, { text: "Round 3 starts in five minutes at board 1." })));
   });
 
   it("publishes at every level", async () => {

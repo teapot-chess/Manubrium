@@ -31,6 +31,9 @@ Start a tournament, add players straight from the FIDE or Belgian rating list, t
 HALL BOARDS
 With Alnasl in the hall, what each electronic board saw sits small beside its pairing, in red when it disagrees with the result entered. A board never enters a result; the arbiter does.
 
+HALL APPS
+See which print stations and announcers are online, reprint the round, start the countdown, or announce something without walking to the other end of the hall. It needs the server; a station that is off stays off, and the app says so.
+
 SEVERAL SERVERS, ONE APP
 Connect to as many OpenPairings servers as you work with. A connect code on your account page links the phone in one scan; each phone gets its own token, which the account page can revoke.
 

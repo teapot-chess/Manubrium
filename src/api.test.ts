@@ -274,3 +274,46 @@ describe("client", () => {
     await expect(client(BASE, "t", fetch).me()).rejects.toMatchObject({ status: 502, code: "not_api" });
   });
 });
+
+describe("the hall commands", () => {
+  it("send the shapes the contract takes, to the routes it names", async () => {
+    const { fetch, seen } = fake(200, { sent_to: 2, round: 3 });
+    const api = client(BASE, "tok", fetch);
+
+    expect(await api.hallPrint(7, "slips")).toEqual({ sent_to: 2, round: 3 });
+    await api.hallCountdown(7, 10);
+    await api.hallCancelCountdown(7);
+    await api.hallAnnounce(7, { canned: "phones" });
+    await api.hallAnnounce(7, { text: "Boards 1 to 10, please come over." });
+    await api.hall(7);
+
+    expect(seen.map((s) => `${s.method} ${s.url.replace(`${BASE}/api/manubrium/v1`, "")}`)).toEqual([
+      "POST /tournaments/7/hall/print",
+      "POST /tournaments/7/hall/countdown",
+      "POST /tournaments/7/hall/countdown",
+      "POST /tournaments/7/hall/announce",
+      "POST /tournaments/7/hall/announce",
+      "GET /tournaments/7/hall",
+    ]);
+    expect(seen.map((s) => s.body)).toEqual([
+      { what: "slips" },
+      { minutes: 10 },
+      { cancel: true },
+      { canned: "phones" },
+      { text: "Boards 1 to 10, please come over." },
+      undefined,
+    ]);
+  });
+
+  it("hands the hall's refusals through with their codes", async () => {
+    for (const [status, code] of [
+      [409, "hall_off"],
+      [409, "hall_no_round"],
+      [409, "hall_failed"],
+      [400, "bad_request"],
+    ] as const) {
+      const { fetch } = fake(status, { error: code, message: "No." });
+      await expect(client(BASE, "t", fetch).hallPrint(7, "both")).rejects.toMatchObject({ status, code });
+    }
+  });
+});
