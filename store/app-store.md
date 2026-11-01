@@ -40,7 +40,7 @@ Connect to as many OpenPairings servers as you work with. A connect code on your
 PLAIN AND OFFLINE-FIRST
 No sign-up, no analytics, no account of its own. The app talks only to the servers you add and stores only what it needs to reach them. It follows the phone's light or dark setting.
 
-Manubrium needs an OpenPairings server (version 0.101 or later) and an account on it. The server, and its documentation, are at pairings.cloud. Manubrium is free software under the Apache License 2.0.
+Manubrium needs an OpenPairings server (version 0.101 or later) and an account on it. The server, and its documentation, are at pairings.cloud..
 
 **What's new** (first version):
 First release: results, incidents, pairing, publishing, standings, players, new tournaments, byes, sharing and hall boards, with an outbox for the hall's dead spots.
@@ -48,7 +48,7 @@ First release: results, incidents, pairing, publishing, standings, players, new 
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
 **Privacy policy URL:** https://pairings.cloud/help/manubrium-privacy
-**Copyright:** 2026 teapot-chess contributors
+**Copyright:** 2026 teapot-chess
 
 **Age rating:** none of the content descriptors apply; 4+.
 
