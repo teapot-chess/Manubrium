@@ -59,3 +59,5 @@ jobs:
           node-version: 24
 
       - run: npm run contracts:check
+        env:
+          CONTRACTS_TOKEN: ${{ secrets.CONTRACTS_TOKEN }}
