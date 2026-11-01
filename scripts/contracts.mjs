@@ -10,7 +10,9 @@
 //   https://raw.githubusercontent.com/teapot-chess/<repo>/<ref>/priv/contracts/<name>/
 // starting with its index.json, which lists every other file. The copy is
 // byte-for-byte; nothing is reformatted. CONTRACTS_REF picks another branch
-// than main (a provider's PR, say). Plain fetch, Node 18+, no dependencies.
+// than main (a provider's PR, say). An entry with a "from" is fetched from
+// that repository instead (a private twin) with the token in CONTRACTS_TOKEN;
+// the vendored directory keeps the "repo" name. Plain fetch, Node 18+, no dependencies.
 
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
@@ -26,14 +28,25 @@ if (mode !== "sync" && mode !== "check") {
   process.exit(2);
 }
 
-const sourceUrl = (c) => `https://raw.githubusercontent.com/teapot-chess/${c.repo}/${REF}/priv/contracts/${c.name}/`;
+const sourceUrl = (c) => `https://raw.githubusercontent.com/teapot-chess/${c.from || c.repo}/${REF}/priv/contracts/${c.name}/`;
 const localDir = (c) => join(VENDOR, c.repo.toLowerCase(), c.name);
 
-async function fetchBytes(url) {
+// A public provider needs nothing. A private twin needs a token that can read
+// it, and saying so beats GitHub's 404, which is how it says "private".
+function headersFor(c) {
+  const headers = { "cache-control": "no-cache" };
+  if (!c.from) return headers;
+  const token = process.env.CONTRACTS_TOKEN;
+  if (!token) throw new Error(`${c.from} is private: set CONTRACTS_TOKEN to a token that can read it`);
+  headers.authorization = `token ${token}`;
+  return headers;
+}
+
+async function fetchBytes(url, headers) {
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const response = await fetch(url, { headers: { "cache-control": "no-cache" } });
+      const response = await fetch(url, { headers });
       if (response.ok) return Buffer.from(await response.arrayBuffer());
       lastError = new Error(`${url}: HTTP ${response.status}`);
       if (response.status === 404) break;
@@ -89,7 +102,8 @@ function lineDiff(before, after, max = 6) {
 
 async function fetchContract(c) {
   const base = sourceUrl(c);
-  const indexBytes = await fetchBytes(base + "index.json");
+  const headers = headersFor(c);
+  const indexBytes = await fetchBytes(base + "index.json", headers);
   const index = JSON.parse(indexBytes.toString("utf8"));
   if (!Array.isArray(index.files)) throw new Error(`${base}index.json has no "files" list`);
   for (const f of index.files) {
@@ -102,7 +116,7 @@ async function fetchContract(c) {
     Array.from({ length: 8 }, async () => {
       while (queue.length) {
         const f = queue.shift();
-        files.set(f, await fetchBytes(base + f));
+        files.set(f, await fetchBytes(base + f, headers));
       }
     }),
   );
