@@ -22,7 +22,7 @@ Manubrium is the phone companion to OpenPairings, the open tournament manager fo
 
 <b>Plain and offline-first.</b> No sign-up, no analytics, no account of its own. The app talks only to the servers you add and stores only what it needs to reach them. It follows the phone's light or dark theme.
 
-Manubrium needs an OpenPairings server (version 1.0 or later) with the mobile API switched on, and an account on it. The server and its documentation are at pairings.cloud. Manubrium is free software under the Apache License 2.0; the source is at github.com/teapot-chess/Manubrium.
+Manubrium needs an OpenPairings server (version 1.0 or later) with the mobile API switched on, and an account on it. The server and its documentation are at pairings.cloud..
 
 **Category:** Sports. **Tags:** chess, tournament, sports management.
 

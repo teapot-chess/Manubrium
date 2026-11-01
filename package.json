@@ -2,7 +2,7 @@
   "name": "manubrium",
   "version": "1.0.0",
   "private": true,
-  "license": "Apache-2.0",
+  "license": "UNLICENSED",
   "description": "Manubrium - run a chess tournament from the playing hall, against OpenPairings servers.",
   "type": "module",
   "scripts": {
