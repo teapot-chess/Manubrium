@@ -130,6 +130,7 @@ export type HandEdit =
   | { kind: "fill"; pairing: number; player: number }
   | { kind: "pool_pair"; a: number; b: number; board?: number }
   | { kind: "pool_bye"; player: number }
+  | { kind: "bye_pair"; pairing: number; player: number }
   | { kind: "delete"; pairing: number };
 
 /** The settings a phone may change (`PATCH /settings`), by field. */

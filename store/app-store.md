@@ -45,6 +45,12 @@ Manubrium needs an OpenPairings server (version 0.101 or later) and an account o
 **What's new** (first version):
 First release: results, incidents, pairing, publishing, standings, players, new tournaments, byes, sharing and hall boards, with an outbox for the hall's dead spots.
 
+**What's new** (1.1.0):
+A bye board can now be paired with a player who is not playing this round: the bye becomes their game. Needs an OpenPairings server that offers it (0.120 or later).
+
+**Wat is er nieuw** (1.1.0, NL):
+Een bord met de bye kun je nu paren met een speler die deze ronde niet speelt: de bye wordt hun partij. Vraagt een OpenPairings-server die dat kent (0.120 of nieuwer).
+
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
 **Privacy policy URL:** https://pairings.cloud/help/manubrium-privacy
