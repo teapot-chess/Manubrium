@@ -292,6 +292,41 @@ describe("hand edits", () => {
     await waitFor(() => expect(api.edit).toHaveBeenCalledWith(7, 1, { kind: "fill", pairing: 1, player: 12 }, []));
   });
 
+  it("pairs the bye with a player who is not playing", async () => {
+    const r = round([board(1, 1), board(2, 2, { black: null, bye: true })], {
+      pool: [{ player: p(31, "Late One"), type: "absent", absent: true }],
+    });
+    const api = fakeApi(r);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-2"));
+    fireEvent.click(document.querySelector("#pair-bye")!);
+    fireEvent.click(document.querySelector("#bye-pair-with-31")!);
+    await waitFor(() => expect(api.edit).toHaveBeenCalledWith(7, 1, { kind: "bye_pair", pairing: 2, player: 31 }, []));
+  });
+
+  it("asks first when pairing the bye needs an answer", async () => {
+    const r = round([board(1, 1, { black: null, bye: true })], { pool: [{ player: p(31, "Late One"), type: null, absent: false }] });
+    const api = fakeApi(r);
+    api.edit.mockRejectedValueOnce(needs({ confirm: ["sent_round_changed"], summary: "White 1 - Late One on board 1", warnings: [] }));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-1"));
+    fireEvent.click(document.querySelector("#pair-bye")!);
+    fireEvent.click(document.querySelector("#bye-pair-with-31")!);
+    await screen.findByText(/White 1 - Late One on board 1/);
+    fireEvent.click(document.querySelector("#ask-yes")!);
+    await waitFor(() => expect(api.edit).toHaveBeenLastCalledWith(7, 1, { kind: "bye_pair", pairing: 1, player: 31 }, ["sent_round_changed"]));
+  });
+
+  it("offers no pairing of the bye when nobody is outside the boards", async () => {
+    const r = round([board(1, 1, { black: null, bye: true })]);
+    render(<RoundScreen ctx={ctxWith(fakeApi(r))} t={tournament("owner")} reloadTournament={async () => undefined} />);
+
+    fireEvent.click(await el("#board-1"));
+    expect(document.querySelector("#pair-bye")).toBeNull();
+  });
+
   it("vacates a seat, with the bye type where the tournament asks it", async () => {
     const api = fakeApi(round([board(1, 1)]));
     render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner", { ask_bye_type: true })} reloadTournament={async () => undefined} />);

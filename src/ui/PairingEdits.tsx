@@ -1,6 +1,7 @@
 // Hand edits to a paired round, the Pairings page's in a phone's shape:
 // swap two players, mark one as not playing, give a lone player the bye,
-// fill an empty seat, pair two from the pool, remove an empty last board,
+// fill an empty seat, pair two from the pool, pair the bye with one of them
+// (the bye board becomes their game), remove an empty last board,
 // and finish the edits under the pairing checker.
 //
 // Every edit goes to the server, which applies the desk's own rules. Where
@@ -126,6 +127,7 @@ export function BoardEditSheet(props: {
   const [swapFrom, setSwapFrom] = useState<BoardPlayer | null>(null);
   const [vacating, setVacating] = useState<BoardPlayer | null>(null);
   const [filling, setFilling] = useState(false);
+  const [pairingBye, setPairingBye] = useState(false);
   const flow = useAsking(setError);
   const pool = round.pool ?? [];
   const askType = t.settings.ask_bye_type === true;
@@ -208,6 +210,34 @@ export function BoardEditSheet(props: {
         </button>
       </>
     );
+  } else if (pairingBye && board.bye && board.white) {
+    const holder = board.white;
+    body = (
+      <>
+        <p class="sheet-sub">{tr("pe.who_plays_bye", { name: holder.name })}</p>
+        <ul class="list compact" id="bye-pair-from">
+          {pool.map((e) => (
+            <li key={e.player.id} class="row">
+              <button
+                type="button"
+                class="row-main"
+                id={`bye-pair-with-${e.player.id}`}
+                disabled={flow.busy}
+                onClick={() =>
+                  apply({ kind: "bye_pair", pairing: board.id, player: e.player.id }, tr("pe.bye_paired", { a: holder.name, b: e.player.name, label: board.label }))
+                }
+              >
+                <span class="row-title">{e.player.name}</span>
+                <span class="row-sub">{e.type ? byeLabel(e.type) : e.absent ? tr("pe.absent") : tr("pe.unpaired")}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button type="button" class="btn ghost block" onClick={() => setPairingBye(false)}>
+          {tr("common.back")}
+        </button>
+      </>
+    );
   } else if (board.empty) {
     body = (
       <button
@@ -258,6 +288,11 @@ export function BoardEditSheet(props: {
             )}
           </div>
         ))}
+        {board.bye && pool.length > 0 && !t.read_only && (
+          <button type="button" class="btn block" id="pair-bye" onClick={() => setPairingBye(true)}>
+            {tr("pe.pair_bye")}
+          </button>
+        )}
       </>
     );
   }

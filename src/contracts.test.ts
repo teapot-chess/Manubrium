@@ -665,6 +665,7 @@ describe("every request the app builds", () => {
       { kind: "pool_pair", a: 13, b: 14 },
       { kind: "pool_pair", a: 13, b: 14, board: 3 },
       { kind: "pool_bye", player: 13 },
+      { kind: "bye_pair", pairing: 101, player: 13 },
       { kind: "delete", pairing: 101 },
     ];
     for (const edit of edits) valid(await captured((c) => c.edit(2, 1, edit, ["swap_rules"])));

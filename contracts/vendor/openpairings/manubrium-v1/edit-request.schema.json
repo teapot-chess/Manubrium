@@ -140,6 +140,26 @@
           "additionalProperties": true,
           "required": [
             "kind",
+            "pairing",
+            "player"
+          ],
+          "properties": {
+            "kind": {
+              "const": "bye_pair"
+            },
+            "pairing": {
+              "$ref": "common.schema.json#/definitions/id"
+            },
+            "player": {
+              "$ref": "common.schema.json#/definitions/id"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "kind",
             "pairing"
           ],
           "properties": {
