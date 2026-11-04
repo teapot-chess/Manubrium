@@ -13,6 +13,7 @@ import { pairingsText } from "../share";
 import { byeLabel } from "../byes";
 import { refusalText } from "../queue";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
+import { currentRound } from "../currentRound";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
@@ -30,17 +31,32 @@ export const incidentKinds = (): [string, string][] => [
 
 export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: () => Promise<void> }) {
   const { ctx, t } = props;
+  // The last paired round bounds the arrows; the round the server calls
+  // current is where the screen opens. They differ in a round robin, where
+  // every round is paired at once and the hall is still playing round 1.
   const latest = t.paired_rounds;
+  const [current, setCurrent] = useState(latest);
   const [number, setNumber] = useState(latest);
-  // The tournament record is reloaded from outside (an organiser pairs round
-  // 1, someone undoes the last round): the round on screen follows `latest`
-  // when it was on the last round or on none, and never points past it.
-  const seenLatest = useRef(latest);
   useEffect(() => {
-    const before = seenLatest.current;
-    seenLatest.current = latest;
-    setNumber((n) => (n < 1 || n === before || n > latest ? latest : n));
-  }, [latest]);
+    let gone = false;
+    currentRound((n) => ctx.api.round(t.id, n), latest).then((c) => {
+      if (!gone) setCurrent(c);
+    });
+    return () => {
+      gone = true;
+    };
+  }, [ctx.api, t.id, latest]);
+  // The tournament record is reloaded from outside (an organiser pairs round
+  // 1, someone undoes the last round): the round on screen follows the
+  // current round when it was on it or on none, and never points past the
+  // last paired round.
+  const seenCurrent = useRef(latest);
+  useEffect(() => {
+    const before = seenCurrent.current;
+    const target = Math.min(current, latest);
+    seenCurrent.current = target;
+    setNumber((n) => (n < 1 || n === before || n > latest ? target : n));
+  }, [current, latest]);
   const [loaded, setRound] = useState<Round | null>(null);
   // Never the boards of another round under this round's header, not even
   // for the frame before the effect below clears them.
@@ -747,7 +763,10 @@ function DeskSheet(props: {
         </>
       )}
 
-      {t.can.includes("pair") && round.latest && (
+      {/* Pairing the next round and undoing one are about the last paired
+          round, not the current one (`round.latest`): in a round robin
+          those are different rounds, and only the last can be undone. */}
+      {t.can.includes("pair") && round.number === t.paired_rounds && (
         <>
           <h3>{tr("round.next_round")}</h3>
           <PairButton ctx={ctx} t={t} onPaired={(n) => props.onChanged(tr("round.paired_msg", { n }), n)} />
