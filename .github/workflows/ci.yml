@@ -23,7 +23,7 @@ concurrency:
 jobs:
   web:
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, teapot-vm]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,7 +49,7 @@ jobs:
   # fails with a diff if the vendored copy has drifted. The fix is
   # `npm run contracts:sync`, then whatever `npm test` says next.
   contracts:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, teapot-vm]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

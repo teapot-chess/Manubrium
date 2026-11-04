@@ -35,6 +35,8 @@ concurrency:
 
 jobs:
   android:
+    # Stays GitHub-hosted: the Android SDK and licences come with the hosted image;
+    # the self-hosted VM has no Android SDK and no sudo to install one.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -138,7 +140,7 @@ jobs:
   release:
     needs: android
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, teapot-vm]
     timeout-minutes: 10
     permissions:
       contents: write
