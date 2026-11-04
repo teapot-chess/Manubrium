@@ -18,6 +18,7 @@ import { Tournaments } from "./Tournaments";
 import { NewTournament } from "./NewTournament";
 import { PlayersScreen } from "./PlayersScreen";
 import { RoundScreen } from "./RoundScreen";
+import { currentRound } from "../currentRound";
 import { StandingsScreen } from "./StandingsScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
 
@@ -1205,6 +1206,80 @@ describe("the round follows the tournament record", () => {
     view.rerender(<RoundScreen ctx={ctx} t={at(4)} reloadTournament={reload} />);
     await el("#board-4");
     expect(screen.getByText("Round 4")).toBeTruthy();
+  });
+});
+
+describe("the current round comes from the server", () => {
+  // A round robin of three, paired in one go, with round 1 still playing:
+  // the server marks round 1 `latest`, not round 3.
+  const roundRobin = () => ({ ...tournament("owner"), paired_rounds: 3 });
+
+  it("opens on the round the server marks current, not the last paired one", async () => {
+    const api = fakeApi(round([]));
+    api.round.mockImplementation(async (_id: number, number: number) =>
+      round([board(number * 10, 1)], { number, latest: number === 1 }),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={roundRobin()} reloadTournament={async () => undefined} />);
+    await el("#board-10");
+    expect(screen.getByText("Round 1")).toBeTruthy();
+  });
+
+  it("opens on the last paired round for a server that marks that one", async () => {
+    const api = fakeApi(round([]));
+    api.round.mockImplementation(async (_id: number, number: number) =>
+      round([board(number * 10, 1)], { number, latest: number === 3 }),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={roundRobin()} reloadTournament={async () => undefined} />);
+    await el("#board-30");
+    expect(screen.getByText("Round 3")).toBeTruthy();
+    expect(api.round).not.toHaveBeenCalledWith(7, 2);
+  });
+
+  it("offers pairing and undoing on the last paired round only", async () => {
+    const api = fakeApi(round([]));
+    api.round.mockImplementation(async (_id: number, number: number) =>
+      round([board(number * 10, 1)], { number, latest: number === 1 }),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={roundRobin()} reloadTournament={async () => undefined} />);
+    await el("#board-10");
+    fireEvent.click(await el("#desk-actions"));
+    await screen.findByText("Not public");
+    expect(screen.queryByText("Next round")).toBeNull();
+  });
+
+  it("still offers them on the last paired round when the server marks another current", async () => {
+    const api = fakeApi(round([]));
+    api.round.mockImplementation(async (_id: number, number: number) =>
+      round([board(number * 10, 1)], { number, latest: number === 1 }),
+    );
+    render(<RoundScreen ctx={ctxWith(api)} t={roundRobin()} reloadTournament={async () => undefined} />);
+    await el("#board-10");
+    fireEvent.click(screen.getByLabelText("Next round"));
+    fireEvent.click(screen.getByLabelText("Next round"));
+    await el("#board-30");
+    fireEvent.click(await el("#desk-actions"));
+    await screen.findByText("Next round");
+  });
+});
+
+describe("currentRound", () => {
+  const marked = (current: number) => async (n: number) => ({ latest: n === current });
+
+  it("walks down from the last paired round to the one marked latest", async () => {
+    const asked: number[] = [];
+    const fetch = async (n: number) => {
+      asked.push(n);
+      return marked(2)(n);
+    };
+    expect(await currentRound(fetch, 4)).toBe(2);
+    expect(asked).toEqual([4, 3, 2]);
+  });
+
+  it("is the last paired round when the server marks that one, or none, or cannot be asked", async () => {
+    expect(await currentRound(marked(4), 4)).toBe(4);
+    expect(await currentRound(marked(0), 4)).toBe(4);
+    expect(await currentRound(async () => Promise.reject(new OfflineError()), 4)).toBe(4);
+    expect(await currentRound(marked(1), 0)).toBe(0);
   });
 });
 
