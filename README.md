@@ -38,8 +38,14 @@ The server side - the API, device tokens, roles - lives in OpenPairings
 Manubrium Lite, the no-install browser page at `/m`, is OpenPairings' own and
 has nothing to do with this code.
 
-All rights reserved - see `LICENSE` and `NOTICE`. The server it talks to,
-OpenPairings, has its own licence.
+## Licence
+
+Source available under the [Functional Source License, Version 1.1, Apache 2.0
+Future License](LICENSE) (FSL-1.1-ALv2). You may use, copy, modify and
+redistribute it for any purpose except offering a competing product or
+service. Each release turns into Apache-2.0 two years after it is published.
+Third-party attributions are in [NOTICE](NOTICE). The server it talks to,
+OpenPairings, is licensed the same way.
 
 ## How it is built, and why
 

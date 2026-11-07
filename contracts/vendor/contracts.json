@@ -1,4 +1,4 @@
 [
-  { "repo": "openpairings", "from": "openpairings-internal", "name": "manubrium-v1" },
-  { "repo": "openpairings", "from": "openpairings-internal", "name": "hall-link-v1" }
+  { "repo": "openpairings", "name": "manubrium-v1" },
+  { "repo": "openpairings", "name": "hall-link-v1" }
 ]

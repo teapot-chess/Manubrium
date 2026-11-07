@@ -1,5 +1,8 @@
 Manubrium
-Copyright (c) 2026 teapot-chess. All rights reserved; see LICENSE.
+Copyright 2026 Jorian Burssens. Licensed under the Functional Source License,
+Version 1.1, Apache 2.0 Future License (FSL-1.1-ALv2); see LICENSE. Each
+version becomes available under the Apache License, Version 2.0 two years
+after it is released.
 
 What the built apps carry besides Manubrium, none of it copied into this
 repository - they are npm dependencies, listed in package-lock.json, each

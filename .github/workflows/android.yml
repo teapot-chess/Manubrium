@@ -12,19 +12,23 @@ name: Android
 
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
-  # A pull request that touches the Android side builds it too, unsigned
-  # (no secrets reach a pull request) and unpublished (the release job is
-  # for tags). v1.0.0 found out about a plug-in's minimum Android only at
-  # the tag, which is the most expensive moment to find out anything.
-  pull_request:
-    paths:
-      - "android/**"
-      - "package.json"
-      - "package-lock.json"
-      - "capacitor.config.*"
-      - ".github/workflows/android.yml"
+
+# Off until December 2026 - restore these triggers to re-enable:
+# on:
+#   workflow_dispatch:
+#   push:
+#     tags: ["v*"]
+#   # A pull request that touches the Android side builds it too, unsigned
+#   # (no secrets reach a pull request) and unpublished (the release job is
+#   # for tags). v1.0.0 found out about a plug-in's minimum Android only at
+#   # the tag, which is the most expensive moment to find out anything.
+#   pull_request:
+#     paths:
+#       - "android/**"
+#       - "package.json"
+#       - "package-lock.json"
+#       - "capacitor.config.*"
+#       - ".github/workflows/android.yml"
 
 permissions:
   contents: read
@@ -35,8 +39,7 @@ concurrency:
 
 jobs:
   android:
-    # Stays GitHub-hosted: the Android SDK and licences come with the hosted image;
-    # the self-hosted VM has no Android SDK and no sudo to install one.
+    # GitHub-hosted: the Android SDK and licences come with the hosted image.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -140,7 +143,7 @@ jobs:
   release:
     needs: android
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: [self-hosted, Linux, X64, teapot-vm]
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
