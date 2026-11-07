@@ -51,6 +51,8 @@ jobs:
   contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      CONTRACTS_TOKEN: ${{ secrets.SIBLINGS_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -58,4 +60,8 @@ jobs:
         with:
           node-version: 24
 
-      - run: npm run contracts:check
+      # SIBLINGS_TOKEN reads the private openpairings repo. A fork PR gets no
+      # secret, so the check is skipped there instead of failing on a 404.
+      - name: Check contracts
+        if: env.CONTRACTS_TOKEN != ''
+        run: npm run contracts:check
