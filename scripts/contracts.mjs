@@ -35,8 +35,12 @@ const localDir = (c) => join(VENDOR, c.repo.toLowerCase(), c.name);
 // it, and saying so beats GitHub's 404, which is how it says "private".
 function headersFor(c) {
   const headers = { "cache-control": "no-cache" };
-  if (!c.from) return headers;
   const token = process.env.CONTRACTS_TOKEN;
+  // openpairings is private: a token in the environment goes to every provider.
+  if (!c.from) {
+    if (token) headers.authorization = `token ${token}`;
+    return headers;
+  }
   if (!token) throw new Error(`${c.from} is private: set CONTRACTS_TOKEN to a token that can read it`);
   headers.authorization = `token ${token}`;
   return headers;
