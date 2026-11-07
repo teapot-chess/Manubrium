@@ -70,6 +70,9 @@
 	<string>Manubrium uses the camera to scan the connect code on your OpenPairings account page and to photograph an incident (a scoresheet, a clock) for the arbiter's log.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Manubrium can attach a photo you already took to an incident in the arbiter's log.</string>
+	<!-- The round on the lock screen (RoundActivity extension). -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocalNetworkUsageDescription</key>

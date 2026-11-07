@@ -1,0 +1,8 @@
+"push_round_paired" = "La ronde %1$@ est appariée.";
+"push_round_published" = "La ronde %1$@ est publiée.";
+"push_incident" = "Ronde %1$@, échiquier %2$@ : un incident a été noté.";
+"push_phone_vs_board" = "Échiquier %1$@ : un téléphone a saisi %2$@, l'échiquier de la salle dit %3$@.";
+"push_phone_vs_entry" = "Échiquier %1$@ : un téléphone a tenté %2$@ par-dessus le %3$@ déjà saisi.";
+"push_coarbiter_one" = "Ronde %1$@, échiquier %2$@ : %3$@ a saisi %4$@.";
+"push_coarbiter_many" = "Ronde %1$@ : %2$@ a saisi %3$@ résultats.";
+"push_default_time" = "Ronde %1$@ : le temps de forfait est atteint.";

@@ -63,6 +63,22 @@ jobs:
 
       - run: npm ci
 
+      # Push needs Firebase, and Firebase needs google-services.json, which is
+      # not in git: it comes from the GOOGLE_SERVICES_JSON secret (the file,
+      # base64). Without it the build has no push at all and the app says so;
+      # with it, VITE_ANDROID_PUSH=1 lets the app register (src/pushNative.ts).
+      - name: Firebase config, if there is one
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "${GOOGLE_SERVICES_JSON:-}" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+            echo "VITE_ANDROID_PUSH=1" >> "$GITHUB_ENV"
+            echo "google-services.json in place: push on"
+          else
+            echo "no GOOGLE_SERVICES_JSON secret: this build has no push"
+          fi
+
       - name: Build the web bundle
         run: npm run build
 

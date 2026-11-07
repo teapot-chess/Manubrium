@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the server's notifications say (body_loc_key / body_loc_args in
+     OpenPairings' lib/pairings_engine/push/events.ex). Same keys in
+     ios/App/App/*.lproj/Localizable.strings. -->
+<resources>
+    <string name="push_round_paired">Round %1$s is paired.</string>
+    <string name="push_round_published">Round %1$s is published.</string>
+    <string name="push_incident">Round %1$s, board %2$s: an incident was logged.</string>
+    <string name="push_phone_vs_board">Board %1$s: a phone entered %2$s, the hall board says %3$s.</string>
+    <string name="push_phone_vs_entry">Board %1$s: a phone tried %2$s over the %3$s already entered.</string>
+    <string name="push_coarbiter_one">Round %1$s, board %2$s: %3$s entered %4$s.</string>
+    <string name="push_coarbiter_many">Round %1$s: %2$s entered %3$s results.</string>
+    <string name="push_default_time">Round %1$s: the default time is reached.</string>
+</resources>

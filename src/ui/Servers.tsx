@@ -3,6 +3,7 @@ import type { Outbox } from "../queue";
 import type { SavedServer } from "../servers";
 import { Notice, Sheet, TopBar } from "./common";
 import { t, LANGUAGES, LANGUAGE_NAMES, type LangChoice } from "../i18n";
+import { NotificationSettings } from "./Notifications";
 
 const unsent = (n: number) => (n === 1 ? t("servers.unsent_one") : t("servers.unsent_other", { n }));
 
@@ -22,6 +23,7 @@ export function Servers(props: {
   onLanguage?: (choice: LangChoice) => void;
 }) {
   const [removing, setRemoving] = useState<SavedServer | null>(null);
+  const current = props.servers.find((s) => s.base === props.current);
 
   return (
     <div class="screen">
@@ -77,6 +79,8 @@ export function Servers(props: {
             </select>
           </div>
         )}
+
+        {current && <NotificationSettings key={current.base} server={current} servers={props.servers} />}
       </main>
 
       {removing && (

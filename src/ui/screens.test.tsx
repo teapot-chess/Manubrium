@@ -22,11 +22,17 @@ import { currentRound } from "../currentRound";
 import { StandingsScreen } from "./StandingsScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
 
-vi.mock("../platform", () => ({
-  onResume: () => () => undefined,
-  takePhoto: vi.fn(async () => "/9j/PHOTO"),
-  shareText: vi.fn(async () => "shared"),
-}));
+vi.mock("../platform", () => {
+  const kept = new Map<string, string>();
+  return {
+    native: false,
+    platform: "web",
+    storage: { get: async (k: string) => kept.get(k) ?? null, set: async (k: string, v: string) => void kept.set(k, v) },
+    onResume: () => () => undefined,
+    takePhoto: vi.fn(async () => "/9j/PHOTO"),
+    shareText: vi.fn(async () => "shared"),
+  };
+});
 
 class Memory implements KeyValue {
   data = new Map<string, string>();

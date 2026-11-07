@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="push_round_paired">Ronde %1$s is gepaard.</string>
+    <string name="push_round_published">Ronde %1$s is gepubliceerd.</string>
+    <string name="push_incident">Ronde %1$s, bord %2$s: er is een incident genoteerd.</string>
+    <string name="push_phone_vs_board">Bord %1$s: een telefoon gaf %2$s in, het zaalbord zegt %3$s.</string>
+    <string name="push_phone_vs_entry">Bord %1$s: een telefoon probeerde %2$s over de al ingevoerde %3$s.</string>
+    <string name="push_coarbiter_one">Ronde %1$s, bord %2$s: %3$s gaf %4$s in.</string>
+    <string name="push_coarbiter_many">Ronde %1$s: %2$s gaf %3$s uitslagen in.</string>
+    <string name="push_default_time">Ronde %1$s: de wachttijd is om.</string>
+</resources>

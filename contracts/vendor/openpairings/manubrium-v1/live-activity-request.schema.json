@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-activity-request.schema.json",
+  "title": "PUT /tournaments/:id/live-activity request",
+  "description": "An iOS Live Activity's own push token (ActivityKit's pushTokenUpdates), for round `round` of this tournament. One per phone and tournament: a later one replaces it. The server pushes the round's count as the activity's ContentState {done, total} (games with a result, games; byes are not games) when results come in - at most one update per twenty seconds - and ends the activity once every game has a result. DELETE /tournaments/:id/live-activity forgets it (the app ended it).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "activity"
+  ],
+  "properties": {
+    "activity": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "round",
+        "token"
+      ],
+      "properties": {
+        "round": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9:_.-]+$"
+        },
+        "environment": {
+          "$ref": "push-response.schema.json#/definitions/environment"
+        }
+      }
+    }
+  }
+}

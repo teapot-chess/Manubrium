@@ -370,3 +370,12 @@ label.check input { width: 22px; min-height: 22px; flex: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- notifications ---------- */
+.push-settings { margin-top: 22px; }
+.push-settings h2 { font-size: 15px; margin-bottom: 4px; }
+.push-events { display: grid; gap: 10px; margin: 10px 0; }
+.push-offer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px 14px; margin: 12px 0; }
+.push-offer .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.push-reminder { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 12px 0; }
+.fine.error { color: var(--danger, #b42318); }

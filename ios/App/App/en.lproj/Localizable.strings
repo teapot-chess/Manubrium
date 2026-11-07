@@ -1,0 +1,10 @@
+/* What the server's notifications say (loc-key / loc-args in OpenPairings'
+   lib/pairings_engine/push/events.ex). Same keys in Android's push_strings.xml. */
+"push_round_paired" = "Round %1$@ is paired.";
+"push_round_published" = "Round %1$@ is published.";
+"push_incident" = "Round %1$@, board %2$@: an incident was logged.";
+"push_phone_vs_board" = "Board %1$@: a phone entered %2$@, the hall board says %3$@.";
+"push_phone_vs_entry" = "Board %1$@: a phone tried %2$@ over the %3$@ already entered.";
+"push_coarbiter_one" = "Round %1$@, board %2$@: %3$@ entered %4$@.";
+"push_coarbiter_many" = "Round %1$@: %2$@ entered %3$@ results.";
+"push_default_time" = "Round %1$@: the default time is reached.";
