@@ -46,7 +46,20 @@ function headersFor(c) {
   return headers;
 }
 
-async function fetchBytes(url, headers) {
+// With a token the file comes through the contents API, which is how a private
+// repository is read; raw.githubusercontent.com answers 404 to that question.
+function viaApi(url, headers) {
+  const m = new RegExp("^https://raw\\.githubusercontent\\.com/([^/]+)/([^/]+)/([^/]+)/(.+)$").exec(url);
+  if (!headers.authorization || !m) return { url, headers };
+  const [, owner, repo, ref, path] = m;
+  return {
+    url: `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+    headers: { ...headers, accept: "application/vnd.github.raw", "x-github-api-version": "2022-11-28" },
+  };
+}
+
+async function fetchBytes(rawUrl, rawHeaders) {
+  const { url, headers } = viaApi(rawUrl, rawHeaders);
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
