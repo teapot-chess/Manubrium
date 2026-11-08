@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/prizes-response.schema.json",
+  "title": "GET /tournaments/:id/prizes response",
+  "description": "Who gets what, as the Prizes page has it, for the desk roles (like the standings it comes from). One table per prize list - the general one first unless the priority says otherwise, then the categories - each award with its place, player and amount. `configured` is false, with no tables, when no prize money is set or the event is a team event. `final` is false while rounds, results or postponed games are still to come: the list is provisional until then. Amounts are formatted by the server (`1 234.50 EUR`); a non-cash prize has an `item` and may have no amount.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prizes"],
+  "properties": {
+    "prizes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configured", "final", "currency", "paid", "tables"],
+      "properties": {
+        "configured": { "type": "boolean" },
+        "final": { "type": "boolean" },
+        "currency": { "type": "string" },
+        "paid": { "type": "string", "description": "The total paid out, formatted; empty when not configured." },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "unclaimed", "awards"],
+            "properties": {
+              "name": { "type": ["string", "null"], "description": "The category; null for the general table." },
+              "unclaimed": { "type": "integer", "minimum": 0, "description": "Places nobody was left to take." },
+              "awards": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["place", "label", "item", "amount", "rank", "player"],
+                  "properties": {
+                    "place": { "type": "string", "description": "\"3\", or \"3-5\" for places shared by players level on points." },
+                    "label": { "type": "string" },
+                    "item": { "type": "string" },
+                    "amount": { "type": "string", "description": "Formatted; empty for a prize without money." },
+                    "rank": { "type": ["string", "integer", "null"], "description": "As the standings show it." },
+                    "player": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["id", "name", "title"],
+                      "properties": {
+                        "id": { "$ref": "common.schema.json#/definitions/id" },
+                        "name": { "type": "string" },
+                        "title": { "type": ["string", "null"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

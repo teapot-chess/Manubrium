@@ -22,17 +22,33 @@ import { currentRound } from "../currentRound";
 import { StandingsScreen } from "./StandingsScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
 
-vi.mock("../platform", () => {
-  const kept = new Map<string, string>();
-  return {
-    native: false,
-    platform: "web",
-    storage: { get: async (k: string) => kept.get(k) ?? null, set: async (k: string, v: string) => void kept.set(k, v) },
-    onResume: () => () => undefined,
-    takePhoto: vi.fn(async () => "/9j/PHOTO"),
-    shareText: vi.fn(async () => "shared"),
+const phone = vi.hoisted(() => {
+  const kv = () => {
+    const data = new Map<string, string>();
+    return { data, get: async (k: string) => data.get(k) ?? null, set: async (k: string, v: string) => void data.set(k, v) };
   };
+  return { storage: kv(), vault: kv(), scanned: null as string | null, reminders: [] as { id: number; at: Date }[] };
 });
+
+vi.mock("../platform", () => ({
+  native: true,
+  platform: "web",
+  storage: phone.storage,
+  secureStorage: phone.vault,
+  onResume: () => () => undefined,
+  onPause: () => () => undefined,
+  awayOnPurpose: () => false,
+  takePhoto: vi.fn(async () => "/9j/PHOTO"),
+  shareText: vi.fn(async () => "shared"),
+  scanQr: vi.fn(async () => phone.scanned),
+  remindAt: vi.fn(async (id: number, at: Date) => {
+    phone.reminders.push({ id, at });
+    return true;
+  }),
+  cancelReminder: vi.fn(async () => undefined),
+  deviceUnlockAvailable: async () => false,
+  deviceUnlock: async () => false,
+}));
 
 class Memory implements KeyValue {
   data = new Map<string, string>();
@@ -151,6 +167,11 @@ function fakeApi(r: Round): FakeApi {
     revokeBoardLink: vi.fn(async () => undefined),
     createTournament: vi.fn(async () => ({ id: 9, name: "Hall Open" })),
     standings: vi.fn(async () => ({ tiebreaks: [], rows: [] })),
+    arrivals: vi.fn(async () => []),
+    prizes: vi.fn(async () => ({ configured: false, final: false, currency: "EUR", paid: "", tables: [] })),
+    playerCard: vi.fn(async () => {
+      throw new OfflineError();
+    }),
   } as never;
 }
 
@@ -172,6 +193,10 @@ const el = (selector: string) =>
 const needs = (body: Record<string, unknown>) => new ApiError(409, "needs_acknowledgement", "Confirm first.", { error: "needs_acknowledgement", ...body });
 
 beforeEach(async () => {
+  phone.storage.data.clear();
+  phone.vault.data.clear();
+  phone.scanned = null;
+  phone.reminders.length = 0;
   n = 0;
   outbox = new Outbox(new Memory(), () => `cid-${++n}`);
   await outbox.load();
@@ -1376,5 +1401,169 @@ describe("a sheet with something typed in it", () => {
     fireEvent.click(document.querySelector("#discard-draft-keep")!);
     expect((document.querySelector("#incident-note") as HTMLTextAreaElement).value).toBe("clock stopped");
     expect((document.querySelector("#incident-note") as HTMLTextAreaElement).maxLength).toBe(280);
+  });
+});
+
+describe("1.2: the default time, scanning and a player's card", () => {
+  const FF = ["1-0", "1/2-1/2", "0-1", "1-0FF", "0-1FF", "0-0FF"];
+  const roundKey = "manubrium.defaulttime.v1.https://pairings.example#7#1";
+  const card = {
+    player: { id: 11, name: "White 1", title: null, rating: 2100, club: "KSK", federation: "BEL", status: "active", present: true, byes: [{ round: 4, kind: "half" }] },
+    rank: 3,
+    score: 1.5,
+    games: [
+      { round: 1, opponent: { id: 5, name: "Opp A", title: null, rating: 1900 }, colour: "w", result: "1" },
+      { round: 2, opponent: { id: 6, name: "Opp B", title: "FM", rating: 2300 }, colour: "b", result: "½" },
+    ],
+  };
+
+  it("lists a board with a player not checked in and, once the time is up, enters the forfeit after asking", async () => {
+    phone.storage.data.set(roundKey, JSON.stringify({ start: Date.now() - 31 * 60_000, minutes: 30, cleared: [] }));
+    const api = fakeApi(round([board(1, 1), board(2, 2)], { results: FF }));
+    api.arrivals.mockResolvedValue([{ id: 11, present: false }]);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#default-time"));
+    await el("#dt-board-1");
+    expect(document.querySelector("#dt-board-2")).toBeNull();
+    fireEvent.click(await el("#dt-forfeit-1"));
+    fireEvent.click(await el("#dt-forfeit-confirm-0-1FF"));
+    await waitFor(() => expect(api.sync).toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "result", pairing: 1, result: "0-1FF" })]));
+  });
+
+  it("starts the clock with the minutes typed, and asks for a reminder when the phone is set to", async () => {
+    phone.storage.data.set("manubrium.phone.v1", JSON.stringify({ remindDefaultTime: true }));
+    const api = fakeApi(round([board(1, 1)], { results: FF }));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#default-time"));
+    fireEvent.input(await el("#default-time-minutes"), { target: { value: "15" } });
+    fireEvent.click(await el("#default-time-go"));
+    await el("#default-time-left");
+    await waitFor(() => expect(phone.reminders).toHaveLength(1));
+    expect(JSON.parse(phone.storage.data.get(roundKey)!).minutes).toBe(15);
+  });
+
+  it("opens the board a scanned result slip names, and refuses another tournament's", async () => {
+    const api = fakeApi(round([board(1, 1), board(2, 2)]));
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    phone.scanned = "OP1:B:7:1:2";
+    fireEvent.click(await el("#scan-slip"));
+    expect((await el("#result-white")).textContent).toBe("White 2");
+    phone.scanned = "OP1:B:8:1:2";
+    fireEvent.click(await el("#scan-slip"));
+    await waitFor(() => expect(document.querySelector(".notice.error")).not.toBeNull());
+  });
+
+  it("shows a player's card from the result sheet: score, colours, byes and games", async () => {
+    const api = fakeApi(round([board(1, 1)]));
+    api.playerCard.mockResolvedValue(card);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#board-1"));
+    fireEvent.click(await el("#result-white"));
+    await el("#player-card");
+    expect(api.playerCard).toHaveBeenCalledWith(7, 11);
+    expect(document.querySelector("#player-colours")!.textContent).toBe("WB");
+    expect(document.querySelector("#player-score")!.textContent).toContain("1½");
+    expect(document.querySelector("#player-byes")).not.toBeNull();
+    expect(document.querySelectorAll("#player-games li")).toHaveLength(2);
+    expect(document.querySelector("#player-missing")).toBeNull();
+  });
+
+  it("says when a player is not checked in, and opens from the standings too", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockResolvedValue({ tiebreaks: [], rows: [{ rank: 1, player: p(11, "White 1"), points: 1.5, tiebreaks: {} }] });
+    api.playerCard.mockResolvedValue({ ...card, player: { ...card.player, present: false } });
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    fireEvent.click(await el("#standings-player-11"));
+    await el("#player-missing");
+  });
+});
+
+describe("1.2: a board seen playing leaves the default-time list", () => {
+  it("takes it off by hand before the time is up", async () => {
+    const api = fakeApi(round([board(1, 1)], { results: ["1-0", "0-1", "1-0FF", "0-1FF", "0-0FF"] }));
+    api.arrivals.mockResolvedValue([{ id: 12, present: false }]);
+    render(<RoundScreen ctx={ctxWith(api)} t={tournament("arbiter")} reloadTournament={async () => undefined} />);
+    fireEvent.click(await el("#default-time"));
+    fireEvent.click(await el("#dt-clear-1"));
+    await waitFor(() => expect(document.querySelector("#dt-board-1")).toBeNull());
+    expect(JSON.parse(phone.storage.data.get("manubrium.defaulttime.v1.https://pairings.example#7#1")!).cleared).toEqual([1]);
+  });
+});
+
+describe("1.2: this phone - theme and app lock", () => {
+  it("keeps the theme picked, and turns the lock on only with a code typed twice", async () => {
+    const { PhoneSettings } = await import("./PhoneSettings");
+    render(<PhoneSettings />);
+    fireEvent.click(await el("#theme-paper"));
+    await waitFor(() => expect(phone.storage.data.get("manubrium.theme.v1")).toBe("paper"));
+    expect(document.documentElement.dataset.theme).toBe("paper");
+
+    fireEvent.click(await el("#app-lock-on"));
+    fireEvent.input(await el("#lock-code-new"), { target: { value: "2468" } });
+    fireEvent.input(await el("#lock-code-again"), { target: { value: "2469" } });
+    expect((document.querySelector("#lock-code-save") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.input(await el("#lock-code-again"), { target: { value: "2468" } });
+    fireEvent.click(await el("#lock-code-save"));
+    await waitFor(() => expect(JSON.parse(phone.storage.data.get("manubrium.lock.v1") ?? "{}").enabled).toBe(true));
+    expect(phone.vault.data.get("manubrium.lock.code.v1")).toMatch(/\$/);
+    await el("#app-lock-after");
+  });
+
+  it("opens with the right code and not with a wrong one", async () => {
+    const { AppLock } = await import("./AppLock");
+    const { storeCode } = await import("../lock");
+    phone.storage.data.set("manubrium.lock.v1", JSON.stringify({ enabled: true, after: 5 }));
+    await storeCode(phone.vault, "1357");
+    render(
+      <AppLock>
+        <p id="inside">in</p>
+      </AppLock>,
+    );
+    await el("#app-lock");
+    expect(document.querySelector("#inside")).toBeNull();
+    fireEvent.input(await el("#lock-code"), { target: { value: "1111" } });
+    fireEvent.submit(await el("#lock-code-form"));
+    await waitFor(() => expect(document.querySelector(".lock-wrong")).not.toBeNull());
+    fireEvent.input(await el("#lock-code"), { target: { value: "1357" } });
+    fireEvent.submit(await el("#lock-code-form"));
+    await el("#inside");
+  });
+});
+
+describe("1.2: prizes under the standings", () => {
+  const rows = [{ rank: 1, player: p(11, "White 1"), points: 1, tiebreaks: {} }];
+
+  it("lists who gets what, provisional until the end, and opens the winner's card", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockResolvedValue({ tiebreaks: [], rows });
+    api.prizes.mockResolvedValue({
+      configured: true,
+      final: false,
+      currency: "EUR",
+      paid: "250.00 EUR",
+      tables: [
+        { name: null, unclaimed: 1, awards: [{ place: "1", label: "1st", item: "", amount: "250.00 EUR", rank: 1, player: { id: 11, name: "White 1", title: null } }] },
+        { name: "U1600", unclaimed: 0, awards: [{ place: "1", label: "", item: "Book", amount: "", rank: 4, player: { id: 12, name: "Black 1", title: null } }] },
+      ],
+    });
+    api.playerCard.mockResolvedValue({ player: { id: 11, name: "White 1", status: "active", present: true }, rank: 1, score: 1, games: [] });
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    const list = await el("#prizes");
+    expect(list.querySelectorAll(".prize-table")).toHaveLength(2);
+    expect(list.textContent).toContain("250.00 EUR");
+    expect(list.textContent).toContain("Book");
+    await el("#prizes-provisional");
+    fireEvent.click(list.querySelector("button.link")!);
+    await el("#player-card");
+  });
+
+  it("shows nothing without prize money, or on a server that has no prize list", async () => {
+    const api = fakeApi(round([]));
+    api.standings.mockResolvedValue({ tiebreaks: [], rows });
+    api.prizes.mockRejectedValue(new ApiError(404, "not_found", "Not found."));
+    render(<StandingsScreen ctx={ctxWith(api)} t={tournament("owner")} />);
+    await el("#standings");
+    await waitFor(() => expect(api.prizes).toHaveBeenCalled());
+    expect(document.querySelector("#prizes")).toBeNull();
   });
 });

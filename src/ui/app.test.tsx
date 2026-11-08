@@ -41,6 +41,12 @@ vi.mock("../platform", () => ({
   onResume: () => () => undefined,
   takePhoto: async () => null,
   shareText: async () => "shared",
+  onPause: () => () => undefined,
+  awayOnPurpose: () => false,
+  remindAt: async () => false,
+  cancelReminder: async () => undefined,
+  deviceUnlockAvailable: async () => false,
+  deviceUnlock: async () => false,
 }));
 
 vi.mock("../api", async (original) => ({

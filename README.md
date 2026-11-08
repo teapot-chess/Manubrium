@@ -33,6 +33,33 @@ Since the second batch it also:
   everything that is not a result, it needs the server; a command that
   reaches nobody says so instead of looking pleased with itself.
 
+Since 1.2 it also:
+
+- keeps the **default time** for the round: start the clock when the
+  clocks start, and the round screen counts down and lists the boards where
+  somebody has not turned up (not checked in, or a hall board still set up
+  with nothing moved). When the time is up each board offers its forfeit,
+  after asking. The minutes are the arbiter's to enter - OpenPairings knows
+  the rate of play, not the default time - and the phone remembers them per
+  tournament. A local notification at the default time is optional;
+- **scans the code** OpenPairings now prints on result slips and place
+  cards: a slip opens its board's result entry, a place card the player's
+  board in the round on screen;
+- opens a **player** from the result sheet, the default-time list or the
+  standings: games so far with colours and results, the colour history,
+  score and rank, rating, club, requested byes, and a line when they are not
+  checked in;
+- ends the standings with the **prize list** when the tournament has prize
+  money: who gets what per table, provisional until the last result is in.
+  Read-only; the money is set on the computer;
+- has a **theme** picker under More, "This phone" - OpenPairings' palettes,
+  each with a dark half that follows the phone. Slate is the default; the
+  old green is still there as Classic;
+- has an **app lock**, off until switched on: Face ID, Touch ID, a
+  fingerprint or the phone's passcode when the app opens and after a chosen
+  time away, with the arbiter's own code as the way in when biometrics will
+  not cooperate.
+
 The server side - the API, device tokens, roles - lives in OpenPairings
 (`docs/manubrium.md`, section "Full app"). This repository is only the app.
 Manubrium Lite, the no-install browser page at `/m`, is OpenPairings' own and
@@ -50,8 +77,8 @@ Source published for reference under the Microsoft Reference Source License (Ms-
 - **Preact + TypeScript + Vite.** The UI is a handful of screens with forms
   and lists. Preact gives components and hooks in about 4 kB - the same model
   as React, without shipping React. No UI kit: the look is OpenPairings' own
-  palette in one stylesheet (`src/styles.css`), light and dark following the
-  phone. No router either; five screens are a variable.
+  palettes (`src/themes.ts`, set as CSS variables on `<html>`) and one
+  stylesheet (`src/styles.css`), light and dark following the phone. No router either; five screens are a variable.
 - **CapacitorHttp** (`capacitor.config.ts`) routes every `fetch` on a phone
   through the platform's own HTTP stack: no browser origin, so no CORS, and
   plain http to a desktop copy in the hall is governed by the native rules
@@ -69,11 +96,18 @@ src/
   byes.ts        a player's byes: which rounds may still change
   search.ts      when a list search is worth sending, what a hit adds
   alnasl.ts      the line a hall board's report gets beside its pairing
+  defaultTime.ts the default-time list, the round's clock, the forfeit to offer
+  scan.ts        the codes on result slips and place cards
+  themes.ts      the palettes, light and dark, and applying one
+  lock.ts        the app lock: when it locks, the code (salted hash only)
+  phoneSettings.ts  what this phone keeps for itself (the reminder switch)
   servers.ts     the servers on this phone, one token each
   secure.ts      where the tokens live: Keychain / Keystore, Preferences in a browser
-  platform.ts    phone-or-browser differences: storage, camera, deep links
+  platform.ts    phone-or-browser differences: storage, camera, deep links,
+                 notifications, Face ID / fingerprint
   contract.testkit.ts  test helper: the vendored contract schemas
-  ui/            the screens (HallPanel.tsx: the hall apps under More)
+  ui/            the screens (HallPanel.tsx: the hall apps under More;
+                 DefaultTime.tsx, PlayerSheet.tsx, PrizeList.tsx, PhoneSettings.tsx, AppLock.tsx)
 ```
 
 ## Offline
@@ -194,6 +228,10 @@ committed, with these changes:
   (QR scanning, incident photos; declared not required) and an intent
   filter for `manubrium://connect`, so a scanned or tapped connect link
   opens the app.
+- Android has no per-permission explanation strings. The notification
+  (`POST_NOTIFICATIONS`) and biometric (`USE_BIOMETRIC`) permissions come
+  in with their plug-ins' manifests; Android 13 asks for notifications the
+  first time the default-time reminder is switched on and used.
 - `android/variables.gradle`: `minSdkVersion = 26`, Android 8.0. The QR
   scanner plug-in will not build for less, and said so only when v1.0.0 was
   tagged.
@@ -206,7 +244,9 @@ committed, with these changes:
   local network; without the sentence the hall's desktop copy is unreachable.
 - `NSAppTransportSecurity` / `NSAllowsLocalNetworking`: plain http to
   local-network addresses only. Everything else keeps ATS (https).
-- `NSCameraUsageDescription` (the QR scanner, incident photos),
+- `NSCameraUsageDescription` (the QR scanner for connect codes, result
+  slips and place cards; incident photos), `NSFaceIDUsageDescription` (the
+  app lock), each also in `en.lproj`, `nl.lproj` and `fr.lproj`,
   `NSPhotoLibraryUsageDescription` (an existing photo for an incident; no
   copy is written back, so there is no add-to-library string),
   `ITSAppUsesNonExemptEncryption` (standard HTTPS only, so TestFlight does

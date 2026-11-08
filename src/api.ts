@@ -187,6 +187,49 @@ export interface Player {
 
 export interface Bye { round: number; kind: string }
 
+/** One game on a player's card, from the player's side. */
+export interface CardGame {
+  round: number;
+  /** Null for a bye. */
+  opponent: { id: number; name: string; title: string | null; rating: number | null } | null;
+  colour: "w" | "b" | null;
+  /** As the printed card says it: "1", "½", "0", "1FF", "0FF", "1 bye", "½ bye", "0 bye", "*", "". */
+  result: string;
+}
+
+/** `GET /players/:pid/card`: one player, for anyone on the tournament. */
+export interface PlayerCard {
+  player: Player;
+  rank: string | number | null;
+  score: number;
+  games: CardGame[];
+}
+
+/** `GET /arrivals`: who is checked in. */
+export interface Arrival { id: number; present: boolean }
+
+/** One prize won: the place ("3", or "3-5" when shared), what it pays, who. */
+export interface PrizeAward {
+  place: string;
+  label: string;
+  item: string;
+  /** Formatted by the server ("250.00 EUR"); empty for a prize without money. */
+  amount: string;
+  rank: string | number | null;
+  player: { id: number; name: string; title: string | null };
+}
+
+/** `GET /prizes`: who gets what, from the current standings (desk roles). */
+export interface Prizes {
+  configured: boolean;
+  /** False while rounds, results or postponed games are still to come. */
+  final: boolean;
+  currency: string;
+  paid: string;
+  /** The general table (name null) and the categories, in priority order. */
+  tables: { name: string | null; unclaimed: number; awards: PrizeAward[] }[];
+}
+
 /** One hit from `GET /player-search`: a player on the FIDE or a national list. */
 export interface SearchHit {
   source: string;
@@ -587,6 +630,12 @@ export interface Client {
   hallCountdown(id: number, minutes: number): Promise<HallSent>;
   hallCancelCountdown(id: number): Promise<HallSent>;
   hallAnnounce(id: number, what: { canned: HallCanned } | { text: string }): Promise<HallSent>;
+  /** One player's card; open to arbiters, unlike `players()`. */
+  playerCard(id: number, playerId: number): Promise<PlayerCard>;
+  /** Who is checked in; open to arbiters. */
+  arrivals(id: number): Promise<Arrival[]>;
+  /** The prize list; the desk roles, like the standings. */
+  prizes(id: number): Promise<Prizes>;
   pushStatus(): Promise<PushStatus>;
   registerPush(push: PushRegister): Promise<PushStatus>;
   unregisterPush(): Promise<void>;
@@ -664,6 +713,9 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     hallCountdown: (id, minutes) => req("POST", `${t(id)}/hall/countdown`, { minutes }),
     hallCancelCountdown: (id) => req("POST", `${t(id)}/hall/countdown`, { cancel: true }),
     hallAnnounce: (id, what) => req("POST", `${t(id)}/hall/announce`, what),
+    playerCard: async (id, playerId) => (await req<{ card: PlayerCard }>("GET", `${t(id)}/players/${playerId}/card`)).card,
+    arrivals: async (id) => (await req<{ arrivals: Arrival[] }>("GET", `${t(id)}/arrivals`)).arrivals,
+    prizes: async (id) => (await req<{ prizes: Prizes }>("GET", `${t(id)}/prizes`)).prizes,
     pushStatus: async () => (await req<{ push: PushStatus }>("GET", "/push")).push,
     registerPush: async (push) => (await req<{ push: PushStatus }>("PUT", "/push", { push })).push,
     unregisterPush: async () => {

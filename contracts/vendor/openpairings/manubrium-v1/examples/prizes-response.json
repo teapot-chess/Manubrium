@@ -1,0 +1,40 @@
+{
+  "prizes": {
+    "configured": true,
+    "currency": "EUR",
+    "final": false,
+    "paid": "250.00 EUR",
+    "tables": [
+      {
+        "awards": [
+          {
+            "amount": "250.00 EUR",
+            "item": "",
+            "label": "1st",
+            "place": "1",
+            "player": {
+              "id": 1,
+              "name": "Player 1",
+              "title": null
+            },
+            "rank": 1
+          },
+          {
+            "amount": "",
+            "item": "Book",
+            "label": "",
+            "place": "2",
+            "player": {
+              "id": 2,
+              "name": "Player 2",
+              "title": null
+            },
+            "rank": 2
+          }
+        ],
+        "name": null,
+        "unclaimed": 0
+      }
+    ]
+  }
+}

@@ -11,6 +11,7 @@ import { SettingsEditor } from "./SettingsEditor";
 import { BoardLinks } from "./BoardLinks";
 import { LiveBoardsScreen } from "./LiveBoards";
 import { HallPanel } from "./HallPanel";
+import { PhoneSettings } from "./PhoneSettings";
 import { refusalText } from "../queue";
 import { incidentKinds } from "./RoundScreen";
 import { t as tr } from "./../i18n";
@@ -291,6 +292,8 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
           <img class="incident-photo" id="incident-photo-view" src={viewing.url} alt={tr("more.photo_alt")} />
         </Sheet>
       )}
+
+      <PhoneSettings />
 
       <section>
         <h2>{tr("more.signed_in")}</h2>

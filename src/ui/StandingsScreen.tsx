@@ -2,6 +2,8 @@ import { useEffect, useState } from "preact/hooks";
 import type { Standings, Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, ShareButton, TryAgain } from "./common";
+import { PlayerSheet } from "./PlayerSheet";
+import { PrizeList } from "./PrizeList";
 import { formatNumber as format, standingsText } from "../share";
 import { t } from "../i18n";
 
@@ -20,9 +22,12 @@ export function tiebreakNote(s: Standings): string | null {
 export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   const [s, setS] = useState<Standings | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [player, setPlayer] = useState<number | null>(null);
+  const [loads, setLoads] = useState(0);
 
   async function load() {
     setError(null);
+    setLoads((n) => n + 1);
     try {
       setS(await props.ctx.api.standings(props.t.id));
     } catch (e) {
@@ -65,8 +70,12 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
                 <tr key={r.player?.id ?? i}>
                   <td>{r.rank ?? ""}</td>
                   <td class="player">
-                    {r.player?.title && <em>{r.player.title} </em>}
-                    {r.player?.name}
+                    {r.player ? (
+                      <button type="button" class="link" id={`standings-player-${r.player.id}`} onClick={() => setPlayer(r.player!.id)}>
+                        {r.player.title && <em>{r.player.title} </em>}
+                        {r.player.name}
+                      </button>
+                    ) : null}
                   </td>
                   <td class="num strong">{r.points}</td>
                   {s.tiebreaks.map((tb) => (
@@ -85,11 +94,13 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
           {tiebreakNote(s)}
         </p>
       )}
+      {s && s.rows.length > 0 && <PrizeList ctx={props.ctx} t={props.t} reload={loads} onPlayer={setPlayer} />}
       {s && (
         <button type="button" class="btn ghost block" onClick={load}>
           {t("tournaments.refresh")}
         </button>
       )}
+      {player !== null && <PlayerSheet ctx={props.ctx} t={props.t} playerId={player} onClose={() => setPlayer(null)} />}
     </div>
   );
 }
