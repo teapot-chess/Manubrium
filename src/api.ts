@@ -316,12 +316,12 @@ export interface PushRegister { platform: PushPlatform; token: string; environme
 /** A box behind one of the tournament's board codes. */
 export interface LiveBox {
   link_id: number;
-  name: string | null;
+  name: string;
   version: string | null;
   last_seen_at: string | null;
   /** The box called within the last 30 seconds. */
   online: boolean;
-  tables_at: string | null;
+  tables_at: string;
 }
 
 /** The pairing the board's game is, as OpenPairings knows it. `result` is the ARBITER's. */
@@ -337,9 +337,9 @@ export interface LivePairing {
 
 export interface LiveDraft {
   id: number;
-  reason: string;
-  from_ply: number;
-  plies: number;
+  reason?: string | null;
+  from_ply?: number;
+  plies?: number;
 }
 
 export type LiveSide = "white" | "black" | "none";
@@ -368,7 +368,7 @@ export interface LiveTable {
   black_ms: number | null;
   running: LiveSide | null;
   /** When the report arrived: the running clock counts down from here. */
-  clock_at: string | null;
+  clock_at: string;
   round: number | null;
   board_no: number | null;
   game: string | null;
@@ -415,7 +415,7 @@ export interface BoardCommand {
 /** What `POST live-boards/commands` takes. */
 export type BoardCommandRequest =
   | { kind: "accept_result"; game: string }
-  | { kind: Exclude<BoardCommandKind, "accept_result">; link_id: number; board: number; game?: string | null; args: Record<string, unknown> };
+  | { kind: Exclude<BoardCommandKind, "accept_result">; link_id: number; board: number; game?: string; args: Record<string, unknown> };
 
 export interface LiveBoards {
   poll_seconds: number;
@@ -437,8 +437,10 @@ export interface LiveGame {
   black_ms: number | null;
   running: LiveSide | null;
   start_fen: string | null;
-  reconstructed: boolean;
-  guessed: boolean;
+  /** How many moves were reconstructed from the board's memory. */
+  reconstructed: number;
+  /** How many moves are guessed. */
+  guessed: number;
   reported_at: string | null;
 }
 

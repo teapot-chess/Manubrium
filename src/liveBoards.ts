@@ -154,7 +154,7 @@ export function commandKindLabel(kind: string): string {
   return known.includes(kind) ? t(`live.kind.${kind}` as Key) : kind;
 }
 
-const API_ERRORS = ["no_board_result", "result_entered", "invalid_command", "rate_limited", "board_not_found", "game_not_found", "command_not_found"];
+const API_ERRORS = ["no_board_result", "result_entered", "invalid_command", "board_not_found", "game_not_found", "command_not_found"];
 
 /** A refused request in a sentence: the codes this screen knows, else the server's own words. */
 export function liveErrorText(error: unknown): string | null {
@@ -164,7 +164,6 @@ export function liveErrorText(error: unknown): string | null {
     return detail ? `${t("live.err.invalid_command")} (${detail})` : t("live.err.invalid_command");
   }
   if (API_ERRORS.includes(error.code)) return t(`live.err.${error.code}` as Key);
-  if (error.status === 429) return t("live.err.rate_limited");
   return null;
 }
 

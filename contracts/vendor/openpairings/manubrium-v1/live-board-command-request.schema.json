@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-board-command-request.schema.json",
+  "title": "POST /tournaments/:id/live-boards/commands request",
+  "description": "A command. Box kinds need link_id and board of a table in GET live-boards (404 board_not_found otherwise) and the args of their kind (422 invalid_command). accept_result needs only game: OpenPairings enters the board's result as the arbiter's (409 no_board_result, 409 result_entered); the box is not involved. 429 rate_limited past 30 a minute.",
+  "type": "object",
+  "required": [
+    "kind"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "accept_result",
+        "confirm_guess",
+        "reject_guess",
+        "accept_draft",
+        "dismiss_draft",
+        "set_position",
+        "takeback",
+        "flip",
+        "link",
+        "unlink",
+        "restart",
+        "resync",
+        "finish"
+      ]
+    },
+    "link_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "board": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "game": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "args": {
+      "type": "object",
+      "description": "By kind: confirm_guess/reject_guess {ply}; accept_draft/dismiss_draft {draft}; set_position {fen}; takeback {plies 1-20}; flip {flipped}; link {round, board_no}; finish {result: 1-0, 0-1, 1/2-1/2 or *}; unlink, restart, resync {}.",
+      "additionalProperties": false,
+      "properties": {
+        "ply": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "draft": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fen": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "plies": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "flipped": {
+          "type": "boolean"
+        },
+        "round": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "board_no": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "1-0",
+            "0-1",
+            "1/2-1/2",
+            "*"
+          ]
+        }
+      }
+    }
+  }
+}

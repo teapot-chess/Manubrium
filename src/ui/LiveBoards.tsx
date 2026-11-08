@@ -345,7 +345,7 @@ function BoardSheet(props: {
     kind,
     link_id: x.link_id,
     board: x.board,
-    game: x.game,
+    ...(x.game ? { game: x.game } : {}),
     args,
   });
 
@@ -462,7 +462,7 @@ function BoardSheet(props: {
             {x.draft && (
               <>
                 <h3>{tr("live.draft_title")}</h3>
-                <p class="fine">{tr("live.draft_text", { from: x.draft.from_ply > 0 ? plyName(x.draft.from_ply) : "1.", n: x.draft.plies, reason: x.draft.reason })}</p>
+                <p class="fine">{tr("live.draft_text", { from: x.draft.from_ply ? plyName(x.draft.from_ply) : "1.", n: x.draft.plies ?? "?", reason: x.draft.reason ?? "-" })}</p>
                 <div class="live-actions">
                   <button type="button" class="btn" id="cmd-accept-draft" disabled={busy} onClick={() => go(box("accept_draft", { draft: x.draft!.id }))}>
                     {tr("live.accept_draft")}

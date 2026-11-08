@@ -544,7 +544,6 @@ export const nl: Record<Key, string> = {
   "live.err.no_board_result": "Het bord heeft voor deze partij geen uitslag gezien.",
   "live.err.result_entered": "Deze partij heeft al een uitslag. Wis die eerst als het bord gelijk heeft.",
   "live.err.invalid_command": "De server weigerde de opdracht.",
-  "live.err.rate_limited": "Te veel opdrachten in een minuut. Wacht even en probeer opnieuw.",
   "live.err.board_not_found": "De server heeft dit bord niet meer. Misschien heeft de box het laten vallen.",
   "live.err.game_not_found": "Nog geen zetten doorgegeven voor deze partij.",
   "live.err.command_not_found": "De server kent die opdracht niet meer.",

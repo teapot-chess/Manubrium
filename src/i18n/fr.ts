@@ -544,7 +544,6 @@ export const fr: Record<Key, string> = {
   "live.err.no_board_result": "L'échiquier n'a vu aucun résultat pour cette partie.",
   "live.err.result_entered": "Cette partie a déjà un résultat. Effacez-le d'abord si l'échiquier a raison.",
   "live.err.invalid_command": "Le serveur a refusé la commande.",
-  "live.err.rate_limited": "Trop de commandes en une minute. Patientez un instant et réessayez.",
   "live.err.board_not_found": "Le serveur n'a plus cet échiquier. Le boîtier l'a peut-être abandonné.",
   "live.err.game_not_found": "Aucun coup signalé pour cette partie pour l'instant.",
   "live.err.command_not_found": "Le serveur ne connaît plus cette commande.",

@@ -1,0 +1,20 @@
+{
+  "command": {
+    "args": {
+      "result": "1-0"
+    },
+    "board": null,
+    "by": "user-576460752303393215@example.com",
+    "created_at": "2026-11-08T00:46:08Z",
+    "detail": null,
+    "done_at": "2026-11-08T00:46:08Z",
+    "error": null,
+    "expires_at": null,
+    "game": "7ee65285550a7dfd15a7f00a2d45a6ae",
+    "id": 2,
+    "kind": "accept_result",
+    "link_id": null,
+    "sent_at": null,
+    "state": "done"
+  }
+}

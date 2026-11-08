@@ -174,8 +174,7 @@ describe("what a command's state says", () => {
   it("explains the server's refusals", () => {
     expect(liveErrorText(new ApiError(409, "no_board_result", "x"))).toBe("The board has not seen a result for this game.");
     expect(liveErrorText(new ApiError(409, "result_entered", "x"))).toMatch(/already has a result/);
-    expect(liveErrorText(new ApiError(429, "rate_limited", "x"))).toMatch(/Too many commands/);
-    expect(liveErrorText(new ApiError(429, "http_429", "x"))).toMatch(/Too many commands/);
+    expect(liveErrorText(new ApiError(429, "rate_limited", "Slow down."))).toBeNull();
     expect(liveErrorText(new ApiError(404, "board_not_found", "x"))).toMatch(/no longer has this board/);
     expect(liveErrorText(new ApiError(422, "invalid_command", "x", { detail: "plies must be 1..20" }))).toBe("The server refused the command. (plies must be 1..20)");
     expect(liveErrorText(new ApiError(500, "boom", "x"))).toBeNull();

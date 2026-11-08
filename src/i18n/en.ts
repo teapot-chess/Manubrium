@@ -542,7 +542,6 @@ export const en = {
   "live.err.no_board_result": "The board has not seen a result for this game.",
   "live.err.result_entered": "This game already has a result. Clear it first if the board is right.",
   "live.err.invalid_command": "The server refused the command.",
-  "live.err.rate_limited": "Too many commands in a minute. Wait a moment and try again.",
   "live.err.board_not_found": "The server no longer has this board. The box may have dropped it.",
   "live.err.game_not_found": "No moves reported for this game yet.",
   "live.err.command_not_found": "The server no longer knows that command.",
