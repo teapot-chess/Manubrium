@@ -14,6 +14,9 @@ const config: CapacitorConfig = {
     // no browser origin, so no CORS, and plain http to a desktop copy on
     // the hall network is decided by the native rules (see README).
     CapacitorHttp: { enabled: true },
+    // A notification that arrives while the app is open still shows: an
+    // incident on board 12 is news even to someone looking at board 3.
+    PushNotifications: { presentationOptions: ["alert", "sound"] },
   },
 };
 

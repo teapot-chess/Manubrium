@@ -17,7 +17,39 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		7A5E0C132F1A4B0000C0FFEE /* RoundActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C012F1A4B0000C0FFEE /* RoundActivityPlugin.swift */; };
+		7A5E0C142F1A4B0000C0FFEE /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C022F1A4B0000C0FFEE /* MainViewController.swift */; };
+		7A5E0C152F1A4B0000C0FFEE /* RoundActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C042F1A4B0000C0FFEE /* RoundActivityAttributes.swift */; };
+		7A5E0C162F1A4B0000C0FFEE /* RoundActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C042F1A4B0000C0FFEE /* RoundActivityAttributes.swift */; };
+		7A5E0C172F1A4B0000C0FFEE /* RoundActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C052F1A4B0000C0FFEE /* RoundActivityBundle.swift */; };
+		7A5E0C182F1A4B0000C0FFEE /* RoundActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5E0C062F1A4B0000C0FFEE /* RoundActivityWidget.swift */; };
+		7A5E0C192F1A4B0000C0FFEE /* RoundActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7A5E0C082F1A4B0000C0FFEE /* RoundActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7A5E0C202F1A4B0000C0FFEE /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 7A5E0C092F1A4B0000C0FFEE /* Localizable.strings */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7A5E0C292F1A4B0000C0FFEE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A5E0C252F1A4B0000C0FFEE;
+			remoteInfo = RoundActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7A5E0C212F1A4B0000C0FFEE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7A5E0C192F1A4B0000C0FFEE /* RoundActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -34,6 +66,17 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		7A5E0C012F1A4B0000C0FFEE /* RoundActivityPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundActivityPlugin.swift; sourceTree = "<group>"; };
+		7A5E0C022F1A4B0000C0FFEE /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		7A5E0C032F1A4B0000C0FFEE /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		7A5E0C042F1A4B0000C0FFEE /* RoundActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundActivityAttributes.swift; sourceTree = "<group>"; };
+		7A5E0C052F1A4B0000C0FFEE /* RoundActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundActivityBundle.swift; sourceTree = "<group>"; };
+		7A5E0C062F1A4B0000C0FFEE /* RoundActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundActivityWidget.swift; sourceTree = "<group>"; };
+		7A5E0C072F1A4B0000C0FFEE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		7A5E0C082F1A4B0000C0FFEE /* RoundActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RoundActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A5E0C102F1A4B0000C0FFEE /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		7A5E0C112F1A4B0000C0FFEE /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
+		7A5E0C122F1A4B0000C0FFEE /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,6 +85,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A5E0C232F1A4B0000C0FFEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -54,6 +104,8 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				7A5E0C312F1A4B0000C0FFEE /* Shared */,
+				7A5E0C322F1A4B0000C0FFEE /* RoundActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -61,6 +113,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				7A5E0C082F1A4B0000C0FFEE /* RoundActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -78,8 +131,30 @@
 				6B1F0A0C1E2D3C4B5A697881 /* InfoPlist.strings */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				7A5E0C022F1A4B0000C0FFEE /* MainViewController.swift */,
+				7A5E0C012F1A4B0000C0FFEE /* RoundActivityPlugin.swift */,
+				7A5E0C032F1A4B0000C0FFEE /* App.entitlements */,
+				7A5E0C092F1A4B0000C0FFEE /* Localizable.strings */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		7A5E0C312F1A4B0000C0FFEE /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				7A5E0C042F1A4B0000C0FFEE /* RoundActivityAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		7A5E0C322F1A4B0000C0FFEE /* RoundActivity */ = {
+			isa = PBXGroup;
+			children = (
+				7A5E0C052F1A4B0000C0FFEE /* RoundActivityBundle.swift */,
+				7A5E0C062F1A4B0000C0FFEE /* RoundActivityWidget.swift */,
+				7A5E0C072F1A4B0000C0FFEE /* Info.plist */,
+			);
+			path = RoundActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -92,10 +167,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				7A5E0C212F1A4B0000C0FFEE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7A5E0C302F1A4B0000C0FFEE /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -104,6 +181,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		7A5E0C252F1A4B0000C0FFEE /* RoundActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7A5E0C262F1A4B0000C0FFEE /* Build configuration list for PBXNativeTarget "RoundActivity" */;
+			buildPhases = (
+				7A5E0C222F1A4B0000C0FFEE /* Sources */,
+				7A5E0C232F1A4B0000C0FFEE /* Frameworks */,
+				7A5E0C242F1A4B0000C0FFEE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RoundActivity;
+			productName = RoundActivity;
+			productReference = 7A5E0C082F1A4B0000C0FFEE /* RoundActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -118,6 +212,9 @@
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
+					};
+					7A5E0C252F1A4B0000C0FFEE = {
+						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
@@ -140,6 +237,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				7A5E0C252F1A4B0000C0FFEE /* RoundActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -156,6 +254,14 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				6B1F0A0C1E2D3C4B5A697885 /* InfoPlist.strings in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				7A5E0C202F1A4B0000C0FFEE /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A5E0C242F1A4B0000C0FFEE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -168,10 +274,31 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				7A5E0C142F1A4B0000C0FFEE /* MainViewController.swift in Sources */,
+				7A5E0C132F1A4B0000C0FFEE /* RoundActivityPlugin.swift in Sources */,
+				7A5E0C152F1A4B0000C0FFEE /* RoundActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A5E0C222F1A4B0000C0FFEE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A5E0C162F1A4B0000C0FFEE /* RoundActivityAttributes.swift in Sources */,
+				7A5E0C172F1A4B0000C0FFEE /* RoundActivityBundle.swift in Sources */,
+				7A5E0C182F1A4B0000C0FFEE /* RoundActivityWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7A5E0C302F1A4B0000C0FFEE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A5E0C252F1A4B0000C0FFEE /* RoundActivity */;
+			targetProxy = 7A5E0C292F1A4B0000C0FFEE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -198,6 +325,16 @@
 				6B1F0A0C1E2D3C4B5A697884 /* fr */,
 			);
 			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		7A5E0C092F1A4B0000C0FFEE /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7A5E0C102F1A4B0000C0FFEE /* en */,
+				7A5E0C112F1A4B0000C0FFEE /* nl */,
+				7A5E0C122F1A4B0000C0FFEE /* fr */,
+			);
+			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -316,6 +453,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -338,6 +477,8 @@
 		504EC3181FED79650016851F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -351,6 +492,54 @@
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.pairings.manubrium;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		7A5E0C272F1A4B0000C0FFEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = RoundActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloud.pairings.manubrium.RoundActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7A5E0C282F1A4B0000C0FFEE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = RoundActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cloud.pairings.manubrium.RoundActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -373,6 +562,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7A5E0C262F1A4B0000C0FFEE /* Build configuration list for PBXNativeTarget "RoundActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7A5E0C272F1A4B0000C0FFEE /* Debug */,
+				7A5E0C282F1A4B0000C0FFEE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

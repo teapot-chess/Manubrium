@@ -1,0 +1,29 @@
+{
+  "push": {
+    "available": true,
+    "events": [
+      "round_paired",
+      "round_published",
+      "phone_result",
+      "incident",
+      "coarbiter_result",
+      "default_time"
+    ],
+    "platforms": {
+      "apns": true,
+      "fcm": true
+    },
+    "registration": {
+      "environment": "production",
+      "events": [
+        "round_paired",
+        "round_published",
+        "phone_result",
+        "incident",
+        "default_time"
+      ],
+      "platform": "apns",
+      "tag": "pairings.cloud"
+    }
+  }
+}

@@ -74,18 +74,19 @@ jobs:
           xcodebuild -version
           xcodebuild -project ios/App/App.xcodeproj -list
 
-      # A throwaway keychain with the distribution certificate, and the
-      # profile where Xcode looks for profiles. The profile's own name is
-      # read from the file, so renaming it in the developer portal needs no
-      # change here.
-      - name: Import the certificate and the profile
+      # A throwaway keychain with the distribution certificate, and the two
+      # profiles (the app's, and the RoundActivity widget extension's) where
+      # Xcode looks for profiles. Each profile's own name is read from the
+      # file, so renaming one in the developer portal needs no change here.
+      - name: Import the certificate and the profiles
         env:
           APPLE_DIST_CERT_P12: ${{ secrets.APPLE_DIST_CERT_P12 }}
           APPLE_DIST_CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
           APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          APPLE_EXTENSION_PROFILE: ${{ secrets.APPLE_EXTENSION_PROFILE }}
         run: |
           set -eu
-          for name in APPLE_DIST_CERT_P12 APPLE_DIST_CERT_PASSWORD APPLE_PROVISIONING_PROFILE; do
+          for name in APPLE_DIST_CERT_P12 APPLE_DIST_CERT_PASSWORD APPLE_PROVISIONING_PROFILE APPLE_EXTENSION_PROFILE; do
             eval "value=\${$name:-}"
             [ -n "$value" ] || { echo "::error::secret $name is not set (docs/releasing.md)"; exit 1; }
           done
@@ -113,19 +114,30 @@ jobs:
             exit 1
           }
 
-          printf '%s' "$APPLE_PROVISIONING_PROFILE" | base64 --decode > "$work/profile.mobileprovision"
-          security cms -D -i "$work/profile.mobileprovision" > "$work/profile.plist"
-          uuid=$(plutil -extract UUID raw -o - "$work/profile.plist")
-          name=$(plutil -extract Name raw -o - "$work/profile.plist")
-          bundle=$(plutil -extract Entitlements.application-identifier raw -o - "$work/profile.plist")
-          echo "profile '$name' for $bundle"
-          case "$bundle" in
-            *.cloud.pairings.manubrium) ;;
-            *) echo "::error::the profile is for $bundle, not cloud.pairings.manubrium"; exit 1 ;;
-          esac
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$work/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
-          echo "PROFILE_NAME=$name" >> "$GITHUB_ENV"
+          # install_profile <secret value> <bundle id> <env name for the profile's name>
+          install_profile() {
+            printf '%s' "$1" | base64 --decode > "$work/profile.mobileprovision"
+            security cms -D -i "$work/profile.mobileprovision" > "$work/profile.plist"
+            uuid=$(plutil -extract UUID raw -o - "$work/profile.plist")
+            name=$(plutil -extract Name raw -o - "$work/profile.plist")
+            bundle=$(plutil -extract Entitlements.application-identifier raw -o - "$work/profile.plist")
+            echo "profile '$name' for $bundle"
+            case "$bundle" in
+              *."$2") ;;
+              *) echo "::error::the profile is for $bundle, not $2"; exit 1 ;;
+            esac
+            cp "$work/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$uuid.mobileprovision"
+            echo "$3=$name" >> "$GITHUB_ENV"
+          }
+          install_profile "$APPLE_PROVISIONING_PROFILE" cloud.pairings.manubrium PROFILE_NAME
+          # The app's profile must carry push: Push Notifications on the App
+          # ID, then the profile made again (docs/releasing.md).
+          plutil -extract Entitlements.aps-environment raw -o - "$work/profile.plist" >/dev/null 2>&1 || {
+            echo "::error::the app's profile has no push entitlement: turn on Push Notifications for cloud.pairings.manubrium, make the profile again (docs/releasing.md)"
+            exit 1
+          }
+          install_profile "$APPLE_EXTENSION_PROFILE" cloud.pairings.manubrium.RoundActivity EXTENSION_PROFILE_NAME
           rm -rf "$work"
 
       - name: Archive
@@ -134,7 +146,7 @@ jobs:
         run: |
           set -eu -o pipefail
           [ -n "$APPLE_TEAM_ID" ] || { echo "::error::secret APPLE_TEAM_ID is not set"; exit 1; }
-          python3 ios/ci_signing.py "$APPLE_TEAM_ID" "$PROFILE_NAME"
+          node ios/ci_signing.mjs "$APPLE_TEAM_ID" "$PROFILE_NAME" "$EXTENSION_PROFILE_NAME"
           xcodebuild archive \
             -project ios/App/App.xcodeproj \
             -scheme App \
@@ -153,7 +165,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -eu
-          sed -e "s/__TEAM_ID__/$APPLE_TEAM_ID/" -e "s/__PROFILE_NAME__/$PROFILE_NAME/" \
+          sed -e "s/__TEAM_ID__/$APPLE_TEAM_ID/" -e "s/__PROFILE_NAME__/$PROFILE_NAME/" -e "s/__EXTENSION_PROFILE_NAME__/$EXTENSION_PROFILE_NAME/" \
             ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
           plutil -lint "$RUNNER_TEMP/ExportOptions.plist"
           xcodebuild -exportArchive \
