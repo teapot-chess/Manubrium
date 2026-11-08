@@ -444,3 +444,11 @@ h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; col
 .prizes h2 { font-size: 15px; margin-bottom: 4px; }
 .prize-table + .prize-table { margin-top: 10px; }
 .prizes .game-result { white-space: nowrap; }
+/* ---------- notifications ---------- */
+.push-settings { margin-top: 22px; }
+.push-settings h2 { font-size: 15px; margin-bottom: 4px; }
+.push-events { display: grid; gap: 10px; margin: 10px 0; }
+.push-offer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 14px 14px; margin: 12px 0; }
+.push-offer .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.push-reminder { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 12px 0; }
+.fine.error { color: var(--danger, #b42318); }

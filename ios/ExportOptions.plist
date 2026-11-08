@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Export options for the App Store build. The workflow copies this file
-     and fills in the two placeholders (sed) before `xcodebuild -exportArchive`;
+     and fills in the three placeholders (sed) before `xcodebuild -exportArchive`;
      the file itself never holds a team id or a profile name, so a fork can
      keep it as is. -->
 <plist version="1.0">
@@ -20,6 +20,8 @@
 	<dict>
 		<key>cloud.pairings.manubrium</key>
 		<string>__PROFILE_NAME__</string>
+		<key>cloud.pairings.manubrium.RoundActivity</key>
+		<string>__EXTENSION_PROFILE_NAME__</string>
 	</dict>
 	<key>uploadSymbols</key>
 	<true/>

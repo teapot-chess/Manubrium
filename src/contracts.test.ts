@@ -28,6 +28,9 @@ import {
   type HandEdit,
   type Incident,
   type Player,
+  type PushEvent,
+  type PushStatus,
+  PUSH_EVENTS,
   type Role,
   type Round,
   type SearchHit,
@@ -108,6 +111,13 @@ const ROUTES: Route[] = [
   { method: "POST", path: /^\/tournaments\/\d+\/hall\/print$/, contract: "POST /tournaments/:id/hall/print", request: "hall-reprint-request", response: "hall-command-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/hall\/countdown$/, contract: "POST /tournaments/:id/hall/countdown", request: "hall-countdown-request", response: "hall-command-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/hall\/announce$/, contract: "POST /tournaments/:id/hall/announce", request: "hall-announce-request", response: "hall-command-response" },
+  { method: "GET", path: /^\/push$/, contract: "GET /push", response: "push-response" },
+  { method: "PUT", path: /^\/push$/, contract: "PUT /push", request: "push-register-request", response: "push-response" },
+  { method: "DELETE", path: /^\/push$/, contract: "DELETE /push", response: "push-unregister-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/live-activity$/, contract: "PUT /tournaments/:id/live-activity", request: "live-activity-request", response: "live-activity-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/live-activity$/, contract: "DELETE /tournaments/:id/live-activity", response: "live-activity-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/default-time$/, contract: "PUT /tournaments/:id/default-time", request: "default-time-request", response: "default-time-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/default-time$/, contract: "DELETE /tournaments/:id/default-time", response: "default-time-response" },
 ];
 
 // Routes the server has and the app uses, that the contract does not (yet)
@@ -119,6 +129,10 @@ const NOT_IN_CONTRACT: string[] = [];
 const UNUSED_SCHEMAS: Record<string, string> = {
   "common.schema.json": "shared definitions, not a message",
   "error.schema.json": "every refusal; checked through ApiError below",
+  "live-board-command-request.schema.json": "live boards in the app arrive with their own change; the contract is ahead of the app",
+  "live-board-command-response.schema.json": "as above",
+  "live-board-game-response.schema.json": "as above",
+  "live-boards-response.schema.json": "as above",
 };
 
 function routeFor(method: string, url: string): Route {
@@ -274,6 +288,13 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   playerCard: (c) => c.playerCard(2, 1),
   arrivals: (c) => c.arrivals(2),
   prizes: (c) => c.prizes(2),
+  pushStatus: (c) => c.pushStatus(),
+  registerPush: (c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", environment: "sandbox", events: ["round_paired", "incident"], tag: BASE }),
+  unregisterPush: (c) => c.unregisterPush(),
+  putLiveActivity: (c) => c.putLiveActivity(2, { round: 1, token: "80f1a2b3c4d5e6f7", environment: "production" }),
+  deleteLiveActivity: (c) => c.deleteLiveActivity(2),
+  setDefaultTime: (c) => c.setDefaultTime(2, 1, "2026-11-08T14:30:00Z"),
+  cancelDefaultTime: (c) => c.cancelDefaultTime(2, 1),
 };
 
 async function everyCall(c: Client) {
@@ -315,10 +336,14 @@ describe("every answer in the contract, through the app's client", () => {
     ["unpair-response", (c) => c.unpair(2, 2), () => undefined],
     ["board-link-revoke-response", (c) => c.revokeBoardLink(2, 1), () => undefined],
     ["incident-delete-response", (c) => c.deleteIncident(2, 4), () => undefined],
+    ["push-response", (c) => c.pushStatus(), (e) => e.push],
+    ["push-unregister-response", (c) => c.unregisterPush(), () => undefined],
+    ["live-activity-response", (c) => c.deleteLiveActivity(2), () => undefined],
+    ["default-time-response", (c) => c.cancelDefaultTime(2, 1), () => undefined],
   ];
 
   it("covers every response schema in the contract", () => {
-    const responses = Object.keys(schemas).filter((s) => s.endsWith("-response.schema.json"));
+    const responses = Object.keys(schemas).filter((s) => s.endsWith("-response.schema.json") && !(s in UNUSED_SCHEMAS));
     expect(cases.map(([s]) => `${s}.schema.json`).sort()).toEqual(responses.sort());
   });
 
@@ -449,6 +474,10 @@ describe("what the answers mean to the app", () => {
     same(
       { saved: true, refused: true, retry: true } satisfies Record<EntryAnswer["status"], true>,
       enumOf(definition("sync-response.schema.json#/properties/results/items").properties!.status),
+    );
+    same(
+      Object.fromEntries(PUSH_EVENTS.map((e) => [e, true])) as Record<PushEvent, true>,
+      enumOf(definition("push-response.schema.json#/definitions/event")),
     );
     same(
       { unconfirmed: true, confirmed: true } satisfies Record<NonNullable<Board["phone"]>["state"], true>,
@@ -612,6 +641,7 @@ describe("the app's types against the contract's shapes", () => {
       shape<EntryAnswer>()({ cid: "required nullable", status: "required", reason: "required nullable", message: "required nullable" }),
       "sync-response.schema.json#/properties/results/items",
     ],
+    ["PushStatus", shape<PushStatus>()({ available: "required", platforms: "required", events: "required", registration: "required nullable" }), "push-response.schema.json#/properties/push"],
     ["TournamentOptions", shape<TournamentOptions>()({ systems: "required", player_sources: "required", defaults: "required" }), "tournament-options-response.schema.json#"],
   ];
 
@@ -738,6 +768,12 @@ describe("every request the app builds", () => {
     valid(await captured((c) => c.hallCancelCountdown(2)));
     for (const canned of ["silence", "phones", "seats", "results", "arbiter"] as const) valid(await captured((c) => c.hallAnnounce(2, { canned })));
     valid(await captured((c) => c.hallAnnounce(2, { text: "Round 3 starts in five minutes at board 1." })));
+  });
+
+  it("registers for push on either platform, with or without its choices", async () => {
+    valid(await captured((c) => c.registerPush({ platform: "fcm", token: "fcm:APA91b-x_y.z" })));
+    valid(await captured((c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", environment: "production", events: [...PUSH_EVENTS], tag: BASE })));
+    valid(await captured((c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", events: [] })));
   });
 
   it("publishes at every level", async () => {

@@ -15,6 +15,8 @@ import { Mark, Sheet } from "./common";
 import { NewTournament } from "./NewTournament";
 import { Tournaments } from "./Tournaments";
 import { TournamentView } from "./TournamentView";
+import { pushManager } from "./Notifications";
+import { tapTarget } from "../push";
 
 export type Screen =
   | { name: "servers" }
@@ -74,6 +76,33 @@ export function App() {
   }, [reload]);
 
   useEffect(() => onBackButton(goBack), []);
+
+  // The push token can change between starts, and a server added since needs
+  // it: hand it to every server again. Does nothing until notifications are
+  // switched on.
+  const serverKeys = servers?.map((s) => s.base).join(" ") ?? "";
+  useEffect(() => {
+    if (servers?.length) void pushManager.refresh(servers);
+  }, [serverKeys]);
+
+  // A tapped notification opens its tournament, on the server it came from.
+  useEffect(() => {
+    pushManager.backend.onTap(async (data) => {
+      const all = await serverList.all();
+      const target = tapTarget(data, all);
+      const saved = target && all.find((s) => s.base === target.base);
+      if (!target || !saved) return;
+      try {
+        const line = (await client(saved.base, saved.token).tournaments()).find((t) => t.id === target.tournament);
+        if (!line) return;
+        await serverList.setCurrent(saved.base);
+        setCurrent(saved.base);
+        setScreen({ name: "tournament", tournament: line });
+      } catch {
+        // Offline: the notification said what it had to say.
+      }
+    });
+  }, []);
 
   // A new language draws every screen again: the same as a state change.
   useEffect(() => onLanguageChange(bump), [bump]);

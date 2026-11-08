@@ -1,0 +1,18 @@
+{
+  "push": {
+    "available": false,
+    "events": [
+      "round_paired",
+      "round_published",
+      "phone_result",
+      "incident",
+      "coarbiter_result",
+      "default_time"
+    ],
+    "platforms": {
+      "apns": false,
+      "fcm": false
+    },
+    "registration": null
+  }
+}

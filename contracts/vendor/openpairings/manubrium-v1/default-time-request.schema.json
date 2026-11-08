@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/default-time-request.schema.json",
+  "title": "PUT /tournaments/:id/default-time request",
+  "description": "One push (event default_time) at `at` about round `round`: the server keeps no default time of its own, the phone works it out and says when. Within the next 24 hours; a second request for the same round moves it. DELETE /tournaments/:id/default-time?round=n withdraws it.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "reminder"
+  ],
+  "properties": {
+    "reminder": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "round",
+        "at"
+      ],
+      "properties": {
+        "round": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

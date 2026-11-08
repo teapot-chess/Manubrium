@@ -333,6 +333,24 @@ export interface Hall {
 
 /** What a hall command answers: how many online devices it went to (0 is an answer, not a failure). */
 export interface HallSent { sent_to: number; round?: number | null; countdown?: HallCountdown | null }
+/** The things a server can push to this phone (`GET /push`). */
+export type PushEvent = "round_paired" | "round_published" | "phone_result" | "incident" | "coarbiter_result" | "default_time";
+export const PUSH_EVENTS: PushEvent[] = ["round_paired", "round_published", "phone_result", "incident", "coarbiter_result", "default_time"];
+export type PushPlatform = "apns" | "fcm";
+export type PushEnvironment = "production" | "sandbox";
+
+export interface PushRegistration { platform: PushPlatform; environment: PushEnvironment; events: PushEvent[]; tag: string }
+
+/** Whether the server can push at all, to which platforms, and what this phone registered. */
+export interface PushStatus {
+  available: boolean;
+  platforms: { apns: boolean; fcm: boolean };
+  events: PushEvent[];
+  registration: PushRegistration | null;
+}
+
+export interface PushRegister { platform: PushPlatform; token: string; environment?: PushEnvironment; events?: PushEvent[]; tag?: string }
+
 export interface Connected { token: string; device: Device; user: UserInfo; server: ServerInfo }
 
 /** The server said no, with a code and a sentence for the person holding the phone. */
@@ -482,6 +500,13 @@ export interface Client {
   arrivals(id: number): Promise<Arrival[]>;
   /** The prize list; the desk roles, like the standings. */
   prizes(id: number): Promise<Prizes>;
+  pushStatus(): Promise<PushStatus>;
+  registerPush(push: PushRegister): Promise<PushStatus>;
+  unregisterPush(): Promise<void>;
+  putLiveActivity(id: number, activity: { round: number; token: string; environment?: PushEnvironment }): Promise<void>;
+  deleteLiveActivity(id: number): Promise<void>;
+  setDefaultTime(id: number, round: number, at: string): Promise<void>;
+  cancelDefaultTime(id: number, round: number): Promise<void>;
 }
 
 export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
@@ -550,6 +575,23 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     playerCard: async (id, playerId) => (await req<{ card: PlayerCard }>("GET", `${t(id)}/players/${playerId}/card`)).card,
     arrivals: async (id) => (await req<{ arrivals: Arrival[] }>("GET", `${t(id)}/arrivals`)).arrivals,
     prizes: async (id) => (await req<{ prizes: Prizes }>("GET", `${t(id)}/prizes`)).prizes,
+    pushStatus: async () => (await req<{ push: PushStatus }>("GET", "/push")).push,
+    registerPush: async (push) => (await req<{ push: PushStatus }>("PUT", "/push", { push })).push,
+    unregisterPush: async () => {
+      await req("DELETE", "/push");
+    },
+    putLiveActivity: async (id, activity) => {
+      await req("PUT", `${t(id)}/live-activity`, { activity });
+    },
+    deleteLiveActivity: async (id) => {
+      await req("DELETE", `${t(id)}/live-activity`);
+    },
+    setDefaultTime: async (id, round, at) => {
+      await req("PUT", `${t(id)}/default-time`, { reminder: { round, at } });
+    },
+    cancelDefaultTime: async (id, round) => {
+      await req("DELETE", `${t(id)}/default-time?round=${round}`);
+    },
     photo: async (id, incident) => {
       // Not JSON: the JPEG itself, so not through `call`.
       let response: Response;

@@ -1,0 +1,20 @@
+{
+  "command": {
+    "args": {
+      "flipped": true
+    },
+    "board": 12,
+    "by": "user-576460752303393215@example.com",
+    "created_at": "2026-11-08T00:46:08Z",
+    "detail": null,
+    "done_at": null,
+    "error": null,
+    "expires_at": "2026-11-08T00:48:08Z",
+    "game": "7ee65285550a7dfd15a7f00a2d45a6ae",
+    "id": 1,
+    "kind": "flip",
+    "link_id": 1,
+    "sent_at": null,
+    "state": "pending"
+  }
+}

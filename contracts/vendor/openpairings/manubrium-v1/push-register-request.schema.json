@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/push-register-request.schema.json",
+  "title": "PUT /push request",
+  "description": "This phone's push token, replacing any it had. events left out keeps what the phone had (or the defaults: everything but coarbiter_result); unknown event names are dropped. tag is the app's own name for this server, sent back as data.tag in every notification so the app knows which of its servers is talking. Every notification carries data {kind, tournament, round, board?, tag}.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "push"
+  ],
+  "properties": {
+    "push": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "platform",
+        "token"
+      ],
+      "properties": {
+        "platform": {
+          "$ref": "push-response.schema.json#/definitions/platform"
+        },
+        "token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9:_.-]+$"
+        },
+        "environment": {
+          "$ref": "push-response.schema.json#/definitions/environment"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 100
+        }
+      }
+    }
+  }
+}

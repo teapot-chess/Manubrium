@@ -62,7 +62,8 @@ captures/
 .cxx/
 
 # Google Services (e.g. APIs or Firebase)
-# google-services.json
+# Kept out of git: CI writes it from the GOOGLE_SERVICES_JSON secret (docs/releasing.md).
+app/google-services.json
 
 # Freeline
 freeline.py

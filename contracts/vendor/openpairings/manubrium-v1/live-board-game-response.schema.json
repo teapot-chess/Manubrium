@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-board-game-response.schema.json",
+  "title": "GET /tournaments/:id/live-boards/games/:game response",
+  "description": "One reported game, with its moves, for the board sheet. 404 game_not_found when no board has reported it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "game",
+    "status",
+    "result",
+    "moves",
+    "move_clocks",
+    "white_ms",
+    "black_ms",
+    "running",
+    "start_fen",
+    "reconstructed",
+    "guessed",
+    "reported_at"
+  ],
+  "properties": {
+    "game": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "waiting",
+        "live",
+        "finished"
+      ]
+    },
+    "result": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "1-0",
+        "0-1",
+        "1/2-1/2",
+        null
+      ],
+      "description": "What the board saw."
+    },
+    "moves": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "move_clocks": {
+      "type": "array",
+      "items": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      }
+    },
+    "white_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "black_ms": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "running": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "white",
+        "black",
+        null
+      ]
+    },
+    "start_fen": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reconstructed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many moves the box reconstructed."
+    },
+    "guessed": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many moves the box guessed."
+    },
+    "reported_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ISO 8601, UTC, or null."
+    }
+  }
+}

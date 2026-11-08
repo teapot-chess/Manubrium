@@ -32,6 +32,7 @@ const phone = vi.hoisted(() => {
 
 vi.mock("../platform", () => ({
   native: true,
+  platform: "web",
   storage: phone.storage,
   secureStorage: phone.vault,
   onResume: () => () => undefined,

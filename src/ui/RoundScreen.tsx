@@ -17,6 +17,7 @@ import { currentRound } from "../currentRound";
 import { boardOf, parseScan } from "../scan";
 import { DefaultTimeCard } from "./DefaultTime";
 import { PlayerSheet } from "./PlayerSheet";
+import { RoundPush } from "./Notifications";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
@@ -364,6 +365,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       ) : null}
 
       {round && deskRole && !t.read_only && <PoolPanel ctx={ctx} t={t} round={round} onDone={edited} />}
+
+      {round && round.boards.length > 0 && <RoundPush ctx={ctx} t={t} round={round} />}
 
       <div class="round-actions">
         {t.can.includes("incidents") && (

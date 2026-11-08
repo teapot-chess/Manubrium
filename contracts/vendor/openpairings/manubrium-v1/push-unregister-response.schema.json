@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/push-unregister-response.schema.json",
+  "title": "DELETE /push response",
+  "description": "This phone's push token, its Live Activities and its default-time reminders forgotten: 204 No Content, empty body. Described here as {status, body} because there is no JSON to describe; the provider test records the real status and body.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "body"
+  ],
+  "properties": {
+    "status": {
+      "const": 204
+    },
+    "body": {
+      "const": "",
+      "description": "Nothing: do not parse it as JSON."
+    }
+  }
+}

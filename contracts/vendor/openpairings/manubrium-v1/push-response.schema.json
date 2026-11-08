@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/push-response.schema.json",
+  "title": "GET /push and PUT /push response",
+  "description": "Push notifications on this server, for this phone. available is false when the server has no push key at all: the app says so and does not ask the phone for permission on this server's account. platforms says which half is configured (apns: iPhones and Live Activities; fcm: Android). events is every event a phone may ask for; registration is what this phone registered, or null. PUT refusals (error.schema.json): 400 bad_request, 422 bad_platform, bad_token, bad_environment, bad_events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "push"
+  ],
+  "properties": {
+    "push": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "platforms",
+        "events",
+        "registration"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "platforms": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "apns",
+            "fcm"
+          ],
+          "properties": {
+            "apns": {
+              "type": "boolean"
+            },
+            "fcm": {
+              "type": "boolean"
+            }
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/event"
+          }
+        },
+        "registration": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "platform",
+                "environment",
+                "events",
+                "tag"
+              ],
+              "properties": {
+                "platform": {
+                  "$ref": "#/definitions/platform"
+                },
+                "environment": {
+                  "$ref": "#/definitions/environment"
+                },
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/event"
+                  }
+                },
+                "tag": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "definitions": {
+    "event": {
+      "description": "round_paired and round_published: the desk's acts. phone_result: a Manubrium Lite phone's result that disagrees with the hall board or with the result already entered. incident: one logged by somebody else. coarbiter_result: results another account entered, batched per half minute (off by default). default_time: the reminder the phone asked for (PUT /tournaments/:id/default-time).",
+      "enum": [
+        "round_paired",
+        "round_published",
+        "phone_result",
+        "incident",
+        "coarbiter_result",
+        "default_time"
+      ]
+    },
+    "platform": {
+      "enum": [
+        "apns",
+        "fcm"
+      ]
+    },
+    "environment": {
+      "description": "The APNs host the token belongs to: sandbox for a build from Xcode, production for TestFlight and the App Store. Always production for fcm.",
+      "enum": [
+        "production",
+        "sandbox"
+      ]
+    }
+  }
+}

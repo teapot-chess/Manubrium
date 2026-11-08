@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/default-time-response.schema.json",
+  "title": "PUT or DELETE /tournaments/:id/default-time response",
+  "description": "The default-time reminder set (PUT) or withdrawn (DELETE ?round=n): 204 No Content, empty body. Described here as {status, body} because there is no JSON to describe. Refusals (error.schema.json): 422 bad_round, bad_time (not within the next 24 hours); 404 tournament_not_found.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "body"
+  ],
+  "properties": {
+    "status": {
+      "const": 204
+    },
+    "body": {
+      "const": "",
+      "description": "Nothing: do not parse it as JSON."
+    }
+  }
+}

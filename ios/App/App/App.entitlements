@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Push: development for a build from Xcode (Debug), production for
+     TestFlight and the App Store (Release). APS_ENVIRONMENT is set per
+     configuration in the project; the provisioning profile must allow it
+     (Push Notifications on the App ID, docs/releasing.md). -->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>$(APS_ENVIRONMENT)</string>
+</dict>
+</plist>

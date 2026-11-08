@@ -1,5 +1,6 @@
-# The web bundle: types, unit tests, a build. No SDKs - the native shells are
-# only exercised by the store workflows (android.yml, testflight.yml).
+# The web bundle: types, unit tests, a build. The iOS project is compiled
+# for the simulator, unsigned; signing and Android stay with the store
+# workflows (android.yml, testflight.yml).
 # Plus the contracts job: is the vendored OpenPairings contract still the one
 # OpenPairings publishes? Daily as well, because the provider changes its
 # mind without asking us first.
@@ -44,6 +45,44 @@ jobs:
       # Both native projects accept the bundle and the plugin list: catches a
       # plugin without a Package.swift or a Gradle entry before a Mac does.
       - run: npx cap sync
+
+  # The iOS project compiles: the app, its RoundActivity plugin and the Live
+  # Activity widget extension, for the simulator, unsigned. No secrets, so
+  # a fork and a pull request get the same check.
+  ios:
+    if: github.event_name != 'schedule'
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npx cap sync ios
+
+      - name: Build for the simulator
+        run: |
+          set -eu -o pipefail
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -z "$xcode" ] || sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcodebuild build \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination "generic/platform=iOS Simulator" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee "$RUNNER_TEMP/build.log" | grep -E "(^\*\*|error:)" || true
+          grep -q "BUILD SUCCEEDED" "$RUNNER_TEMP/build.log" || { tail -80 "$RUNNER_TEMP/build.log"; exit 1; }
 
   # Network, so not part of `npm test`: fetches the providers' contracts and
   # fails with a diff if the vendored copy has drifted. The fix is

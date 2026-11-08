@@ -57,17 +57,19 @@ across the organisation.
 | `APPLE_DIST_CERT_P12` | the **Apple Distribution** certificate with its private key, as `.p12`, base64 | new |
 | `APPLE_DIST_CERT_PASSWORD` | the `.p12`'s password | new |
 | `APPLE_PROVISIONING_PROFILE` | the **App Store** provisioning profile for `cloud.pairings.manubrium`, the `.mobileprovision` file, base64 | new |
+| `APPLE_EXTENSION_PROFILE` | the **App Store** profile for the Live Activity extension `cloud.pairings.manubrium.RoundActivity`, `.mobileprovision`, base64 | new in 1.2 |
 | `ANDROID_KEYSTORE` | the upload keystore, `.jks`, base64 | new |
 | `ANDROID_KEYSTORE_PASSWORD` | its store password | new |
 | `ANDROID_KEY_ALIAS` | the key's alias in it | new |
 | `ANDROID_KEY_PASSWORD` | the key's password | new |
+| `GOOGLE_SERVICES_JSON` | Firebase's `google-services.json` for push, base64; optional - without it Android has no push | new in 1.2 |
 
 Base64 on a Mac or Linux: `base64 -i file | pbcopy` (Mac) or
 `base64 -w0 file` (Linux); paste the one line as the secret's value.
 On Windows: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("file")) | Set-Clipboard`.
 
 The workflows check that the `.p12` opens with its password and that the
-profile is for `cloud.pairings.manubrium` before they spend minutes on
+profiles are for `cloud.pairings.manubrium` and its extension (and that the app's carries push) before they spend minutes on
 Xcode, and print a fingerprint of the `.p12` so a wrong file is told apart
 from a wrong password.
 
@@ -79,8 +81,8 @@ role (or Admin) for uploads; a Developer-role key cannot upload builds.
 
 1. **App ID** - *Certificates, Identifiers & Profiles > Identifiers > +*,
    *App IDs*, type App. Description "Manubrium", **explicit** bundle id
-   `cloud.pairings.manubrium`. No capabilities are needed (the camera,
-   the local network and the keychain need none).
+   `cloud.pairings.manubrium`. Capability: **Push Notifications** (since
+   1.2; the camera, the local network and the keychain need none).
 
 2. **Apple Distribution certificate** - *Certificates > +*, **Apple
    Distribution**. It wants a certificate signing request: on a Mac,
@@ -117,6 +119,51 @@ role (or Admin) for uploads; a Developer-role key cannot upload builds.
 5. After the first upload, in **TestFlight**: the export-compliance question
    is already answered by `ITSAppUsesNonExemptEncryption = false` in
    `Info.plist` (standard HTTPS only); add the internal testers.
+
+### Push notifications and the Live Activity: what to make
+
+Manubrium 1.2 adds notifications and the round on the lock screen. The app
+side needs exactly **two new things from Apple and one from Google**; the
+rest sits on each OpenPairings server. Nothing else changes.
+
+Apple ([developer.apple.com/account](https://developer.apple.com/account)):
+
+1. **Push on the app's App ID.** *Identifiers*, `cloud.pairings.manubrium`,
+   tick **Push Notifications**, save. (Push changes the profile, so:)
+2. **Make the app's profile again** (*Profiles*, `Manubrium App Store`,
+   *Edit*, *Save*, download) and replace `APPLE_PROVISIONING_PROFILE`. The
+   workflow refuses a profile without the push entitlement and says so.
+3. **The extension's App ID.** *Identifiers > +*, App ID, explicit bundle id
+   `cloud.pairings.manubrium.RoundActivity`, description "Manubrium round".
+   No capabilities: a Live Activity needs none of its own.
+4. **The extension's profile.** *Profiles > +*, **App Store Connect**, App ID
+   `cloud.pairings.manubrium.RoundActivity`, the same distribution
+   certificate, name it `Manubrium RoundActivity`. That `.mobileprovision`,
+   base64, is the new secret `APPLE_EXTENSION_PROFILE`.
+5. **One APNs key, for the servers.** *Keys > +*, tick **Apple Push
+   Notifications service (APNs)**, environment *Sandbox & Production*,
+   download the `.p8` (once - Apple keeps no copy). Note its Key ID. This
+   key goes on each OpenPairings server that should push (`APNS_KEY_ID`,
+   `APNS_TEAM_ID`, `APNS_KEY_PATH`: OpenPairings' `docs/manubrium.md`), not
+   in this repository and not in a GitHub secret. One key serves every
+   server, alerts and Live Activities, sandbox and production.
+
+Google ([console.firebase.google.com](https://console.firebase.google.com)):
+
+1. **A Firebase project** with an **Android app** `cloud.pairings.manubrium`.
+   Download its `google-services.json`: base64, it is the secret
+   `GOOGLE_SERVICES_JSON`. It is not secret in the cryptographic sense, but
+   it stays out of git (`android/.gitignore`) so a fork does not push into
+   our project. Without the secret the Android build simply has no push,
+   and the app says so.
+2. **A service account for the servers.** *Project settings > Service
+   accounts > Generate new private key*. That JSON goes on each OpenPairings
+   server that should push (`FCM_SERVICE_ACCOUNT_PATH`), never here.
+
+So the secrets in this repository grow by two (`APPLE_EXTENSION_PROFILE`,
+`GOOGLE_SERVICES_JSON`), and each server that wants push gets two files
+(the `.p8` and the service account). A server without them sends nothing;
+the app tells its arbiters that server has no notifications.
 
 ### Google: what to make, in order
 
@@ -159,6 +206,7 @@ OpenPairings' Mac signing: revoking it breaks both.
 
 - Take screenshots. `store/screenshots.md` says which are needed.
 - Upload to Google Play. The `.aab` is an artifact; upload it by hand.
-- Build on a pull request. `ci.yml` runs the unit tests, the type check,
-  the web build and `npx cap sync` (which catches a plugin that both
-  native projects cannot take) - no SDK, no signing.
+- Build a signed package on a pull request. `ci.yml` runs the unit tests,
+  the type check, the web build and `npx cap sync` (which catches a plugin
+  that both native projects cannot take), and compiles the iOS project with
+  its widget extension for the simulator, unsigned - no secrets.

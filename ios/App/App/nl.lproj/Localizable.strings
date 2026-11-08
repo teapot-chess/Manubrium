@@ -1,0 +1,8 @@
+"push_round_paired" = "Ronde %1$@ is gepaard.";
+"push_round_published" = "Ronde %1$@ is gepubliceerd.";
+"push_incident" = "Ronde %1$@, bord %2$@: er is een incident genoteerd.";
+"push_phone_vs_board" = "Bord %1$@: een telefoon gaf %2$@ in, het zaalbord zegt %3$@.";
+"push_phone_vs_entry" = "Bord %1$@: een telefoon probeerde %2$@ over de al ingevoerde %3$@.";
+"push_coarbiter_one" = "Ronde %1$@, bord %2$@: %3$@ gaf %4$@ in.";
+"push_coarbiter_many" = "Ronde %1$@: %2$@ gaf %3$@ uitslagen in.";
+"push_default_time" = "Ronde %1$@: de wachttijd is om.";

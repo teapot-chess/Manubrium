@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="push_round_paired">La ronde %1$s est appariée.</string>
+    <string name="push_round_published">La ronde %1$s est publiée.</string>
+    <string name="push_incident">Ronde %1$s, échiquier %2$s : un incident a été noté.</string>
+    <string name="push_phone_vs_board">Échiquier %1$s : un téléphone a saisi %2$s, l\'échiquier de la salle dit %3$s.</string>
+    <string name="push_phone_vs_entry">Échiquier %1$s : un téléphone a tenté %2$s par-dessus le %3$s déjà saisi.</string>
+    <string name="push_coarbiter_one">Ronde %1$s, échiquier %2$s : %3$s a saisi %4$s.</string>
+    <string name="push_coarbiter_many">Ronde %1$s : %2$s a saisi %3$s résultats.</string>
+    <string name="push_default_time">Ronde %1$s : le temps de forfait est atteint.</string>
+</resources>

@@ -1,0 +1,15 @@
+{
+  "push": {
+    "platform": "apns",
+    "token": "5a1f0c9e3b7d2a8f4c6e0b1d9a7f3e5c2b8d4a6f0e1c3b5d7a9f2e4c6b8d0a1f",
+    "environment": "production",
+    "events": [
+      "round_paired",
+      "round_published",
+      "phone_result",
+      "incident",
+      "default_time"
+    ],
+    "tag": "pairings.cloud"
+  }
+}
