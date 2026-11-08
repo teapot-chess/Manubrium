@@ -23,6 +23,14 @@ vi.mock("../platform", () => ({
   onResume: () => () => undefined,
   takePhoto: vi.fn(async () => null),
   shareText: vi.fn(async () => "shared"),
+  secureStorage: { get: async () => null, set: async () => undefined },
+  onPause: () => () => undefined,
+  awayOnPurpose: () => false,
+  scanQr: vi.fn(async () => null),
+  remindAt: vi.fn(async () => true),
+  cancelReminder: vi.fn(async () => undefined),
+  deviceUnlockAvailable: async () => false,
+  deviceUnlock: async () => false,
 }));
 
 const START = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";

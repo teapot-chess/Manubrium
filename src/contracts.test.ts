@@ -143,10 +143,6 @@ const NOT_IN_CONTRACT: string[] = [];
 const UNUSED_SCHEMAS: Record<string, string> = {
   "common.schema.json": "shared definitions, not a message",
   "error.schema.json": "every refusal; checked through ApiError below",
-  "live-board-command-request.schema.json": "live boards in the app arrive with their own change; the contract is ahead of the app",
-  "live-board-command-response.schema.json": "as above",
-  "live-board-game-response.schema.json": "as above",
-  "live-boards-response.schema.json": "as above",
 };
 
 function routeFor(method: string, url: string): Route {
