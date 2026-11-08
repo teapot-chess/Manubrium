@@ -71,9 +71,35 @@ export async function deviceName(): Promise<string> {
   }
 }
 
+// The camera, the share sheet and the scanner are other screens: the app
+// goes to the background while they are up and comes back after. That is
+// not the arbiter leaving, and the app lock must not take it as such.
+let away = 0;
+
+/** Whether the app is in the background only because it opened the camera, the scanner or the share sheet. */
+export function awayOnPurpose(): boolean {
+  return away > 0;
+}
+
+async function onPurpose<T>(run: () => Promise<T>): Promise<T> {
+  away++;
+  try {
+    return await run();
+  } finally {
+    // The resume arrives just after the plugin answers; let it land first.
+    setTimeout(() => {
+      away--;
+    }, 1500);
+  }
+}
+
 /** Scans a QR code with the camera; null when cancelled or not possible here. */
 export async function scanQr(): Promise<string | null> {
   if (!native) return null;
+  return onPurpose(scanNow);
+}
+
+async function scanNow(): Promise<string | null> {
   const { CapacitorBarcodeScanner, CapacitorBarcodeScannerTypeHint } = await import("@capacitor/barcode-scanner");
   try {
     const result = await CapacitorBarcodeScanner.scanBarcode({ hint: CapacitorBarcodeScannerTypeHint.QR_CODE });
@@ -142,24 +168,26 @@ export function onResume(handler: () => void): () => void {
  * its longest side as the hall pages do, or null when cancelled.
  */
 export async function takePhoto(): Promise<string | null> {
-  if (native) {
-    const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
-    try {
-      const photo = await Camera.getPhoto({
-        source: CameraSource.Camera,
-        resultType: CameraResultType.Base64,
-        quality: 70,
-        width: 1600,
-        height: 1600,
-        correctOrientation: true,
-        saveToGallery: false,
-      });
-      return photo.base64String ?? null;
-    } catch {
-      return null;
-    }
-  }
+  if (native) return onPurpose(photoNow);
   return pickJpeg();
+}
+
+async function photoNow(): Promise<string | null> {
+  const { Camera, CameraResultType, CameraSource } = await import("@capacitor/camera");
+  try {
+    const photo = await Camera.getPhoto({
+      source: CameraSource.Camera,
+      resultType: CameraResultType.Base64,
+      quality: 70,
+      width: 1600,
+      height: 1600,
+      correctOrientation: true,
+      saveToGallery: false,
+    });
+    return photo.base64String ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function pickJpeg(): Promise<string | null> {
@@ -188,13 +216,89 @@ function pickJpeg(): Promise<string | null> {
 export async function shareText(title: string, text: string): Promise<ShareOutcome> {
   if (native) {
     const { Share } = await import("@capacitor/share");
-    try {
-      await Share.share({ title, text, dialogTitle: title });
-      return "shared";
-    } catch {
-      // Closing the sheet rejects too; there is no telling the two apart.
-      return "cancelled";
-    }
+    return onPurpose(async () => {
+      try {
+        await Share.share({ title, text, dialogTitle: title });
+        return "shared" as const;
+      } catch {
+        // Closing the sheet rejects too; there is no telling the two apart.
+        return "cancelled" as const;
+      }
+    });
   }
   return webShare(title, text);
+}
+
+/** Calls `handler` when the app goes to the background; returns the undo. */
+export function onPause(handler: () => void): () => void {
+  const hidden = () => {
+    if (document.visibilityState === "hidden") handler();
+  };
+  if (native) {
+    const pending = App.addListener("pause", handler);
+    return () => {
+      pending.then((h) => h.remove());
+    };
+  }
+  document.addEventListener("visibilitychange", hidden);
+  return () => document.removeEventListener("visibilitychange", hidden);
+}
+
+/**
+ * A local notification at `at`, replacing any earlier one with the same id.
+ * Asks for permission the first time; false when there is none (or no
+ * phone: a browser tab gets nothing, the countdown on screen is all).
+ */
+export async function remindAt(id: number, at: Date, title: string, body: string): Promise<boolean> {
+  if (!native) return false;
+  const { LocalNotifications } = await import("@capacitor/local-notifications");
+  try {
+    let perm = await LocalNotifications.checkPermissions();
+    if (perm.display === "prompt" || perm.display === "prompt-with-rationale") perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== "granted") return false;
+    await LocalNotifications.cancel({ notifications: [{ id }] }).catch(() => undefined);
+    if (at.getTime() <= Date.now()) return true;
+    await LocalNotifications.schedule({ notifications: [{ id, title, body, schedule: { at, allowWhileIdle: true } }] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function cancelReminder(id: number): Promise<void> {
+  if (!native) return;
+  const { LocalNotifications } = await import("@capacitor/local-notifications");
+  await LocalNotifications.cancel({ notifications: [{ id }] }).catch(() => undefined);
+}
+
+/** Whether the phone can unlock the app itself: biometrics, or at least a passcode. */
+export async function deviceUnlockAvailable(): Promise<boolean> {
+  if (!native) return false;
+  const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
+  try {
+    const r = await BiometricAuth.checkBiometry();
+    return r.isAvailable || r.deviceIsSecure;
+  } catch {
+    return false;
+  }
+}
+
+/** Face ID, Touch ID, a fingerprint or the phone's passcode. True when the phone says yes. */
+export async function deviceUnlock(reason: string, cancelTitle: string): Promise<boolean> {
+  if (!native) return false;
+  const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
+  return onPurpose(async () => {
+    try {
+      await BiometricAuth.authenticate({
+        reason,
+        cancelTitle,
+        allowDeviceCredential: true,
+        androidTitle: reason,
+        androidConfirmationRequired: false,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }

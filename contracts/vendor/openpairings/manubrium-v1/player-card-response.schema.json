@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/player-card-response.schema.json",
+  "title": "GET /tournaments/:id/players/:pid/card response",
+  "description": "One player's card, for anyone on the tournament (arbiters included): the player as the players list has them, rank and score as the standings have them, and every game so far, as the printed Players Card reads it. 404 not_found for a player not in the tournament.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["card"],
+  "properties": {
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["player", "rank", "score", "games"],
+      "properties": {
+        "player": { "$ref": "common.schema.json#/definitions/player" },
+        "rank": { "type": ["string", "integer", "null"], "description": "As the standings show it." },
+        "score": { "type": "number", "description": "The score the standings rank on." },
+        "games": {
+          "type": "array",
+          "description": "One per round the player has a record in, by round. A round still being played without a result is not here yet.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["round", "opponent", "colour", "result"],
+            "properties": {
+              "round": { "type": "integer", "minimum": 1 },
+              "opponent": { "$ref": "common.schema.json#/definitions/player_brief", "description": "Null for a bye." },
+              "colour": { "enum": ["w", "b", null], "description": "Null for a bye." },
+              "result": { "type": "string", "description": "From the player's side, as the card prints it: \"1\", \"½\", \"0\", \"1FF\", \"0FF\", \"1 bye\", \"½ bye\", \"0 bye\", \"*\" (postponed), or \"\"." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

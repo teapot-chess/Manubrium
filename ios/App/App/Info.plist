@@ -67,11 +67,13 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Manubrium uses the camera to scan the connect code on your OpenPairings account page and to photograph an incident (a scoresheet, a clock) for the arbiter's log.</string>
+	<string>Manubrium uses the camera to scan the connect code on your OpenPairings account page, to scan the code on a result slip or place card, and to photograph an incident (a scoresheet, a clock) for the arbiter's log.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Manubrium can attach a photo you already took to an incident in the arbiter's log.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Manubrium uses Face ID to unlock the app when you have turned on the app lock.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Manubrium connects to OpenPairings running on a computer in the playing hall, over the hall's own network.</string>
 	<key>NSAppTransportSecurity</key>

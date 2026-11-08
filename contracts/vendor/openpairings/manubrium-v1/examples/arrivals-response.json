@@ -1,0 +1,20 @@
+{
+  "arrivals": [
+    {
+      "id": 1,
+      "present": true
+    },
+    {
+      "id": 2,
+      "present": true
+    },
+    {
+      "id": 3,
+      "present": true
+    },
+    {
+      "id": 4,
+      "present": false
+    }
+  ]
+}

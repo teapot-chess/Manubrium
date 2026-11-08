@@ -94,6 +94,9 @@ const ROUTES: Route[] = [
   // The JPEG itself: named in the contract, deliberately outside its schemas.
   { method: "GET", path: /^\/tournaments\/\d+\/incidents\/\d+\/photo$/, contract: "GET /tournaments/:id/incidents/:iid/photo" },
   { method: "GET", path: /^\/tournaments\/\d+\/players$/, contract: "GET /tournaments/:id/players", response: "players-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/players\/\d+\/card$/, contract: "GET /tournaments/:id/players/:pid/card", response: "player-card-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/arrivals$/, contract: "GET /tournaments/:id/arrivals", response: "arrivals-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/prizes$/, contract: "GET /tournaments/:id/prizes", response: "prizes-response" },
   { method: "GET", path: /^\/tournaments\/\d+\/player-search$/, contract: "GET /tournaments/:id/player-search", response: "player-search-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/players$/, contract: "POST /tournaments/:id/players", request: "player-create-request", response: "player-response" },
   { method: "PATCH", path: /^\/tournaments\/\d+\/players\/\d+$/, contract: "PATCH /tournaments/:id/players/:pid", request: "player-update-request", response: "player-response" },
@@ -268,6 +271,9 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   hallCountdown: (c) => c.hallCountdown(2, 5),
   hallCancelCountdown: (c) => c.hallCancelCountdown(2),
   hallAnnounce: (c) => c.hallAnnounce(2, { canned: "silence" }),
+  playerCard: (c) => c.playerCard(2, 1),
+  arrivals: (c) => c.arrivals(2),
+  prizes: (c) => c.prizes(2),
 };
 
 async function everyCall(c: Client) {
@@ -293,6 +299,9 @@ describe("every answer in the contract, through the app's client", () => {
     ["settings-response", (c) => c.updateSettings(2, {}), (e) => e.settings],
     ["incident-response", (c) => c.attachPhoto(2, 4, "/9j/AAAA"), (e) => e.incident],
     ["players-response", (c) => c.players(2), (e) => e.players],
+    ["player-card-response", (c) => c.playerCard(2, 1), (e) => e.card],
+    ["arrivals-response", (c) => c.arrivals(2), (e) => e.arrivals],
+    ["prizes-response", (c) => c.prizes(2), (e) => e.prizes],
     ["player-search-response", (c) => c.searchPlayers(2, "Zylv", "fide"), (e) => e.results],
     ["player-response", (c) => c.setByes(2, 6, []), (e) => e.player],
     ["board-links-response", (c) => c.boardLinks(2), (e) => e.links],

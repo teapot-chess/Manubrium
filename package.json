@@ -1,6 +1,6 @@
 {
   "name": "manubrium",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "description": "Manubrium - run a chess tournament from the playing hall, against OpenPairings servers.",
@@ -17,12 +17,14 @@
     "contracts:check": "node scripts/contracts.mjs check"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "10.0.0",
     "@aparajita/capacitor-secure-storage": "^8.0.1",
     "@capacitor/app": "^8.1.2",
-    "@capacitor/barcode-scanner": "^3.1.3",
+    "@capacitor/barcode-scanner": "3.1.3",
     "@capacitor/camera": "^8.2.6",
     "@capacitor/core": "^8.5.3",
     "@capacitor/device": "^8.0.3",
+    "@capacitor/local-notifications": "8.3.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.3",
     "preact": "^11.0.1",
