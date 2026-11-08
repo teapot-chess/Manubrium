@@ -1,0 +1,96 @@
+/* Live board control: the boards screen, the mini boards, a board's sheet.
+   Its own file so the palette work elsewhere does not collide with it; only
+   the tokens of styles.css are used. */
+
+.live-screen {
+  position: fixed; inset: 0; z-index: 40; overflow-y: auto; display: flex; flex-direction: column;
+  background: var(--bg); animation: fade 140ms ease-out;
+}
+
+.live-boxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.live-box {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; background: var(--surface); border: 1px solid var(--border);
+}
+.live-box .dot, .live-health .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-soft); flex: none; }
+.live-box.online .dot, .live-health.connected .dot { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.live-box.offline { color: var(--danger); }
+.live-box.offline .dot, .live-health.lost .dot { background: var(--danger); }
+.live-health.stale .dot { background: var(--warn); }
+
+.live-row { flex-direction: row; align-items: flex-start; gap: 12px; }
+.live-row-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.live-health { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-soft); }
+.live-health.lost { color: var(--danger); }
+.live-health.stale { color: var(--warn); }
+
+.live-state {
+  display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+  font-size: 11.5px; font-weight: 700; background: var(--surface-alt); color: var(--text-soft); border: 1px solid var(--border);
+}
+.live-state.ok { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.live-state.warn { background: #fde7cf; color: #9a4a00; border-color: transparent; }
+.live-state.bad { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+@media (prefers-color-scheme: dark) {
+  .live-state.warn { background: rgba(255, 160, 80, 0.16); color: #ffb26b; }
+}
+
+.live-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.live-chip { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.live-chip.alarm { background: var(--danger-soft); color: var(--danger); }
+.live-results { font-size: 12.5px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.live-results.mismatch { color: var(--danger); font-weight: 700; }
+.live-alarm-detail { margin: 6px 0; font-size: 14px; color: var(--danger); }
+
+/* The board: a grid of 64 squares, glyphs coloured by side. */
+.mini-board {
+  display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; flex: none;
+  border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--border); user-select: none;
+}
+.mini-board.small { width: 64px; }
+.mini-board.large { width: min(340px, 100%); margin: 6px auto; border-radius: 10px; }
+.mini-board.empty { display: flex; align-items: center; justify-content: center; background: var(--surface-alt); color: var(--text-soft); font-size: 13px; }
+.mini-board .sq { position: relative; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.mini-board .sq.light { background: #eee6d3; }
+.mini-board .sq.dark { background: #8ca58f; }
+.mini-board .sq.last::after { content: ""; position: absolute; inset: 0; background: rgba(240, 200, 60, 0.45); }
+.mini-board .pc { position: relative; z-index: 1; font-family: "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", serif; }
+.mini-board.small .pc { font-size: 7px; }
+.mini-board.large .pc { font-size: min(36px, 9vw); }
+.mini-board .pc.w { color: #fffdf7; text-shadow: 0 0 1px #24211c, 0 0 1px #24211c, 0 1px 1px rgba(0, 0, 0, 0.5); }
+.mini-board .pc.b { color: #1d1b17; }
+
+.live-clock-row { display: flex; justify-content: center; }
+.live-clock {
+  display: inline-flex; align-items: baseline; justify-content: space-between; gap: 12px; width: min(340px, 100%);
+  padding: 6px 12px; border-radius: 10px; background: var(--surface-alt); border: 1px solid var(--border);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.live-clock .who { font-size: 13px; color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-clock .time { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.live-clock.running { background: var(--accent-soft); border-color: var(--accent); }
+.live-clock.running .time { color: var(--accent); }
+
+.live-commands { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.live-command { font-size: 13.5px; padding: 6px 10px; border-radius: 8px; background: var(--surface-alt); animation: rise 200ms ease-out; }
+.live-command.pending, .live-command.sent { background: var(--warn-soft); }
+.live-command.done { background: var(--ok-soft); }
+.live-command.failed, .live-command.expired { background: var(--danger-soft); color: var(--danger); }
+
+.live-guess { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.live-guess > span { flex: 1; font-size: 14px; }
+.live-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.live-actions .btn { font-size: 14px; }
+
+.live-moves { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; font-variant-numeric: tabular-nums; font-size: 14px; }
+.live-moves li { display: inline-flex; gap: 6px; }
+.live-moves .n { color: var(--text-soft); }
+.live-moves .guessed { color: var(--danger); font-weight: 700; text-decoration: underline dotted; }
+
+.live-stepper { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 8px 0; }
+.live-stepper .btn { min-width: 52px; font-size: 22px; }
+.live-stepper span { min-width: 110px; text-align: center; font-weight: 700; }
+.live-fen-problem { color: var(--danger); font-size: 14px; margin: 6px 0; }
+.live-finish { grid-template-columns: repeat(2, 1fr); }
+
+.live-open { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

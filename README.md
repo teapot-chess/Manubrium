@@ -148,6 +148,45 @@ does not need it. Sign in on `http://localhost:4000`, open **Account**,
 **Manubrium app**, **Connect a phone**, copy the link under the QR code and
 paste it into the app's **Add a server**.
 
+## Live boards (live board control)
+
+Under More, the hall boards' section opens **Live boards** once a code
+exists: every physical board the tournament's boxes (Alnasl) report, as the
+box last saw it. Owner and editors only, as on the server.
+
+- **The list**: per table the connection (connected, lost, or "no news from
+  the box" when the box's last report is over 90 s old), when the board was
+  last seen, whether its box is online, the state (guessed moves in red,
+  reconstructed ones in orange; a state this version does not know is shown
+  as the box sent it), the alarms (unknown ones raw), a waiting memory
+  draft, the pairing, the arbiter's result beside what the board saw, and a
+  small board.
+- **A board's sheet**: the position from the FEN (64 squares and Unicode
+  glyphs, no chess library), the last move marked, turned round when the box
+  has the board flipped; both clocks, the running one counted down on the
+  phone from the report's `clock_at` and labelled approximate; the moves,
+  fetched when the sheet opens and again when the board has more.
+- **Commands**: accept the board's result (only when the board saw one and
+  the arbiter has none; it is the arbiter's own tap, entered by OpenPairings,
+  never by the box), keep or take back a guessed run, accept or discard a
+  memory draft, set a position (checked before it goes), take back 1 to 20
+  plies, flip, link to a board of the current round or unlink, restart the
+  driver, re-read, and mark the game finished on the box only. Everything
+  that throws something away asks first. Each command shows where it stands:
+  waiting for the box, the box has it, done, failed (the box's error in a
+  sentence), or expired after two minutes unfetched.
+- **Polling**: `GET live-boards` every `poll_seconds` (the server says 5)
+  while the screen or a sheet is open and the app is in the foreground
+  (Capacitor's app state on a phone, page visibility in a browser). Leaving
+  the screen stops it; coming back to the app asks at once.
+
+The phone never talks to a box: commands wait on OpenPairings until the box
+calls in (`docs/manubrium.md` there, and the `live-boards` schemas in the
+contract). Code: `src/ui/LiveBoards.tsx` (screen and sheet),
+`src/liveBoards.ts` (health, clocks, guessed runs, the sentences),
+`src/fen.ts` (the board and the position check), `src/poll.ts` (polling
+while looked at).
+
 ## Contracts
 
 OpenPairings publishes the API this app talks to as JSON Schemas with

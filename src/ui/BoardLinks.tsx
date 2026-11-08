@@ -10,6 +10,7 @@ import { copyText } from "../share";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, Sheet } from "./common";
 import { t as tr, dateLocale } from "../i18n";
+import { LiveBoardsScreen } from "./LiveBoards";
 
 const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(dateLocale(), { dateStyle: "short", timeStyle: "short" }) : null);
 
@@ -22,6 +23,7 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
   const [making, setMaking] = useState(false);
   const [fresh, setFresh] = useState<{ link: BoardLink; code: string } | null>(null);
   const [revoking, setRevoking] = useState<BoardLink | null>(null);
+  const [live, setLive] = useState(false);
 
   const load = () =>
     ctx.api.boardLinks(t.id).then(
@@ -71,6 +73,12 @@ export function BoardLinks(props: { ctx: Ctx; t: Tournament }) {
   return (
     <section id="board-links-section">
       <h2>{tr("boards.title")}</h2>
+      {links && links.length > 0 && (
+        <button type="button" class="btn primary block" id="open-live-boards" onClick={() => setLive(true)}>
+          {tr("live.open")}
+        </button>
+      )}
+      {live && <LiveBoardsScreen ctx={ctx} t={t} onClose={() => setLive(false)} />}
       {error && (
         <Notice kind="error" onClose={() => setError(null)}>
           {error}

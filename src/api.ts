@@ -351,6 +351,142 @@ export interface PushStatus {
 
 export interface PushRegister { platform: PushPlatform; token: string; environment?: PushEnvironment; events?: PushEvent[]; tag?: string }
 
+// --- Live board control (the hall's boards, through OpenPairings) ---------
+// What the boxes (Alnasl) report about every physical board, and the
+// commands the arbiter sends them. The phone never talks to a box: it asks
+// OpenPairings, and the box fetches the command when it next calls in.
+
+/** A box behind one of the tournament's board codes. */
+export interface LiveBox {
+  link_id: number;
+  name: string;
+  version: string | null;
+  last_seen_at: string | null;
+  /** The box called within the last 30 seconds. */
+  online: boolean;
+  tables_at: string;
+}
+
+/** The pairing the board's game is, as OpenPairings knows it. `result` is the ARBITER's. */
+export interface LivePairing {
+  id: number;
+  round: number;
+  board: number | null;
+  label: string;
+  white: string | null;
+  black: string | null;
+  result: string | null;
+}
+
+export interface LiveDraft {
+  id: number;
+  reason?: string | null;
+  from_ply?: number;
+  plies?: number;
+}
+
+export type LiveSide = "white" | "black" | "none";
+
+/** One physical board, as its box last reported it. */
+export interface LiveTable {
+  link_id: number;
+  board: number;
+  name: string;
+  table: number | null;
+  serial: string | null;
+  connected: boolean;
+  last_seen: string | null;
+  /** The box's last report is older than 90 seconds. */
+  stale: boolean;
+  /** live, waiting, finished, no_signal, unlinked, out_of_sync, clock_alarm, recovered, guessed, paused, or something newer. */
+  state: string;
+  flipped: boolean;
+  alarms: string[];
+  alarm_detail: string | null;
+  draft: LiveDraft | null;
+  guessed_plies: number[];
+  fen: string | null;
+  last_move: string | null;
+  white_ms: number | null;
+  black_ms: number | null;
+  running: LiveSide | null;
+  /** When the report arrived: the running clock counts down from here. */
+  clock_at: string;
+  round: number | null;
+  board_no: number | null;
+  game: string | null;
+  pairing: LivePairing | null;
+  /** What the board saw (its latest game report), never entered by itself. */
+  board_result: string | null;
+  plies: number;
+}
+
+export type BoardCommandKind =
+  | "accept_result"
+  | "confirm_guess"
+  | "reject_guess"
+  | "accept_draft"
+  | "dismiss_draft"
+  | "set_position"
+  | "takeback"
+  | "flip"
+  | "link"
+  | "unlink"
+  | "restart"
+  | "resync"
+  | "finish";
+
+export type BoardCommandState = "pending" | "sent" | "done" | "failed" | "expired";
+
+export interface BoardCommand {
+  id: number;
+  kind: string;
+  link_id: number | null;
+  board: number | null;
+  game: string | null;
+  args: Record<string, unknown>;
+  state: BoardCommandState | string;
+  error: string | null;
+  detail: string | null;
+  created_at: string;
+  sent_at: string | null;
+  done_at: string | null;
+  expires_at: string | null;
+  by: string | null;
+}
+
+/** What `POST live-boards/commands` takes. */
+export type BoardCommandRequest =
+  | { kind: "accept_result"; game: string }
+  | { kind: Exclude<BoardCommandKind, "accept_result">; link_id: number; board: number; game?: string; args: Record<string, unknown> };
+
+export interface LiveBoards {
+  poll_seconds: number;
+  round: number | null;
+  boxes: LiveBox[];
+  tables: LiveTable[];
+  /** The tournament's most recent commands, newest first. */
+  commands: BoardCommand[];
+}
+
+/** The moves of a game as the board last reported them, for the sheet. */
+export interface LiveGame {
+  game: string;
+  status: string;
+  result: string | null;
+  moves: string[];
+  move_clocks: (number | null)[];
+  white_ms: number | null;
+  black_ms: number | null;
+  running: LiveSide | null;
+  start_fen: string | null;
+  /** How many moves were reconstructed from the board's memory. */
+  reconstructed: number;
+  /** How many moves are guessed. */
+  guessed: number;
+  reported_at: string | null;
+}
+
 export interface Connected { token: string; device: Device; user: UserInfo; server: ServerInfo }
 
 /** The server said no, with a code and a sentence for the person holding the phone. */
@@ -507,6 +643,11 @@ export interface Client {
   deleteLiveActivity(id: number): Promise<void>;
   setDefaultTime(id: number, round: number, at: string): Promise<void>;
   cancelDefaultTime(id: number, round: number): Promise<void>;
+
+  liveBoards(id: number): Promise<LiveBoards>;
+  liveGame(id: number, game: string): Promise<LiveGame>;
+  sendBoardCommand(id: number, command: BoardCommandRequest): Promise<BoardCommand>;
+  boardCommand(id: number, commandId: number): Promise<BoardCommand>;
 }
 
 export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
@@ -592,6 +733,11 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     cancelDefaultTime: async (id, round) => {
       await req("DELETE", `${t(id)}/default-time?round=${round}`);
     },
+
+    liveBoards: (id) => req("GET", `${t(id)}/live-boards`),
+    liveGame: (id, game) => req("GET", `${t(id)}/live-boards/games/${encodeURIComponent(game)}`),
+    sendBoardCommand: async (id, command) => (await req<{ command: BoardCommand }>("POST", `${t(id)}/live-boards/commands`, command)).command,
+    boardCommand: async (id, commandId) => (await req<{ command: BoardCommand }>("GET", `${t(id)}/live-boards/commands/${commandId}`)).command,
     photo: async (id, incident) => {
       // Not JSON: the JPEG itself, so not through `call`.
       let response: Response;

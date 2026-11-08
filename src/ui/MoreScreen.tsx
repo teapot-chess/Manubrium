@@ -9,6 +9,7 @@ import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, Sheet, TryAgain } from "./common";
 import { SettingsEditor } from "./SettingsEditor";
 import { BoardLinks } from "./BoardLinks";
+import { LiveBoardsScreen } from "./LiveBoards";
 import { HallPanel } from "./HallPanel";
 import { PhoneSettings } from "./PhoneSettings";
 import { refusalText } from "../queue";
@@ -70,6 +71,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [liveBoards, setLiveBoards] = useState(false);
   const [viewing, setViewing] = useState<{ incident: Incident; url: string } | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [amending, setAmending] = useState<Incident | null>(null);
@@ -219,6 +221,16 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
       )}
 
       {desk && <BoardLinks ctx={ctx} t={t} />}
+
+      {!desk && t.can.includes("results") && (
+        <section id="arbiter-live-boards">
+          <h2>{tr("boards.title")}</h2>
+          <button type="button" class="btn block" id="open-live-boards" onClick={() => setLiveBoards(true)}>
+            {tr("live.open")}
+          </button>
+          {liveBoards && <LiveBoardsScreen ctx={ctx} t={t} onClose={() => setLiveBoards(false)} />}
+        </section>
+      )}
 
       {desk && <HallPanel ctx={ctx} t={t} />}
 

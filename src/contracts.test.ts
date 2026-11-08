@@ -15,6 +15,13 @@ import {
   connect,
   needsAcknowledgement,
   type BoardLink,
+  type BoardCommand,
+  type BoardCommandRequest,
+  type LiveBoards,
+  type LiveBox,
+  type LiveGame,
+  type LivePairing,
+  type LiveTable,
   type BoardPlayer,
   type BoardReport,
   type BoardStatus,
@@ -50,6 +57,8 @@ import { Outbox, type KeyValue } from "./queue";
 import { hitDetails, sourceOf } from "./search";
 import { pairingsText, standingsText } from "./share";
 import { definition, enumOf, examples, files, index, problems, prose, schemaFor, schemas, shape, shapeMismatches } from "./contract.testkit";
+import { completeFen } from "./fen";
+import { alarmLabel, boxErrorText, liveErrorText, stateLabel } from "./liveBoards";
 import { startForm, toFields } from "./ui/NewTournament";
 import { incidentKinds } from "./ui/RoundScreen";
 import { changes, initial } from "./ui/SettingsEditor";
@@ -118,6 +127,11 @@ const ROUTES: Route[] = [
   { method: "DELETE", path: /^\/tournaments\/\d+\/live-activity$/, contract: "DELETE /tournaments/:id/live-activity", response: "live-activity-response" },
   { method: "PUT", path: /^\/tournaments\/\d+\/default-time$/, contract: "PUT /tournaments/:id/default-time", request: "default-time-request", response: "default-time-response" },
   { method: "DELETE", path: /^\/tournaments\/\d+\/default-time$/, contract: "DELETE /tournaments/:id/default-time", response: "default-time-response" },
+  // Live board control (contract revision 2).
+  { method: "GET", path: /^\/tournaments\/\d+\/live-boards$/, contract: "GET /tournaments/:id/live-boards", response: "live-boards-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/live-boards\/games\/[^/]+$/, contract: "GET /tournaments/:id/live-boards/games/:game", response: "live-board-game-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/live-boards\/commands$/, contract: "POST /tournaments/:id/live-boards/commands", request: "live-board-command-request", response: "live-board-command-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/live-boards\/commands\/\d+$/, contract: "GET /tournaments/:id/live-boards/commands/:command_id", response: "live-board-command-response" },
 ];
 
 // Routes the server has and the app uses, that the contract does not (yet)
@@ -129,10 +143,6 @@ const NOT_IN_CONTRACT: string[] = [];
 const UNUSED_SCHEMAS: Record<string, string> = {
   "common.schema.json": "shared definitions, not a message",
   "error.schema.json": "every refusal; checked through ApiError below",
-  "live-board-command-request.schema.json": "live boards in the app arrive with their own change; the contract is ahead of the app",
-  "live-board-command-response.schema.json": "as above",
-  "live-board-game-response.schema.json": "as above",
-  "live-boards-response.schema.json": "as above",
 };
 
 function routeFor(method: string, url: string): Route {
@@ -295,6 +305,10 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   deleteLiveActivity: (c) => c.deleteLiveActivity(2),
   setDefaultTime: (c) => c.setDefaultTime(2, 1, "2026-11-08T14:30:00Z"),
   cancelDefaultTime: (c) => c.cancelDefaultTime(2, 1),
+  liveBoards: (c) => c.liveBoards(2),
+  liveGame: (c) => c.liveGame(2, "9b1d6c0e4f7a4a1e8d2c5b6a7f809112"),
+  sendBoardCommand: (c) => c.sendBoardCommand(2, { kind: "flip", link_id: 4, board: 12, game: "9b1d6c0e4f7a4a1e8d2c5b6a7f809112", args: { flipped: true } }),
+  boardCommand: (c) => c.boardCommand(2, 41),
 };
 
 async function everyCall(c: Client) {
@@ -335,6 +349,9 @@ describe("every answer in the contract, through the app's client", () => {
     ["sign-out-response", (c) => c.signOut(), () => undefined],
     ["unpair-response", (c) => c.unpair(2, 2), () => undefined],
     ["board-link-revoke-response", (c) => c.revokeBoardLink(2, 1), () => undefined],
+    ["live-boards-response", (c) => c.liveBoards(2), (e) => e],
+    ["live-board-game-response", (c) => c.liveGame(2, "9b1d6c0e4f7a4a1e8d2c5b6a7f809112"), (e) => e],
+    ["live-board-command-response", (c) => c.boardCommand(2, 41), (e) => e.command],
     ["incident-delete-response", (c) => c.deleteIncident(2, 4), () => undefined],
     ["push-response", (c) => c.pushStatus(), (e) => e.push],
     ["push-unregister-response", (c) => c.unregisterPush(), () => undefined],
@@ -483,6 +500,27 @@ describe("what the answers mean to the app", () => {
       { unconfirmed: true, confirmed: true } satisfies Record<NonNullable<Board["phone"]>["state"], true>,
       enumOf(definition("phone").properties!.state),
     );
+  });
+});
+
+describe("what live boards mean to the app", () => {
+  it("reads every live-boards example: states and alarms in words or raw, never empty", () => {
+    const data = ex<LiveBoards>("live-boards-response.json");
+    for (const x of data.tables) {
+      expect(stateLabel(x.state)).not.toBe("");
+      for (const a of x.alarms) expect(alarmLabel(a)).not.toBe("");
+    }
+    for (const c of data.commands) if (c.state === "failed") expect(boxErrorText(c.error, c.detail)).not.toBe("");
+  });
+
+  it("words the live-board refusals the contract records", () => {
+    for (const [name, status] of [
+      ["error.board-not-found.json", 404],
+      ["error.result-entered.json", 409],
+    ] as const) {
+      const body = ex(name);
+      expect(liveErrorText(new ApiError(status, body.error as string, body.message as string, body)), name).not.toBeNull();
+    }
   });
 });
 
@@ -643,6 +681,91 @@ describe("the app's types against the contract's shapes", () => {
     ],
     ["PushStatus", shape<PushStatus>()({ available: "required", platforms: "required", events: "required", registration: "required nullable" }), "push-response.schema.json#/properties/push"],
     ["TournamentOptions", shape<TournamentOptions>()({ systems: "required", player_sources: "required", defaults: "required" }), "tournament-options-response.schema.json#"],
+    [
+      "LiveBoards",
+      shape<LiveBoards>()({ poll_seconds: "required", round: "required nullable", boxes: "required", tables: "required", commands: "required" }),
+      "live-boards-response.schema.json#",
+    ],
+    [
+      "LiveBox",
+      shape<LiveBox>()({ link_id: "required", name: "required", version: "required nullable", last_seen_at: "required nullable", online: "required", tables_at: "required" }),
+      "live-boards-response.schema.json#/properties/boxes/items",
+    ],
+    [
+      "LiveTable",
+      shape<LiveTable>()({
+        link_id: "required",
+        board: "required",
+        name: "required",
+        table: "required nullable",
+        serial: "required nullable",
+        connected: "required",
+        last_seen: "required nullable",
+        stale: "required",
+        state: "required",
+        flipped: "required",
+        alarms: "required",
+        alarm_detail: "required nullable",
+        draft: "required nullable",
+        guessed_plies: "required",
+        fen: "required nullable",
+        last_move: "required nullable",
+        white_ms: "required nullable",
+        black_ms: "required nullable",
+        running: "required nullable",
+        clock_at: "required",
+        round: "required nullable",
+        board_no: "required nullable",
+        game: "required nullable",
+        pairing: "required nullable",
+        board_result: "required nullable",
+        plies: "required",
+      }),
+      "live-boards-response.schema.json#/properties/tables/items",
+    ],
+    [
+      "LivePairing",
+      shape<LivePairing>()({ id: "required", round: "required", board: "required nullable", label: "required", white: "required nullable", black: "required nullable", result: "required nullable" }),
+      "live-boards-response.schema.json#/properties/tables/items/properties/pairing",
+    ],
+    [
+      "BoardCommand",
+      shape<BoardCommand>()({
+        id: "required",
+        kind: "required",
+        link_id: "required nullable",
+        board: "required nullable",
+        game: "required nullable",
+        args: "required",
+        state: "required",
+        error: "required nullable",
+        detail: "required nullable",
+        created_at: "required",
+        sent_at: "required nullable",
+        done_at: "required nullable",
+        expires_at: "required nullable",
+        by: "required nullable",
+      }),
+      "live-board-command-response.schema.json#/properties/command",
+    ],
+    [
+      "LiveGame",
+      shape<LiveGame>()({
+        game: "required",
+        status: "required",
+        result: "required nullable",
+        moves: "required",
+        move_clocks: "required",
+        white_ms: "required nullable",
+        black_ms: "required nullable",
+        running: "required nullable",
+        start_fen: "required nullable",
+        reconstructed: "required",
+        guessed: "required",
+        reported_at: "required nullable",
+      }),
+      "live-board-game-response.schema.json#",
+    ],
   ];
 
   for (const [name, spec, where] of cases) {
@@ -774,6 +897,34 @@ describe("every request the app builds", () => {
     valid(await captured((c) => c.registerPush({ platform: "fcm", token: "fcm:APA91b-x_y.z" })));
     valid(await captured((c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", environment: "production", events: [...PUSH_EVENTS], tag: BASE })));
     valid(await captured((c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", events: [] })));
+  });
+
+  it("sends every live-board command the sheet can build in the shape the schema takes", async () => {
+    const game = "9b1d6c0e4f7a4a1e8d2c5b6a7f809112";
+    const box = (kind: Exclude<BoardCommandRequest["kind"], "accept_result">, args: Record<string, unknown> = {}, g: string | null = game): BoardCommandRequest => ({
+      kind,
+      link_id: 4,
+      board: 12,
+      ...(g ? { game: g } : {}),
+      args,
+    });
+    const requests: BoardCommandRequest[] = [
+      { kind: "accept_result", game },
+      box("confirm_guess", { ply: 23 }),
+      box("reject_guess", { ply: 23 }),
+      box("accept_draft", { draft: 7 }),
+      box("dismiss_draft", { draft: 7 }),
+      box("set_position", { fen: completeFen("4k3/8/8/8/8/8/8/4K3") }),
+      box("takeback", { plies: 1 }),
+      box("takeback", { plies: 20 }),
+      box("flip", { flipped: true }),
+      box("link", { round: 3, board_no: 5 }, null),
+      box("unlink"),
+      box("restart"),
+      box("resync", {}, null),
+      ...["1-0", "0-1", "1/2-1/2", "*"].map((result) => box("finish", { result })),
+    ];
+    for (const r of requests) valid(await captured((c) => c.sendBoardCommand(2, r)));
   });
 
   it("publishes at every level", async () => {
