@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/note-response.schema.json",
+  "title": "POST /tournaments/:id/notes (201) and PATCH /tournaments/:id/notes/:note_id (200) response",
+  "description": "The note as it is now.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["note"],
+  "properties": {
+    "note": { "$ref": "common.schema.json#/definitions/note" }
+  }
+}

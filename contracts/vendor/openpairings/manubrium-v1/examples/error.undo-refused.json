@@ -1,0 +1,4 @@
+{
+  "error": "undo_refused",
+  "message": "The result has changed again since (it is now 0-1). Undo that change first."
+}

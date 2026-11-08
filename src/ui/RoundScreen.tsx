@@ -18,6 +18,8 @@ import { boardOf, parseScan } from "../scan";
 import { DefaultTimeCard } from "./DefaultTime";
 import { PlayerSheet } from "./PlayerSheet";
 import { RoundPush } from "./Notifications";
+import { ConflictNotice, TeamStrip } from "./Team";
+import { HistorySheet } from "./History";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
@@ -71,6 +73,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [board, setBoard] = useState<Board | null>(null);
   const [desk, setDesk] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
+  const [history, setHistory] = useState<Board | null>(null);
   const [player, setPlayer] = useState<number | null>(null);
   // A scanned slip for a round not on screen: opened once that round is.
   const [scanned, setScanned] = useState<{ round: number; pairing: number } | null>(null);
@@ -108,6 +111,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     setRound(null);
     setBoard(null);
     setEditing(null);
+    setHistory(null);
   }, [number, t.id]);
 
   const flush = useCallback(async () => {
@@ -280,6 +284,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
         </button>
       </div>
 
+      {t.can.includes("results") && <TeamStrip ctx={ctx} t={t} round={number} onError={setError} />}
+
       {offline && (
         <Notice kind="info">
           {tr("round.offline", { now: waitingFor.size ? tr("round.offline_now", { n: waitingFor.size }) : "" })}
@@ -295,11 +301,29 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
           {info}
         </Notice>
       )}
-      {refused.map((q) => (
-        <Notice key={q.entry.cid} kind="error" onClose={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
-          {tr("more.not_accepted", { reason: refusalText(q) })}
-        </Notice>
-      ))}
+      {refused.map((q) =>
+        q.reason === "conflict" && q.entry.kind === "result" ? (
+          <ConflictNotice
+            key={q.entry.cid}
+            q={q}
+            board={round?.boards.find((b) => b.id === (q.entry.kind === "result" ? q.entry.pairing : 0))}
+            onKeep={() => ctx.outbox.dismiss(q.entry.cid).then(() => {
+              ctx.bump();
+              void load();
+            })}
+            onMine={(expected) =>
+              ctx.outbox.useMine(q.entry.cid, expected).then(() => {
+                ctx.bump();
+                void flush();
+              })
+            }
+          />
+        ) : (
+          <Notice key={q.entry.cid} kind="error" onClose={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
+            {tr("more.not_accepted", { reason: refusalText(q) })}
+          </Notice>
+        ),
+      )}
 
       {toCheck > 0 && t.can.includes("results") && (
         <Notice kind="info">
@@ -393,12 +417,31 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
             setBoard(null);
             setEditing(board);
           }}
+          onHistory={() => {
+            setBoard(null);
+            setHistory(board);
+          }}
           onIncident={(type, note, photo) => {
             setBoard(null);
             incident(board, type, note, photo);
           }}
           onPlayer={(id) => setPlayer(id)}
           onClose={() => setBoard(null)}
+        />
+      )}
+
+      {history && round && (
+        <HistorySheet
+          ctx={ctx}
+          t={t}
+          round={round.number}
+          board={history}
+          onClose={() => setHistory(null)}
+          onUndone={(message) => {
+            setHistory(null);
+            setInfo(message);
+            void load();
+          }}
         />
       )}
 
@@ -471,6 +514,7 @@ function ResultSheet(props: {
   onConfirm: () => void;
   onReject: () => void;
   onEdit: () => void;
+  onHistory: () => void;
   onIncident: (type: string, note: string, photo: string | null) => void;
   onPlayer: (id: number) => void;
   onClose: () => void;
@@ -575,6 +619,11 @@ function ResultSheet(props: {
         {props.canIncident && (
           <button type="button" class="btn block" onClick={() => setIncident(true)}>
             {tr("round.log_incident")}
+          </button>
+        )}
+        {!board.bye && (
+          <button type="button" class="btn ghost block" id="board-history" onClick={props.onHistory}>
+            {tr("history.button")}
           </button>
         )}
         {props.canEdit && (

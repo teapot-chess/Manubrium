@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/team-request.schema.json",
+  "title": "PUT /tournaments/:id/team request",
+  "description": "A heartbeat: this phone has the tournament open, looking at round `round` (null or absent when it is on no round). Send one when a round opens and then about every `heartbeat_seconds` of the answer while the app is in front; a phone that goes quiet for 90 seconds is no longer shown to the others.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "presence": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "round": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "history": {
+    "entries": [
+      {
+        "at": "2026-11-08T02:35:26Z",
+        "id": 2,
+        "text": "Changed result on board 1 (round 1) from 1-0 to 0-1: Player 1 vs Player 2. Via the phone \"Manubrium: Test phone\" (Deputy).",
+        "undo": {
+          "reason": null,
+          "status": "ok"
+        },
+        "who": "user-576460752303391103@example.com"
+      },
+      {
+        "at": "2026-11-08T02:35:26Z",
+        "id": 1,
+        "text": "Entered result 1-0 on board 1 (round 1): Player 1 vs Player 2. Via the phone \"Manubrium: Test phone\" (Deputy).",
+        "undo": {
+          "reason": "The result has changed again since (it is now 0-1). Undo that change first.",
+          "status": "refused"
+        },
+        "who": "user-576460752303390911@example.com"
+      }
+    ],
+    "title": "Round 1, board 1"
+  }
+}
