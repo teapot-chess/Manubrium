@@ -210,6 +210,14 @@ describe("the boards screen", () => {
     expect(api.liveBoards).toHaveBeenCalledWith(7);
   });
 
+  it("opens for an arbiter too, who sees no codes under More", async () => {
+    const api = fakeApi(live([table()]));
+    render(<MoreScreen ctx={ctxWith(api)} t={tournament({ role: "arbiter", can: ["results", "incidents"] })} />);
+    fireEvent.click(await el("#open-live-boards"));
+    await el("#live-table-4-12");
+    expect(document.querySelector("#board-links-section")).toBeNull();
+  });
+
   it("lists every table with its health, state, alarms, draft and both results", async () => {
     const api = fakeApi(
       live([
