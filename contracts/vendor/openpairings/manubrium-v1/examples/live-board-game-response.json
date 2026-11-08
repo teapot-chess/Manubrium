@@ -1,0 +1,22 @@
+{
+  "black_ms": 5340000,
+  "game": "7ee65285550a7dfd15a7f00a2d45a6ae",
+  "guessed": 0,
+  "move_clocks": [
+    5398000,
+    5391000,
+    null
+  ],
+  "moves": [
+    "e4",
+    "e5",
+    "Nf3"
+  ],
+  "reconstructed": 0,
+  "reported_at": "2026-11-08T00:46:08Z",
+  "result": "1-0",
+  "running": null,
+  "start_fen": null,
+  "status": "finished",
+  "white_ms": 5371000
+}

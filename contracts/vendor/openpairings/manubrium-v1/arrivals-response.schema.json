@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/arrivals-response.schema.json",
+  "title": "GET /tournaments/:id/arrivals response",
+  "description": "Who is checked in, for anyone on the tournament (arbiters included): every player's id and `present`, the check-in flag the players list edits. What the app's default-time list starts from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["arrivals"],
+  "properties": {
+    "arrivals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "present"],
+        "properties": {
+          "id": { "$ref": "common.schema.json#/definitions/id" },
+          "present": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

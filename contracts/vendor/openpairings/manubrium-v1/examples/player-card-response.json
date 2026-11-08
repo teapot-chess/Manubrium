@@ -1,0 +1,39 @@
+{
+  "card": {
+    "games": [
+      {
+        "colour": "w",
+        "opponent": {
+          "id": 2,
+          "name": "Player 2",
+          "rating": 1980,
+          "title": null
+        },
+        "result": "1",
+        "round": 1
+      }
+    ],
+    "player": {
+      "absent": false,
+      "absent_rounds": [],
+      "birth_year": 1971,
+      "byes": [],
+      "club": "Secret Club 1",
+      "federation": "BEL",
+      "fide_id": null,
+      "fide_rating": 1990,
+      "id": 1,
+      "name": "Player 1",
+      "national_rating": 0,
+      "pairing_number": 1,
+      "present": true,
+      "rating": 1990,
+      "sex": null,
+      "start_round": 1,
+      "status": "active",
+      "title": null
+    },
+    "rank": 1,
+    "score": 1.0
+  }
+}

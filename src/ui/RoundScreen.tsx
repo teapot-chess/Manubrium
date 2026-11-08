@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, OfflineError, type Board, type Round, type Tournament } from "../api";
-import { onResume, takePhoto } from "../platform";
+import { native, onResume, scanQr, takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
 import { t as tr } from "../i18n";
@@ -14,6 +14,9 @@ import { byeLabel } from "../byes";
 import { refusalText } from "../queue";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 import { currentRound } from "../currentRound";
+import { boardOf, parseScan } from "../scan";
+import { DefaultTimeCard } from "./DefaultTime";
+import { PlayerSheet } from "./PlayerSheet";
 import { RoundPush } from "./Notifications";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
@@ -68,6 +71,9 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [board, setBoard] = useState<Board | null>(null);
   const [desk, setDesk] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
+  const [player, setPlayer] = useState<number | null>(null);
+  // A scanned slip for a round not on screen: opened once that round is.
+  const [scanned, setScanned] = useState<{ round: number; pairing: number } | null>(null);
   const deskRole = t.can.includes("pair");
 
   const base = ctx.server.base;
@@ -139,6 +145,32 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       clearInterval(timer);
     };
   }, [flush, load]);
+
+  useEffect(() => {
+    if (!scanned || !round || round.number !== scanned.round) return;
+    setScanned(null);
+    const b = round.boards.find((x) => x.id === scanned.pairing);
+    if (b && !b.bye && !b.vacant && !b.empty) setBoard(b);
+    else setError(tr("scan.board_gone"));
+  }, [scanned, round]);
+
+  // A result slip opens its board; a place card opens the player's board in
+  // the round on screen, or the player when they have none in it.
+  async function scan() {
+    const code = parseScan(await scanQr());
+    if (!code) return setError(tr("scan.not_a_slip"));
+    if (code.tournament !== t.id) return setError(tr("scan.other_tournament"));
+    setError(null);
+    if (code.kind === "player") {
+      const b = round ? boardOf(round, code.player) : null;
+      if (b) setBoard(b);
+      else setPlayer(code.player);
+      return;
+    }
+    if (code.round < 1 || code.round > latest) return setError(tr("scan.round_not_paired", { n: code.round }));
+    setScanned({ round: code.round, pairing: code.pairing });
+    if (code.round !== number) setNumber(code.round);
+  }
 
   async function enter(b: Board, result: string) {
     setBoard(null);
@@ -276,8 +308,17 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       )}
       {round && deskRole && <FinishEdits ctx={ctx} t={t} round={round} onDone={edited} />}
 
+      {round && number === current && t.can.includes("results") && !t.read_only && (
+        <DefaultTimeCard ctx={ctx} t={t} round={round} onForfeit={(b, code) => enter(b, code)} onPlayer={setPlayer} />
+      )}
+
       {round && round.boards.length > 0 && (
         <div class="view-tools">
+          {native && t.can.includes("results") && !t.read_only && (
+            <button type="button" class="chip" id="scan-slip" onClick={() => void scan()}>
+              {tr("scan.button")}
+            </button>
+          )}
           <ShareButton id="share-round" title={tr("round.share_title", { name: t.name, n: round.number })} text={() => pairingsText(t, round)} />
         </div>
       )}
@@ -356,9 +397,12 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
             setBoard(null);
             incident(board, type, note, photo);
           }}
+          onPlayer={(id) => setPlayer(id)}
           onClose={() => setBoard(null)}
         />
       )}
+
+      {player !== null && <PlayerSheet ctx={ctx} t={t} playerId={player} onClose={() => setPlayer(null)} />}
 
       {editing && round && (
         <BoardEditSheet ctx={ctx} t={t} round={round} board={editing} onClose={() => setEditing(null)} onDone={edited} />
@@ -428,6 +472,7 @@ function ResultSheet(props: {
   onReject: () => void;
   onEdit: () => void;
   onIncident: (type: string, note: string, photo: string | null) => void;
+  onPlayer: (id: number) => void;
   onClose: () => void;
 }) {
   const { board } = props;
@@ -471,7 +516,17 @@ function ResultSheet(props: {
   return (
     <Sheet title={tr("round.board", { label: board.label })} onClose={props.onClose}>
       <p class="sheet-sub">
-        {board.white?.name} – {board.black?.name}
+        {board.white ? (
+          <button type="button" class="link" id="result-white" onClick={() => props.onPlayer(board.white!.id)}>
+            {board.white.name}
+          </button>
+        ) : null}{" "}
+        –{" "}
+        {board.black ? (
+          <button type="button" class="link" id="result-black" onClick={() => props.onPlayer(board.black!.id)}>
+            {board.black.name}
+          </button>
+        ) : null}
       </p>
       {board.phone?.state === "unconfirmed" && (
         <div class="phone-check" id="phone-check">

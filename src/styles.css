@@ -1,49 +1,50 @@
-/* Manubrium - OpenPairings' palette (its assets/css/app.css :root and dark
-   theme), set for a phone: big targets, one column, the thumb's half of the
+/* Manubrium - OpenPairings' palettes (src/themes.ts sets the chosen one on
+   <html> at start; the values below are Slate, the default, for the frame
+   before it does), set for a phone: big targets, one column, the thumb's half of the
    screen for the things that matter. */
 
 :root {
-  --bg: #f7f6f3;
+  --bg: #f3f5f8;
   --surface: #ffffff;
-  --surface-alt: #faf9f6;
-  --border: #e3e1db;
-  --text: #24211c;
-  --text-soft: #6f6a60;
-  --accent: #2e5e44;
-  --accent-hover: #24503a;
-  --accent-soft: #e8f0eb;
+  --surface-alt: #f7f9fb;
+  --border: #dbe1e8;
+  --text: #18202a;
+  --text-soft: #5a6676;
+  --accent: #2d5f8f;
+  --accent-hover: #234d75;
+  --accent-soft: #e4edf6;
   --accent-ink: #ffffff;
   --danger: #b3261e;
   --danger-soft: #fbe9e7;
-  --warn: #8a5a00;
-  --warn-soft: #fdf3e0;
-  --ok-soft: #e8f0eb;
-  --shadow: 0 1px 2px rgba(36, 33, 28, 0.06), 0 6px 20px rgba(36, 33, 28, 0.06);
+  --warn: #7a5200;
+  --warn-soft: #fbf1dc;
+  --ok-soft: #e3f1ea;
+  --shadow: 0 1px 2px rgba(24, 32, 42, 0.06), 0 6px 20px rgba(24, 32, 42, 0.06);
   --radius: 14px;
-  --mark-centre: #7a2e1e;
+  --mark-centre: #a0412a;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1210;
-    --surface: #161b18;
-    --surface-alt: #1b211d;
-    --border: #29312b;
-    --text: #e9ebe6;
-    --text-soft: #98a29b;
-    --accent: #60bd8c;
-    --accent-hover: #76cb9e;
-    --accent-soft: rgba(96, 189, 140, 0.16);
-    --accent-ink: #0e1210;
-    --danger: #f2b8b5;
-    --danger-soft: rgba(242, 184, 181, 0.12);
-    --warn: #f0c36a;
-    --warn-soft: rgba(240, 195, 106, 0.12);
-    --ok-soft: rgba(96, 189, 140, 0.14);
+    --bg: #12161c;
+    --surface: #1a2029;
+    --surface-alt: #1f2732;
+    --border: #2b3542;
+    --text: #dde5ef;
+    --text-soft: #98a3b0;
+    --accent: #7fb2e5;
+    --accent-hover: #9ac4ec;
+    --accent-soft: rgba(127, 178, 229, 0.18);
+    --accent-ink: #0d141b;
+    --danger: #e58b8b;
+    --danger-soft: rgba(229, 139, 139, 0.14);
+    --warn: #e5c07f;
+    --warn-soft: rgba(229, 192, 127, 0.16);
+    --ok-soft: rgba(127, 214, 168, 0.16);
     --mark-centre: #e2a08c;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
@@ -371,6 +372,78 @@ label.check input { width: 22px; min-height: 22px; flex: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
+/* ---------- default time, scanning, players, this phone ---------- */
+button.link {
+  border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: pointer;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 3px; transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+button.link:hover { color: var(--accent); text-decoration-color: currentColor; }
+td.player button.link { text-align: left; }
+.view-tools { gap: 8px; }
+
+.dt-card {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; width: 100%;
+  margin: 0 0 10px; padding: 12px 16px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  transition: border-color 160ms ease, background 160ms ease, transform 120ms ease;
+}
+.dt-card:active { transform: scale(0.99); }
+.dt-card.running { border-color: var(--accent); }
+.dt-card.up { border-color: var(--danger); background: var(--danger-soft); }
+.dt-title { font-weight: 700; }
+.dt-status { grid-column: 1; font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.dt-card.up .dt-status { color: var(--danger); font-weight: 600; }
+.dt-count { grid-column: 2; grid-row: 1 / span 2; font-size: 13px; font-weight: 600; color: var(--accent); }
+.dt-clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 4px 0 12px; }
+.dt-clock strong { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.dt-clock.up strong { color: var(--danger); }
+.dt-clock span { flex: 1; font-size: 13px; color: var(--text-soft); }
+.dt-bad, .lock-wrong { color: var(--danger); }
+
+.player-card h3 { margin-top: 18px; }
+.missing-note {
+  margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;
+  background: var(--warn-soft); color: var(--warn);
+}
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.08em; }
+.game-round { width: 34px; padding-left: 14px; font-weight: 700; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.colour-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--text-soft); flex: none; }
+.colour-dot.w { background: #ffffff; }
+.colour-dot.b { background: #1b1b1b; border-color: #1b1b1b; }
+.colour-dot.none { border-style: dashed; }
+.game-result { padding: 0 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-soft); margin: 12px 0 6px; }
+.themes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.theme-pick {
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.theme-pick:active { transform: scale(0.97); }
+.theme-pick.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.swatch { display: flex; height: 34px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.swatch > span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.swatch i { width: 10px; height: 10px; border-radius: 50%; }
+.theme-name { font-size: 12px; font-weight: 600; text-align: center; }
+.lock-options { gap: 10px; padding: 10px 14px; flex-wrap: wrap; }
+.lock-options select { flex: 1; min-width: 120px; width: auto; }
+
+.lock-screen {
+  min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); text-align: center;
+  background: var(--bg); animation: lock-in 200ms ease;
+}
+.lock-screen h1 { font-size: 20px; margin: 4px 0 8px; }
+.lock-screen .btn, .lock-screen form { width: 100%; max-width: 320px; }
+.lock-code input { text-align: center; font-size: 22px; letter-spacing: 0.3em; }
+@keyframes lock-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .lock-screen { animation: none; } }
+.prizes { margin-top: 18px; }
+.prizes h2 { font-size: 15px; margin-bottom: 4px; }
+.prize-table + .prize-table { margin-top: 10px; }
+.prizes .game-result { white-space: nowrap; }
 /* ---------- notifications ---------- */
 .push-settings { margin-top: 22px; }
 .push-settings h2 { font-size: 15px; margin-bottom: 4px; }
