@@ -17,6 +17,9 @@ import { commandsFor, LiveBoardsScreen } from "./LiveBoards";
 import { MoreScreen } from "./MoreScreen";
 
 vi.mock("../platform", () => ({
+  native: false,
+  platform: "web",
+  storage: { get: async () => null, set: async () => undefined },
   onResume: () => () => undefined,
   takePhoto: vi.fn(async () => null),
   shareText: vi.fn(async () => "shared"),
