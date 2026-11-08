@@ -28,6 +28,8 @@ export interface Queued {
   state: "waiting" | "refused";
   message?: string | null;
   reason?: string | null;
+  /** A refused conflict: what the board held when the server refused (null: it did not say). */
+  current?: string | null;
   /** The board as the round showed it ("2", "12a"), kept for the refusal's sake. */
   label?: string;
 }
@@ -153,6 +155,28 @@ export class Outbox {
     return queued;
   }
 
+  /**
+   * "Use mine" after a collision: the same result again, this time expecting
+   * what the board holds now. A new client id (the old one has been answered)
+   * and a new entry at the back of the line; the refusal goes.
+   */
+  async useMine(cid: string, expected: string): Promise<Queued | null> {
+    await this.load();
+    const old = this.items.find((q) => q.entry.cid === cid);
+    if (!old || old.entry.kind !== "result") return null;
+    this.items = this.items.filter((q) => q !== old);
+    const queued: Queued = {
+      server: old.server,
+      tournament: old.tournament,
+      state: "waiting",
+      entry: { ...old.entry, expected, cid: this.uuid() },
+      ...(old.label ? { label: old.label } : {}),
+    };
+    this.items.push(queued);
+    await this.save();
+    return queued;
+  }
+
   /** Takes a refusal off the screen once it has been read. */
   async dismiss(cid: string): Promise<void> {
     await this.load();
@@ -218,6 +242,7 @@ export class Outbox {
           q.state = "refused";
           q.message = answer.message;
           q.reason = answer.reason;
+          q.current = answer.current;
           outcome.refused += 1;
         }
       }

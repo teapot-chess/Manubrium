@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/team-response.schema.json",
+  "title": "PUT /tournaments/:id/team response",
+  "description": "The other arbiters with this tournament open right now, at a desk page or in the app, one entry per person (never this account). Memory only: gone with the tab, or 90 seconds after the phone's last heartbeat. Owner, editors and arbiters only; anyone else gets 404 tournament_not_found.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["team"],
+  "properties": {
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["others", "heartbeat_seconds"],
+      "properties": {
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "initials", "device", "page", "round", "entering_results", "entering_here"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/definitions/id" },
+              "label": { "type": "string", "description": "The name the others see: display name, or the address." },
+              "initials": { "type": "string", "description": "One or two capital letters, or ?." },
+              "device": { "type": "string", "enum": ["desk", "phone"] },
+              "page": {
+                "type": "string",
+                "description": "Where they are: the desk page (players, pairings, standings, settings...) or phone for the app."
+              },
+              "round": { "type": ["integer", "null"], "description": "The round they are looking at, if any." },
+              "entering_results": { "type": "boolean", "description": "They saved a result in the last three minutes." },
+              "entering_here": {
+                "type": "boolean",
+                "description": "They are entering results in the round named in the request. Warn the arbiter: two people on one round is where collisions come from."
+              }
+            }
+          }
+        },
+        "heartbeat_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How often to send the next heartbeat."
+        }
+      }
+    }
+  }
+}

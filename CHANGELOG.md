@@ -5,6 +5,9 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Feature] **Several arbiters, one round.** The desk learned last week that two arbiters on one tournament ought to be able to tell; the phone, where the second arbiter usually stands, now can too. Under the round's title: the initials of the other arbiters who have the tournament open (at a desk or in this app), and a line when one of them is entering results in the round you are looking at. If a result you enter was beaten to the board, it no longer vanishes into a sentence: a card shows both results and asks **Keep theirs** or **Use mine**, and *mine* goes in again expecting what the board holds now, so the next collision is a new question rather than a silent overwrite. **Handover notes** sit above the boards (pinned ones always; the rest behind *Handover notes*), and you can write one, pin it, make it about this round, or mark it resolved. A board's sheet has **History**: who changed its result, when and from what, with **Undo** where the desk would allow it and the desk's own reason where it would not. An older server simply doesn't show any of this. English, Dutch, French.
+- [Change] **One default time, not two.** *Remind me at the default time* used to ask for minutes of its own, next to the Default time card that already knew them. It now offers the default time first: the moment the clock on that card runs out when the clocks are running, otherwise this phone's minutes for the tournament, with the fixed choices below for anyone who wants a different number.
+
 - [Feature] **Notifications.** A round paired or published, a Lite phone's
   result the hall board contradicts, an incident somebody else logged, the
   default time you asked to be reminded of: the server now tells the phone,

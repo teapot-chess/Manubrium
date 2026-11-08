@@ -144,6 +144,30 @@ export async function saveDefaultTime(store: KeyValue, base: string, id: number,
   await store.set(roundKey(base, id, round), JSON.stringify({ ...(state.clock ?? {}), cleared: state.cleared }));
 }
 
+/**
+ * The reminder the Notifications card should offer first, from the default
+ * time this phone already keeps: the moment the clock on the Default time
+ * card runs out when the clocks are running (and that moment is still ahead),
+ * otherwise the phone's minutes counted from now. One default time, two ways
+ * to be told about it - the arbiter types it once.
+ */
+export interface DefaultReminder {
+  at: Date;
+  /** The whole minutes from now; what the button says when there is no running clock. */
+  minutes: number;
+  /** True when it is the running clock's moment rather than "minutes from now". */
+  fromClock: boolean;
+}
+
+export function defaultReminder(state: Pick<DefaultTimeState, "minutes" | "clock">, now: number): DefaultReminder | null {
+  if (state.clock) {
+    const end = state.clock.start + state.clock.minutes * 60_000;
+    if (end > now + 60_000) return { at: new Date(end), minutes: Math.round((end - now) / 60_000), fromClock: true };
+  }
+  if (state.minutes < 1) return null;
+  return { at: new Date(now + state.minutes * 60_000), minutes: state.minutes, fromClock: false };
+}
+
 /** A stable notification id for a tournament's round (Android wants a 32-bit int). */
 export function notificationId(base: string, id: number, round: number): number {
   let h = 0;

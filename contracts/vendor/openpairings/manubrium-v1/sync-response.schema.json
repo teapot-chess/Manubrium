@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/sync-response.schema.json",
   "title": "POST /tournaments/:id/sync response",
-  "description": "One answer per entry, in order. `saved` and `refused` are final; `retry` means ask again later (the entry stays queued).",
+  "description": "One answer per entry, in order. `saved` and `refused` are final; `retry` means ask again later (the entry stays queued). A refused `conflict` also carries `current`, what the board holds now, for \"keep theirs / use mine\".",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -48,6 +48,13 @@
               "null"
             ],
             "description": "A sentence for the person holding the phone."
+          },
+          "current": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only on a refused conflict: what the board holds now (an empty string for no result), so the app can offer keep theirs or use mine. Null when the server only remembers refusing it (a resend)."
           }
         }
       }

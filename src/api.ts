@@ -300,7 +300,58 @@ export interface IncidentEntry {
 
 export type Entry = ResultEntry | IncidentEntry;
 
-export interface EntryAnswer { cid: string | null; status: "saved" | "refused" | "retry"; reason: string | null; message: string | null }
+export interface EntryAnswer {
+  cid: string | null;
+  status: "saved" | "refused" | "retry";
+  reason: string | null;
+  message: string | null;
+  /** A refused conflict only: what the board holds now ("" for no result); null when the server no longer knows. */
+  current?: string | null;
+}
+
+// Several arbiters on one tournament (contract revision 3).
+
+/** Another arbiter with the tournament open, at a desk or in the app. */
+export interface TeamPerson {
+  id: number;
+  label: string;
+  initials: string;
+  device: "desk" | "phone";
+  page: string;
+  round: number | null;
+  entering_results: boolean;
+  /** Entering results in the round this phone said it was looking at. */
+  entering_here: boolean;
+}
+
+export interface Team {
+  others: TeamPerson[];
+  heartbeat_seconds: number;
+}
+
+export interface HandoverNote {
+  id: number;
+  body: string;
+  round: number | null;
+  pinned: boolean;
+  resolved: boolean;
+  author: string | null;
+  created_at: string;
+}
+
+export interface HistoryEntry {
+  id: number;
+  who: string;
+  at: string;
+  text: string;
+  undo: { status: "none" | "ok" | "refused"; reason: string | null };
+}
+
+export interface BoardHistory {
+  title: string;
+  entries: HistoryEntry[];
+}
+
 
 
 export type HallApp = "polis" | "nunki";
@@ -644,6 +695,17 @@ export interface Client {
   setDefaultTime(id: number, round: number, at: string): Promise<void>;
   cancelDefaultTime(id: number, round: number): Promise<void>;
 
+  /** A heartbeat: this phone has the tournament open at `round`; answers who else does. */
+  team(id: number, round: number | null): Promise<Team>;
+  /** The open handover notes, pinned first. */
+  notes(id: number): Promise<HandoverNote[]>;
+  createNote(id: number, note: { body: string; round?: number | null; pinned?: boolean }): Promise<HandoverNote>;
+  updateNote(id: number, noteId: number, changes: { body?: string; round?: number | null; pinned?: boolean; resolved?: boolean }): Promise<HandoverNote>;
+  /** Who changed a board's result, with whether each change can be undone. */
+  boardHistory(id: number, n: number, pairing: number): Promise<BoardHistory>;
+  /** Undoes one result change; the server's sentence, or an ApiError `undo_refused` with the reason. */
+  undo(id: number, n: number, pairing: number, entry: number): Promise<string>;
+
   liveBoards(id: number): Promise<LiveBoards>;
   liveGame(id: number, game: string): Promise<LiveGame>;
   sendBoardCommand(id: number, command: BoardCommandRequest): Promise<BoardCommand>;
@@ -733,6 +795,15 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     cancelDefaultTime: async (id, round) => {
       await req("DELETE", `${t(id)}/default-time?round=${round}`);
     },
+
+    team: async (id, round) => (await req<{ team: Team }>("PUT", `${t(id)}/team`, { presence: { round } })).team,
+    notes: async (id) => (await req<{ notes: HandoverNote[] }>("GET", `${t(id)}/notes`)).notes,
+    createNote: async (id, note) => (await req<{ note: HandoverNote }>("POST", `${t(id)}/notes`, { note })).note,
+    updateNote: async (id, noteId, changes) => (await req<{ note: HandoverNote }>("PATCH", `${t(id)}/notes/${noteId}`, { note: changes })).note,
+    boardHistory: async (id, n, pairing) =>
+      (await req<{ history: BoardHistory }>("GET", `${t(id)}/rounds/${n}/boards/${pairing}/history`)).history,
+    undo: async (id, n, pairing, entry) =>
+      (await req<{ message: string }>("POST", `${t(id)}/rounds/${n}/boards/${pairing}/history/${entry}/undo`)).message,
 
     liveBoards: (id) => req("GET", `${t(id)}/live-boards`),
     liveGame: (id, game) => req("GET", `${t(id)}/live-boards/games/${encodeURIComponent(game)}`),

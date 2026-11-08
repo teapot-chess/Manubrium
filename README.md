@@ -41,7 +41,12 @@ Since 1.2 it also:
   with nothing moved). When the time is up each board offers its forfeit,
   after asking. The minutes are the arbiter's to enter - OpenPairings knows
   the rate of play, not the default time - and the phone remembers them per
-  tournament. A local notification at the default time is optional;
+  tournament. A local notification at the default time is optional, and
+  *Remind me* (the server's push) starts from the same default time;
+- works with **other arbiters** on the same tournament: who else is here and
+  whether they are entering results in this round, handover notes (read,
+  write, pin, resolve), "keep theirs / use mine" when a result was beaten to
+  the board, and a board's history with Undo, under the desk's rules;
 - **scans the code** OpenPairings now prints on result slips and place
   cards: a slip opens its board's result entry, a place card the player's
   board in the round on screen;

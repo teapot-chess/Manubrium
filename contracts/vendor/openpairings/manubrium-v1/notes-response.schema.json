@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/notes-response.schema.json",
+  "title": "GET /tournaments/:id/notes response",
+  "description": "The open handover notes: pinned first, then newest first. A pinned note belongs at the top of every screen of the tournament. Resolved notes are not sent. Owner, editors and arbiters only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["notes"],
+  "properties": {
+    "notes": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/definitions/note" }
+    }
+  }
+}

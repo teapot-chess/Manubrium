@@ -475,6 +475,21 @@
         "last_seen_at": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/timestamp" }] }
       }
     },
+    "note": {
+      "description": "A handover note: the sticky note on the arbiters' table. Open until somebody resolves it; a pinned one belongs at the top of every screen.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "body", "round", "pinned", "resolved", "author", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "body": { "type": "string", "maxLength": 500 },
+        "round": { "type": ["integer", "null"], "description": "The round it is about; null for the whole tournament." },
+        "pinned": { "type": "boolean" },
+        "resolved": { "type": "boolean" },
+        "author": { "type": ["string", "null"], "description": "Who wrote it first." },
+        "created_at": { "$ref": "#/definitions/timestamp" }
+      }
+    },
     "acknowledged": {
       "description": "Ids of questions the arbiter answered yes to. Unknown ids are ignored.",
       "type": "array",

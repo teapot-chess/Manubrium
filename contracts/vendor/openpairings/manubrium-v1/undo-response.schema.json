@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/undo-response.schema.json",
+  "title": "POST /tournaments/:id/rounds/:n/boards/:pairing/history/:entry/undo response",
+  "description": "The result change was undone (the board is back to what it held before) and the undo is an entry of its own in the history. Refused with 409 undo_refused and the reason as the message (error.schema.json); 404 entry_not_found for an entry that is not about this board; 404 board_gone.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["undone", "message"],
+  "properties": {
+    "undone": { "const": true },
+    "message": { "type": "string" }
+  }
+}

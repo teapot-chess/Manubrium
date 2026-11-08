@@ -8,6 +8,7 @@ import { liveActivities, progress } from "../liveActivity";
 import { nativePushBackend } from "../pushNative";
 import { PushManager, serverCanPush, shouldOffer, withEvent, type Permission } from "../push";
 import { storage } from "../platform";
+import { defaultReminder, loadDefaultTime, type DefaultReminder } from "../defaultTime";
 import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
 import { describeError, Sheet } from "./common";
@@ -173,6 +174,7 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
   const [asked, setAsked] = useState(true);
   const [reminder, setReminder] = useState<string | null>(null);
   const [choosing, setChoosing] = useState(false);
+  const [suggested, setSuggested] = useState<DefaultReminder | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const reminderKey = `${ctx.server.base}#${t.id}#${round.number}`;
 
@@ -206,6 +208,19 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
       }),
     );
   }, [ctx.server.base, t.id, round.number, round.latest, done, total]);
+
+  async function remind(when: Date) {
+    const at = when.toISOString();
+    setChoosing(false);
+    try {
+      await ctx.api.setDefaultTime(t.id, round.number, at);
+      await saveReminder(reminderKey, at);
+      setReminder(at);
+      setNote(null);
+    } catch (e) {
+      setNote(describeError(e));
+    }
+  }
 
   const offer = shouldOffer({ platform: manager.platform, permission, asked, status });
   const canRemind = permission === "granted" && serverCanPush(status, manager.platform) && round.latest && done < total;
@@ -264,7 +279,17 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
               </button>
             </>
           ) : (
-            <button type="button" class="btn block" id="push-reminder-set" onClick={() => setChoosing(true)}>
+            <button
+              type="button"
+              class="btn block"
+              id="push-reminder-set"
+              onClick={async () => {
+                // The default time this phone already keeps, so it is not typed twice.
+                const kept = await loadDefaultTime(storage, ctx.server.base, t.id, round.number).catch(() => null);
+                setSuggested(kept ? defaultReminder(kept, Date.now()) : null);
+                setChoosing(true);
+              }}
+            >
               {tr("push.reminder")}
             </button>
           )}
@@ -275,29 +300,20 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
         <Sheet title={tr("push.reminder")} onClose={() => setChoosing(false)}>
           <p>{tr("push.reminder_text")}</p>
           <div class="sheet-actions">
-            {REMINDER_MINUTES.map((m) => (
-              <button
-                type="button"
-                key={m}
-                class="btn block"
-                id={`push-reminder-${m}`}
-                onClick={async () => {
-                  const at = new Date(Date.now() + m * 60_000).toISOString();
-                  setChoosing(false);
-                  try {
-                    await ctx.api.setDefaultTime(t.id, round.number, at);
-                    await saveReminder(reminderKey, at);
-                    setReminder(at);
-                    setNote(null);
-                  } catch (e) {
-                    setNote(describeError(e));
-                  }
-                }}
-              >
+            {suggested && (
+              <button type="button" class="btn primary block" id="push-reminder-default" onClick={() => remind(suggested.at)}>
+                {suggested.fromClock
+                  ? tr("push.reminder_default_clock", { time: suggested.at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
+                  : tr("push.reminder_default_phone", { n: suggested.minutes })}
+              </button>
+            )}
+            {REMINDER_MINUTES.filter((m) => !(suggested && !suggested.fromClock && suggested.minutes === m)).map((m) => (
+              <button type="button" key={m} class="btn block" id={`push-reminder-${m}`} onClick={() => remind(new Date(Date.now() + m * 60_000))}>
                 {tr("push.reminder_minutes", { n: m })}
               </button>
             ))}
           </div>
+          <p class="fine">{tr("push.reminder_hint")}</p>
         </Sheet>
       )}
     </>

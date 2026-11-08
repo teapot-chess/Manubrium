@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/note-create-request.schema.json",
+  "title": "POST /tournaments/:id/notes request",
+  "description": "A new handover note: one to 500 characters, about the whole tournament (round absent or null) or one round, optionally pinned. 201 note-response; 422 invalid_note.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["note"],
+  "properties": {
+    "note": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["body"],
+      "properties": {
+        "body": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "round": { "type": ["integer", "null"], "minimum": 1 },
+        "pinned": { "type": "boolean" }
+      }
+    }
+  }
+}

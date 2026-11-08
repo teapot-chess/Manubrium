@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/board-history-response.schema.json",
+  "title": "GET /tournaments/:id/rounds/:n/boards/:pairing/history response",
+  "description": "Who changed this board's result, newest first (at most 50), read from the audit trail the desk's History panel reads. Each entry says whether Undo is possible now, and if not why, in the desk's own words: the result has changed again since, a later round was paired with it, or the write itself is refused. Hand edits and other non-result entries have undo.status none. 404 board_gone for a board that is not in that round.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["history"],
+  "properties": {
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "entries"],
+      "properties": {
+        "title": { "type": "string", "description": "Round 3, board 7." },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "who", "at", "text", "undo"],
+            "properties": {
+              "id": { "$ref": "common.schema.json#/definitions/id" },
+              "who": { "type": "string" },
+              "at": { "$ref": "common.schema.json#/definitions/timestamp" },
+              "text": { "type": "string", "description": "What happened, as the audit trail words it." },
+              "undo": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["status", "reason"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["none", "ok", "refused"] },
+                  "reason": { "type": ["string", "null"], "description": "Why not, when status is refused." }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

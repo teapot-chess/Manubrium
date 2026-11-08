@@ -1,0 +1,11 @@
+{
+  "results": [
+    {
+      "cid": "6c51dff5-a191-497c-9d35-4cb990a71508",
+      "current": "1-0",
+      "message": "Board 1: not saved - the board now says 1-0, entered elsewhere while this phone was waiting. Look at the board, and enter yours again if it stands.",
+      "reason": "conflict",
+      "status": "refused"
+    }
+  ]
+}

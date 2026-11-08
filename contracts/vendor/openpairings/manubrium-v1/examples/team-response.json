@@ -1,0 +1,17 @@
+{
+  "team": {
+    "heartbeat_seconds": 30,
+    "others": [
+      {
+        "device": "phone",
+        "entering_here": false,
+        "entering_results": false,
+        "id": 2,
+        "initials": "U5",
+        "label": "user-576460752303390911@example.com",
+        "page": "phone",
+        "round": 1
+      }
+    ]
+  }
+}
