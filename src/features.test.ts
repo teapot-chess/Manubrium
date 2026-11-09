@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Board, PlayerCard, Round } from "./api";
 import type { KeyValue } from "./queue";
 import { applyTheme, DEFAULT_THEME, loadTheme, palette, saveTheme, THEME_KEY, THEMES, TOKENS } from "./themes";
-import { checkCode, loadLock, LOCK_OFF, lockOnReturn, saveLock, storeCode, validCode, waitAfter, LOCK_CODE_KEY } from "./lock";
+import { checkCode, loadLock, loadThrottle, missed, saveThrottle, LOCK_MISSES_KEY, LOCK_OFF, lockOnReturn, saveLock, storeCode, validCode, waitAfter, LOCK_CODE_KEY } from "./lock";
 import {
   DEFAULT_MINUTES,
   forfeitChoices,
@@ -139,6 +139,17 @@ describe("the app lock", () => {
     expect(waitAfter(5)).toBe(30_000);
     expect(waitAfter(6)).toBe(60_000);
     expect(waitAfter(30)).toBe(15 * 60_000);
+  });
+
+  it("remembers the misses across a restart, so a force quit buys no fresh tries", async () => {
+    const store = new Memory();
+    let t = { misses: 0, blockedUntil: 0 };
+    for (let i = 0; i < 5; i++) t = missed(t, 1_000_000);
+    expect(t).toEqual({ misses: 5, blockedUntil: 1_030_000 });
+    await saveThrottle(store, t);
+    expect(await loadThrottle(store)).toEqual(t);
+    store.data.set(LOCK_MISSES_KEY, "not json");
+    expect(await loadThrottle(store)).toEqual({ misses: 0, blockedUntil: 0 });
   });
 });
 

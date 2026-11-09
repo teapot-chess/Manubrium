@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { OfflineError, type Entry, type EntryAnswer } from "./api";
+import { ApiError, OfflineError, type Entry, type EntryAnswer } from "./api";
 import { Outbox, refusalText, type KeyValue, type Queued } from "./queue";
 
 class Memory implements KeyValue {
@@ -161,6 +161,35 @@ describe("Outbox", () => {
     await store.set("manubrium.outbox.v1", "{not json");
     await box.load();
     expect(box.list(S, 7)).toEqual([]);
+  });
+});
+
+describe("a batch the server refuses as a whole", () => {
+  it("refuses that batch with the server's sentence and sends the ones behind it", async () => {
+    const store = new Memory();
+    let n = 0;
+    const box = new Outbox(store, () => `cid-${++n}`);
+    await box.addIncident(S, 7, { round: 1, pairing: 5, board: 5, type: "other", note: "x", photo: "AAAA" });
+    await box.addResult(S, 7, result(6, "1-0"));
+    const sent: string[][] = [];
+    const out = await box.flush(S, 7, async (entries) => {
+      sent.push(entries.map((e) => e.cid));
+      if (entries[0].kind === "incident") throw new ApiError(413, "too_large", "That request was too big.");
+      return entries.map((e) => ({ cid: e.cid, status: "saved" }) as EntryAnswer);
+    });
+    expect(sent).toEqual([["cid-1"], ["cid-2"]]);
+    expect(out).toMatchObject({ saved: 1, refused: 1, waiting: 0 });
+    const [q] = box.list(S, 7);
+    expect(q).toMatchObject({ state: "refused", message: "That request was too big." });
+  });
+
+  it("keeps everything waiting when the device is refused, or the server is struggling", async () => {
+    for (const status of [401, 403, 408, 429, 500, 503]) {
+      const box = new Outbox(new Memory(), () => `cid-${status}`);
+      await box.addResult(S, 7, result(6, "1-0"));
+      await expect(box.flush(S, 7, async () => { throw new ApiError(status, "x", "no"); })).rejects.toBeInstanceOf(ApiError);
+      expect(box.count(S, 7)).toBe(1);
+    }
   });
 });
 

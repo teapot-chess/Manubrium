@@ -1,11 +1,14 @@
 // The lock in front of the whole app (src/lock.ts has the rules). Nothing
 // underneath is drawn while it is locked: a screenshot in the app switcher
-// shows the lock, not the round.
+// shows the lock, not the round - and while the lock is on, the moment the
+// app stops being the one in front a plain cover goes up, before the system
+// takes that picture. (The lock itself comes on at the return, after the
+// delay the arbiter chose; the cover has no delay.)
 
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { checkCode, loadLock, lockOnReturn, onLockChange, validCode, waitAfter, CODE_MAX, type LockSettings, LOCK_OFF } from "../lock";
-import { awayOnPurpose, deviceUnlock, deviceUnlockAvailable, onPause, onResume, secureStorage, storage } from "../platform";
+import { checkCode, loadLock, loadThrottle, lockOnReturn, missed, onLockChange, saveThrottle, validCode, CODE_MAX, type LockSettings, LOCK_OFF } from "../lock";
+import { awayOnPurpose, deviceUnlock, deviceUnlockAvailable, onActiveChange, onPause, onResume, secureStorage, storage } from "../platform";
 import { Mark } from "./common";
 import { t as tr } from "../i18n";
 
@@ -17,6 +20,7 @@ export function AppLock(props: { children: ComponentChildren }) {
   const [wrong, setWrong] = useState(false);
   const [misses, setMisses] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(0);
+  const [covered, setCovered] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const hiddenAt = useRef<number | null>(null);
   const settingsRef = useRef<LockSettings>(LOCK_OFF);
@@ -34,6 +38,10 @@ export function AppLock(props: { children: ComponentChildren }) {
       });
     read();
     deviceUnlockAvailable().then(setDevice);
+    loadThrottle(storage).then((t) => {
+      setMisses((m) => Math.max(m, t.misses));
+      setBlockedUntil((b) => Math.max(b, t.blockedUntil));
+    });
     return onLockChange(() => void read());
   }, []);
 
@@ -51,6 +59,15 @@ export function AppLock(props: { children: ComponentChildren }) {
       undoResume();
     };
   }, []);
+
+  useEffect(
+    () =>
+      onActiveChange((active) => {
+        if (active) setCovered(false);
+        else if (settingsRef.current.enabled && !awayOnPurpose()) setCovered(true);
+      }),
+    [],
+  );
 
   // Locked: ask the phone straight away, once per locking.
   useEffect(() => {
@@ -78,25 +95,40 @@ export function AppLock(props: { children: ComponentChildren }) {
     setCode("");
     setWrong(false);
     setMisses(0);
+    setBlockedUntil(0);
+    void saveThrottle(storage, { misses: 0, blockedUntil: 0 });
   }
 
   async function tryCode(e: Event) {
     e.preventDefault();
     if (Date.now() < blockedUntil || !validCode(code)) return;
     if (await checkCode(secureStorage, code)) return open();
-    const m = misses + 1;
-    setMisses(m);
+    const next = missed({ misses, blockedUntil }, Date.now());
+    setMisses(next.misses);
     setWrong(true);
     setCode("");
-    const wait = waitAfter(m);
-    if (wait) {
-      setBlockedUntil(Date.now() + wait);
+    void saveThrottle(storage, next);
+    if (next.blockedUntil) {
+      setBlockedUntil(next.blockedUntil);
       setNow(Date.now());
     }
   }
 
   if (settings === null) return <div class="splash" aria-busy="true"><Mark big /></div>;
-  if (!locked) return <>{props.children}</>;
+  // The cover goes OVER the app rather than instead of it: coming back from
+  // a glance at another app must not throw away the screen the arbiter was on.
+  if (!locked) {
+    return (
+      <>
+        {props.children}
+        {covered && (
+          <div class="lock-screen" id="app-cover" aria-hidden="true">
+            <Mark big />
+          </div>
+        )}
+      </>
+    );
+  }
 
   const waitSeconds = Math.ceil(Math.max(0, blockedUntil - now) / 1000);
   return (

@@ -229,6 +229,23 @@ export async function shareText(title: string, text: string): Promise<ShareOutco
   return webShare(title, text);
 }
 
+/**
+ * Calls `handler(false)` the moment the app stops being the one in front -
+ * before the system takes its app-switcher snapshot, which `pause` is late
+ * for on iOS - and `handler(true)` when it is back. Returns the undo.
+ */
+export function onActiveChange(handler: (active: boolean) => void): () => void {
+  if (native) {
+    const pending = App.addListener("appStateChange", (state) => handler(state.isActive));
+    return () => {
+      pending.then((h) => h.remove());
+    };
+  }
+  const changed = () => handler(document.visibilityState === "visible");
+  document.addEventListener("visibilitychange", changed);
+  return () => document.removeEventListener("visibilitychange", changed);
+}
+
 /** Calls `handler` when the app goes to the background; returns the undo. */
 export function onPause(handler: () => void): () => void {
   const hidden = () => {

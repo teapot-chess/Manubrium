@@ -78,10 +78,15 @@ export function NotificationSettings(props: { server: SavedServer; servers: Save
         disabled={busy}
         onClick={async () => {
           setBusy(true);
-          const p = await manager.enable(props.servers);
-          setPermission(p);
-          setStatus(await statusOf(server.base, client(server.base, server.token), true));
-          setBusy(false);
+          try {
+            const p = await manager.enable(props.servers);
+            setPermission(p);
+            setStatus(await statusOf(server.base, client(server.base, server.token), true));
+          } catch {
+            // The next tap tries again; a button stuck disabled would not allow it.
+          } finally {
+            setBusy(false);
+          }
         }}
       >
         {tr("push.turn_on")}

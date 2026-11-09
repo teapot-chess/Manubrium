@@ -116,7 +116,9 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
   const flush = useCallback(async () => {
     const outcome = await ctx.outbox.flush(base, t.id, (entries) => ctx.api.sync(t.id, entries)).catch((e) => {
-      setError(describeError(e));
+      // A revoked device gets the same sentence from every call; the useful
+      // one is what to do about it.
+      setError(e instanceof ApiError && (e.status === 401 || e.status === 403) ? tr("queue.reconnect") : describeError(e));
       return null;
     });
     if (outcome) {
@@ -177,17 +179,24 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   }
 
   async function enter(b: Board, result: string) {
+    if (!round) return setBoard(null);
+    try {
+      await ctx.outbox.addResult(base, t.id, {
+        round: round.number,
+        pairing: b.id,
+        board: b.board,
+        white: b.white?.id ?? null,
+        black: b.black?.id ?? null,
+        result,
+        expected: b.result,
+      }, b.label);
+    } catch (e) {
+      // Not queued: say so and leave the sheet open, rather than a board
+      // that shows no result and an arbiter who assumes it was entered.
+      setError(describeError(e));
+      return;
+    }
     setBoard(null);
-    if (!round) return;
-    await ctx.outbox.addResult(base, t.id, {
-      round: round.number,
-      pairing: b.id,
-      board: b.board,
-      white: b.white?.id ?? null,
-      black: b.black?.id ?? null,
-      result,
-      expected: b.result,
-    }, b.label);
     ctx.bump();
     flush();
   }
@@ -232,19 +241,24 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // without, and refused the round-level ones as "Board ?".
   async function incident(b: Board, type: string, note: string, photo: string | null) {
     if (!round) return;
-    await ctx.outbox.addIncident(
-      base,
-      t.id,
-      {
-        round: round.number,
-        pairing: b.id,
-        board: b.board,
-        type,
-        note,
-        ...(photo ? { photo } : {}),
-      },
-      b.label,
-    );
+    try {
+      await ctx.outbox.addIncident(
+        base,
+        t.id,
+        {
+          round: round.number,
+          pairing: b.id,
+          board: b.board,
+          type,
+          note,
+          ...(photo ? { photo } : {}),
+        },
+        b.label,
+      );
+    } catch (e) {
+      setError(describeError(e));
+      return;
+    }
     ctx.bump();
     flush();
     setInfo(tr("round.board_incident_queued", { label: b.label }));

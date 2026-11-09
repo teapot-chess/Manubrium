@@ -155,11 +155,18 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                   </span>
                   <span class="row-sub">{q.state === "waiting" ? tr("more.waiting_to_send") : tr("more.not_accepted", { reason: refusalText(q) })}</span>
                 </span>
-                {q.state === "refused" && (
-                  <button type="button" class="chip" id={`dismiss-${q.entry.cid}`} onClick={() => ctx.outbox.dismiss(q.entry.cid).then(ctx.bump)}>
-                    {tr("more.dismiss")}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  class="chip"
+                  id={`dismiss-${q.entry.cid}`}
+                  onClick={() => {
+                    // A waiting entry has not been read by anyone, so it asks first.
+                    if (q.state === "waiting" && !window.confirm(tr("more.dismiss_waiting_confirm"))) return;
+                    void ctx.outbox.dismiss(q.entry.cid).then(ctx.bump);
+                  }}
+                >
+                  {tr("more.dismiss")}
+                </button>
               </li>
             ))}
           </ul>

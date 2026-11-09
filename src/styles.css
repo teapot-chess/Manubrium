@@ -435,6 +435,7 @@ h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; col
   padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); text-align: center;
   background: var(--bg); animation: lock-in 200ms ease;
 }
+#app-cover { position: fixed; inset: 0; z-index: 1000; animation: none; }
 .lock-screen h1 { font-size: 20px; margin: 4px 0 8px; }
 .lock-screen .btn, .lock-screen form { width: 100%; max-width: 320px; }
 .lock-code input { text-align: center; font-size: 22px; letter-spacing: 0.3em; }
