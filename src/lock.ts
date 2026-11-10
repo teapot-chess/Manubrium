@@ -65,12 +65,23 @@ export async function storeCode(vault: KeyValue, code: string): Promise<void> {
   await vault.set(LOCK_CODE_KEY, `${salt}$${await hashCode(code, salt)}`);
 }
 
-export async function checkCode(vault: KeyValue, code: string): Promise<boolean> {
+export type CodeCheck = "ok" | "wrong" | "unreadable";
+
+/**
+ * "unreadable" is a code that is not there to be compared with: the vault
+ * threw, lost the key, or holds nothing (or rubbish) where the code should
+ * be. Typing it again will never help, so it must not count as a miss.
+ */
+export async function checkCodeResult(vault: KeyValue, code: string): Promise<CodeCheck> {
   const stored = await vault.get(LOCK_CODE_KEY).catch(() => null);
-  if (!stored) return false;
+  if (!stored) return "unreadable";
   const [salt, hash] = stored.split("$");
-  if (!salt || !hash) return false;
-  return (await hashCode(code, salt)) === hash;
+  if (!salt || !hash) return "unreadable";
+  return (await hashCode(code, salt)) === hash ? "ok" : "wrong";
+}
+
+export async function checkCode(vault: KeyValue, code: string): Promise<boolean> {
+  return (await checkCodeResult(vault, code)) === "ok";
 }
 
 /**

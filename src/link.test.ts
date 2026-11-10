@@ -36,8 +36,20 @@ describe("parseConnectLink", () => {
 
 describe("normaliseServer", () => {
   it("keeps scheme, host and port only", () => {
-    expect(normaliseServer("https://pairings.cloud/help?x=1")).toBe("https://pairings.cloud");
+    expect(normaliseServer("https://pairings.cloud/?x=1")).toBe("https://pairings.cloud");
     expect(normaliseServer("http://localhost:4000/")).toBe("http://localhost:4000");
+  });
+
+  it("refuses a server under a path, saying it must be at the root", () => {
+    expect(() => normaliseServer("https://pairings.cloud/pairings")).toThrow(/root of its address/);
+    expect(() => normaliseServer("http://192.168.1.20:4748/x/")).toThrow(/root of its address/);
+    expect(normaliseServer("https://pairings.cloud//")).toBe("https://pairings.cloud");
+  });
+
+  it("explains the refusal of plain http over Tailscale / carrier addresses", () => {
+    expect(() => normaliseServer("http://100.101.102.103:4000")).toThrow(/100\.64\.x\.x/);
+    expect(() => normaliseServer("http://100.200.1.1")).toThrow(/without https/);
+    expect(normaliseServer("https://100.101.102.103:4000")).toBe("https://100.101.102.103:4000");
   });
 
   it("refuses other schemes", () => {

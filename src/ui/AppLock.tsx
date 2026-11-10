@@ -7,8 +7,10 @@
 
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { checkCode, loadLock, loadThrottle, lockOnReturn, missed, onLockChange, saveThrottle, validCode, CODE_MAX, type LockSettings, LOCK_OFF } from "../lock";
+import { checkCodeResult, loadLock, storeCode, loadThrottle, lockOnReturn, missed, onLockChange, saveThrottle, validCode, CODE_MAX, type LockSettings, LOCK_OFF } from "../lock";
 import { awayOnPurpose, deviceUnlock, deviceUnlockAvailable, onActiveChange, onPause, onResume, secureStorage, storage } from "../platform";
+import { signOutEverywhere } from "../lockReset";
+import { pendingRevokes, serverList } from "../stores";
 import { Mark } from "./common";
 import { t as tr } from "../i18n";
 
@@ -21,6 +23,11 @@ export function AppLock(props: { children: ComponentChildren }) {
   const [misses, setMisses] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState(0);
   const [covered, setCovered] = useState(false);
+  /** The code cannot be read: nothing to type will ever match. */
+  const [unreadable, setUnreadable] = useState(false);
+  const [reset, setReset] = useState<"off" | "ask" | "newcode">("off");
+  const [fresh, setFresh] = useState("");
+  const [freshAgain, setFreshAgain] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const hiddenAt = useRef<number | null>(null);
   const settingsRef = useRef<LockSettings>(LOCK_OFF);
@@ -96,13 +103,23 @@ export function AppLock(props: { children: ComponentChildren }) {
     setWrong(false);
     setMisses(0);
     setBlockedUntil(0);
+    setUnreadable(false);
+    setReset("off");
+    setFresh("");
+    setFreshAgain("");
     void saveThrottle(storage, { misses: 0, blockedUntil: 0 });
   }
 
   async function tryCode(e: Event) {
     e.preventDefault();
     if (Date.now() < blockedUntil || !validCode(code)) return;
-    if (await checkCode(secureStorage, code)) return open();
+    const checked = await checkCodeResult(secureStorage, code);
+    if (checked === "ok") return open();
+    if (checked === "unreadable") {
+      setUnreadable(true);
+      setCode("");
+      return;
+    }
     const next = missed({ misses, blockedUntil }, Date.now());
     setMisses(next.misses);
     setWrong(true);
@@ -130,6 +147,54 @@ export function AppLock(props: { children: ComponentChildren }) {
     );
   }
 
+  async function doReset() {
+    try {
+      await signOutEverywhere(serverList, pendingRevokes);
+    } catch {
+      // A server list that cannot be written is no reason to stay locked out.
+    }
+    setReset("newcode");
+  }
+
+  async function saveFresh(e: Event) {
+    e.preventDefault();
+    if (!validCode(fresh) || fresh !== freshAgain) return;
+    await storeCode(secureStorage, fresh);
+    open();
+  }
+
+  if (reset !== "off") {
+    const digits = (e: Event) => (e.target as HTMLInputElement).value.replace(/\D/g, "");
+    return (
+      <div class="lock-screen" id="app-lock">
+        <Mark big />
+        <h1>{tr("lock.reset_title")}</h1>
+        {reset === "ask" ? (
+          <div class="form lock-code" id="lock-reset-ask">
+            <p class="fine">{tr("lock.reset_text")}</p>
+            <button type="button" class="btn danger block" id="lock-reset-yes" onClick={() => void doReset()}>
+              {tr("lock.reset_yes")}
+            </button>
+            <button type="button" class="btn block" id="lock-reset-no" onClick={() => setReset("off")}>
+              {tr("lock.reset_no")}
+            </button>
+          </div>
+        ) : (
+          <form class="form lock-code" id="lock-reset-form" onSubmit={saveFresh}>
+            <p class="fine">{tr("lock.reset_done")}</p>
+            <label for="lock-reset-code">{tr("phone.code_new")}</label>
+            <input id="lock-reset-code" type="password" inputMode="numeric" autocomplete="off" maxLength={CODE_MAX} value={fresh} onInput={(e) => setFresh(digits(e))} />
+            <label for="lock-reset-again">{tr("phone.code_again")}</label>
+            <input id="lock-reset-again" type="password" inputMode="numeric" autocomplete="off" maxLength={CODE_MAX} value={freshAgain} onInput={(e) => setFreshAgain(digits(e))} />
+            <button type="submit" class="btn primary block" id="lock-reset-save" disabled={!validCode(fresh) || fresh !== freshAgain}>
+              {tr("lock.reset_save")}
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
+
   const waitSeconds = Math.ceil(Math.max(0, blockedUntil - now) / 1000);
   return (
     <div class="lock-screen" id="app-lock">
@@ -154,7 +219,15 @@ export function AppLock(props: { children: ComponentChildren }) {
             setWrong(false);
           }}
         />
-        {wrong && <p class="fine lock-wrong">{tr("lock.wrong")}</p>}
+        {wrong && !unreadable && <p class="fine lock-wrong">{tr("lock.wrong")}</p>}
+        {unreadable && (
+          <>
+            <p class="fine lock-wrong" id="lock-unreadable">{tr("lock.unreadable")}</p>
+            <button type="button" class="btn block" id="lock-reset" onClick={() => setReset("ask")}>
+              {tr("lock.reset")}
+            </button>
+          </>
+        )}
         {waitSeconds > 0 && <p class="fine lock-wrong">{tr("lock.wait", { n: waitSeconds })}</p>}
         <button type="submit" class="btn block" id="lock-code-go" disabled={!validCode(code) || waitSeconds > 0}>
           {tr("lock.open")}

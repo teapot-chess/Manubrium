@@ -2,10 +2,11 @@
 // a phone app with five screens needs a variable, not a library.
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import { ApiError, client, type Client, type TournamentLine } from "../api";
+import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
-import { labelFor, ServerList, type SavedServer } from "../servers";
-import { onBackButton, onOpenLink, secureStorage, storage } from "../platform";
+import { labelFor, type SavedServer } from "../servers";
+import { pendingRevokes, serverList } from "../stores";
+import { onBackButton, onOpenLink, onResume, storage } from "../platform";
 import { currentChoice, loadLanguage, onLanguageChange, saveLanguage, t as tr } from "../i18n";
 import { LinkError, normaliseServer, parseConnectLink } from "../link";
 import { goBack, pushBack } from "../back";
@@ -33,7 +34,6 @@ export interface Ctx {
   bump: () => void;
 }
 
-const serverList = new ServerList(secureStorage); // tokens: Keychain / Keystore
 const outbox = new Outbox(storage);
 
 export function App() {
@@ -76,6 +76,14 @@ export function App() {
   }, [reload]);
 
   useEffect(() => onBackButton(goBack), []);
+
+  // Sign-outs the server missed while the phone was offline: tried again on
+  // start and whenever the app comes back to the front or online.
+  useEffect(() => {
+    const again = () => void pendingRevokes.retry().catch(() => undefined);
+    again();
+    return onResume(again);
+  }, []);
 
   // The push token can change between starts, and a server added since needs
   // it: hand it to every server again. Does nothing until notifications are
@@ -197,13 +205,12 @@ export function App() {
         onNoticeClose={() => setNotice(null)}
         onRemove={async (s, signOut) => {
           if (signOut) {
-            // Already revoked (401/403) is as good as signed out; anything
-            // else means the server still counts this phone as connected.
-            const failed = await client(s.base, s.token)
-              .signOut()
-              .then(() => false)
-              .catch((e) => !(e instanceof ApiError && (e.status === 401 || e.status === 403)));
-            if (failed) setNotice(tr("servers.signout_failed", { label: s.label }));
+            // The token is parked before it is dropped, so a server that
+            // cannot be reached now is told later: push registration first,
+            // then the sign-out. Already revoked (401/403) counts as done.
+            await pendingRevokes.add(s.base, s.token, s.label);
+            const waiting = (await pendingRevokes.retry().catch(() => 1)) > 0;
+            if (waiting) setNotice(tr("servers.signout_failed", { label: s.label }));
           }
           await outbox.forgetServer(s.base);
           await serverList.remove(s.base);

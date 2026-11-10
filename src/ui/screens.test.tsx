@@ -1536,6 +1536,40 @@ describe("1.2: this phone - theme and app lock", () => {
   });
 });
 
+describe("a lock whose code cannot be read", () => {
+  it("offers a reset that signs the servers out, keeps the outbox and takes a new code", async () => {
+    const { AppLock } = await import("./AppLock");
+    phone.storage.data.set("manubrium.lock.v1", JSON.stringify({ enabled: true, after: 5 }));
+    phone.storage.data.delete("manubrium.lock.misses.v1");
+    phone.storage.data.set("manubrium.outbox.v1", "[]");
+    phone.vault.data.delete("manubrium.lock.code.v1");
+    phone.vault.data.set("manubrium.servers.v1", JSON.stringify([{ base: "https://s.example", token: "t", label: "s.example", user: {}, info: {}, deviceId: 1, addedAt: "" }]));
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("offline");
+    });
+    render(<AppLock><p id="inside3">in</p></AppLock>);
+    fireEvent.input(await el("#lock-code"), { target: { value: "1111" } });
+    fireEvent.submit(await el("#lock-code-form"));
+    await el("#lock-unreadable");
+    // Not a miss: nothing was counted.
+    expect(phone.storage.data.get("manubrium.lock.misses.v1")).toBeUndefined();
+    fireEvent.click(await el("#lock-reset"));
+    fireEvent.click(await el("#lock-reset-yes"));
+    await el("#lock-reset-form");
+    expect(JSON.parse(phone.vault.data.get("manubrium.servers.v1") ?? "[]")).toHaveLength(0);
+    expect(phone.storage.data.get("manubrium.outbox.v1")).toBe("[]");
+    expect(JSON.parse(phone.vault.data.get("manubrium.revoke.v1") ?? "[]")[0]).toMatchObject({ base: "https://s.example", token: "t" });
+    fireEvent.input(await el("#lock-reset-code"), { target: { value: "2468" } });
+    fireEvent.input(await el("#lock-reset-again"), { target: { value: "2469" } });
+    expect((document.querySelector("#lock-reset-save") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.input(await el("#lock-reset-again"), { target: { value: "2468" } });
+    fireEvent.submit(await el("#lock-reset-form"));
+    await el("#inside3");
+    expect(phone.vault.data.get("manubrium.lock.code.v1")).toMatch(/\$/);
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("the app lock's cover", () => {
   it("covers the app when it stops being in front, keeps what was on screen, and lifts on return", async () => {
     const { AppLock } = await import("./AppLock");

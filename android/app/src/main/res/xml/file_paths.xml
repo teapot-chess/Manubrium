@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Capacitor Camera hands the camera app a URI from this provider
+     (authority ${applicationId}.fileprovider). Its capture file is created in
+     getExternalFilesDir(DIRECTORY_PICTURES) (CameraUtils.java, legacy flow), and
+     the newer flow keeps its temporary and edited copies in the cache. So: the
+     app's own Pictures folder and its caches, and nothing else. The old
+     external-path "." exposed all of shared storage. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
-    <cache-path name="my_cache_images" path="." />
+    <external-files-path name="camera_pictures" path="Pictures/" />
+    <external-cache-path name="camera_external_cache" path="." />
+    <cache-path name="camera_cache" path="." />
 </paths>

@@ -24,6 +24,7 @@ const h = vi.hoisted(() => {
     openLink: null as null | ((url: string) => void),
     connect: vi.fn(),
     signOut: vi.fn(),
+    unregister: vi.fn(),
   };
 });
 
@@ -55,6 +56,7 @@ vi.mock("../api", async (original) => ({
   client: () => ({
     tournaments: async () => [],
     signOut: h.signOut,
+    unregisterPush: h.unregister,
   }),
 }));
 
@@ -81,6 +83,8 @@ beforeEach(() => {
   h.openLink = null;
   h.connect.mockReset();
   h.signOut.mockReset();
+  h.unregister.mockReset();
+  h.unregister.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -160,6 +164,19 @@ describe("signing a server out", () => {
     h.secure.data.set("manubrium.servers.v1", JSON.stringify([saved, { ...saved, base: "https://b.example", label: "b.example" }]));
     await removeFirst();
     await screen.findByText(/could not be reached, so this phone's access there may still be active/);
+    // The token is parked, in the vault, for another try.
+    const parked = JSON.parse(h.secure.data.get("manubrium.revoke.v1") ?? "[]");
+    expect(parked).toHaveLength(1);
+    expect(parked[0]).toMatchObject({ base: saved.base, token: saved.token });
+    expect(h.unregister).toHaveBeenCalled();
+  });
+
+  it("parks nothing when the server answered", async () => {
+    h.signOut.mockResolvedValue(undefined);
+    h.secure.data.set("manubrium.servers.v1", JSON.stringify([saved, { ...saved, base: "https://b.example", label: "b.example" }]));
+    await removeFirst();
+    await waitFor(() => expect(h.signOut).toHaveBeenCalled());
+    await waitFor(() => expect(JSON.parse(h.secure.data.get("manubrium.revoke.v1") ?? "[]")).toHaveLength(0));
   });
 });
 

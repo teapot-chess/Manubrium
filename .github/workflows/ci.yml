@@ -87,11 +87,14 @@ jobs:
   # Network, so not part of `npm test`: fetches the providers' contracts and
   # fails with a diff if the vendored copy has drifted. The fix is
   # `npm run contracts:sync`, then whatever `npm test` says next.
+  #
+  # Never on a pull request: the job hands SIBLINGS_TOKEN to scripts/contracts.mjs
+  # and to npm, and a pull request is allowed to edit both. It runs from main,
+  # the daily schedule and by hand, where the code is already reviewed code.
   contracts:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    env:
-      CONTRACTS_TOKEN: ${{ secrets.SIBLINGS_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -99,8 +102,11 @@ jobs:
         with:
           node-version: 24
 
-      # SIBLINGS_TOKEN reads the private openpairings repo. A fork PR gets no
-      # secret, so the check is skipped there instead of failing on a 404.
+      # SIBLINGS_TOKEN reads the private openpairings repo. The job does not
+      # run for pull requests (see above); the token is only put in the
+      # environment of this one step, not of the whole job.
       - name: Check contracts
+        env:
+          CONTRACTS_TOKEN: ${{ secrets.SIBLINGS_TOKEN }}
         if: env.CONTRACTS_TOKEN != ''
         run: npm run contracts:check
