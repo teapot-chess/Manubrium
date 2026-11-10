@@ -13,7 +13,7 @@ export function AddServer(props: {
   onNoticeClose?: () => void;
   canCancel: boolean;
   onCancel: () => void;
-  onAdded: (server: SavedServer) => void;
+  onAdded: (server: SavedServer) => void | Promise<void>;
 }) {
   const [link, setLink] = useState(props.initialLink ?? "");
   const [busy, setBusy] = useState(false);
@@ -41,7 +41,7 @@ export function AddServer(props: {
     setBusy(true);
     try {
       const answer = await connect(parsed.server, parsed.secret, { name: await deviceName(), platform });
-      props.onAdded({
+      await props.onAdded({
         base: parsed.server,
         token: answer.token,
         label: labelFor(parsed.server),

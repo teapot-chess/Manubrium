@@ -84,6 +84,44 @@ export function waitAfter(misses: number): number {
   return Math.min(30_000 * 2 ** (misses - 5), 15 * 60_000);
 }
 
+export const LOCK_MISSES_KEY = "manubrium.lock.misses.v1";
+
+export interface LockThrottle {
+  misses: number;
+  blockedUntil: number;
+}
+
+/**
+ * The wrong-code count and the wait it earned, kept in Preferences: a force
+ * quit that handed out five fresh tries would make the wait decorative.
+ */
+export async function loadThrottle(store: KeyValue): Promise<LockThrottle> {
+  try {
+    const raw = await store.get(LOCK_MISSES_KEY);
+    if (!raw) return { misses: 0, blockedUntil: 0 };
+    const v = JSON.parse(raw) as Partial<LockThrottle>;
+    const misses = Number.isInteger(v.misses) && (v.misses as number) > 0 ? (v.misses as number) : 0;
+    const blockedUntil = typeof v.blockedUntil === "number" && Number.isFinite(v.blockedUntil) ? v.blockedUntil : 0;
+    return { misses, blockedUntil };
+  } catch {
+    return { misses: 0, blockedUntil: 0 };
+  }
+}
+
+export async function saveThrottle(store: KeyValue, throttle: LockThrottle): Promise<void> {
+  try {
+    await store.set(LOCK_MISSES_KEY, JSON.stringify(throttle));
+  } catch {
+    // Nowhere to write it: the in-memory count still counts.
+  }
+}
+
+/** One wrong code: the new count, and the time until which the next try waits. */
+export function missed(before: LockThrottle, now: number): LockThrottle {
+  const misses = before.misses + 1;
+  return { misses, blockedUntil: waitAfter(misses) ? now + waitAfter(misses) : 0 };
+}
+
 const listeners = new Set<() => void>();
 
 /** Called when the lock's settings change on this phone, so the lock reads them again. */

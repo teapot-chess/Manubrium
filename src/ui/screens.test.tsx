@@ -4,7 +4,7 @@
 // hand edits with the desk's questions, the pool, finishing the edits - and
 // the More tab's settings and incident photos, each against a fake API.
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError, OfflineError, type Board, type Client, type Player, type Round, type SearchHit, type Tournament } from "../api";
 import { Outbox, type KeyValue } from "../queue";
@@ -27,7 +27,7 @@ const phone = vi.hoisted(() => {
     const data = new Map<string, string>();
     return { data, get: async (k: string) => data.get(k) ?? null, set: async (k: string, v: string) => void data.set(k, v) };
   };
-  return { storage: kv(), vault: kv(), scanned: null as string | null, reminders: [] as { id: number; at: Date }[] };
+  return { storage: kv(), vault: kv(), scanned: null as string | null, reminders: [] as { id: number; at: Date }[], active: null as null | ((on: boolean) => void) };
 });
 
 vi.mock("../platform", () => ({
@@ -37,6 +37,12 @@ vi.mock("../platform", () => ({
   secureStorage: phone.vault,
   onResume: () => () => undefined,
   onPause: () => () => undefined,
+  onActiveChange: (h: (on: boolean) => void) => {
+    phone.active = h;
+    return () => {
+      phone.active = null;
+    };
+  },
   awayOnPurpose: () => false,
   takePhoto: vi.fn(async () => "/9j/PHOTO"),
   shareText: vi.fn(async () => "shared"),
@@ -1527,6 +1533,53 @@ describe("1.2: this phone - theme and app lock", () => {
     fireEvent.input(await el("#lock-code"), { target: { value: "1357" } });
     fireEvent.submit(await el("#lock-code-form"));
     await el("#inside");
+  });
+});
+
+describe("the app lock's cover", () => {
+  it("covers the app when it stops being in front, keeps what was on screen, and lifts on return", async () => {
+    const { AppLock } = await import("./AppLock");
+    const { storeCode } = await import("../lock");
+    phone.storage.data.set("manubrium.lock.v1", JSON.stringify({ enabled: true, after: 5 }));
+    await storeCode(phone.vault, "1357");
+    render(
+      <AppLock>
+        <p id="inside2">in</p>
+      </AppLock>,
+    );
+    fireEvent.input(await el("#lock-code"), { target: { value: "1357" } });
+    fireEvent.submit(await el("#lock-code-form"));
+    await el("#inside2");
+    expect(document.querySelector("#app-cover")).toBeNull();
+
+    act(() => phone.active?.(false));
+    await el("#app-cover");
+    expect(document.querySelector("#inside2")).not.toBeNull();
+
+    act(() => phone.active?.(true));
+    await waitFor(() => expect(document.querySelector("#app-cover")).toBeNull());
+    expect(document.querySelector("#inside2")).not.toBeNull();
+  });
+
+  it("remembers wrong codes across a restart", async () => {
+    const { AppLock } = await import("./AppLock");
+    const { storeCode } = await import("../lock");
+    phone.storage.data.delete("manubrium.lock.misses.v1");
+    phone.storage.data.set("manubrium.lock.v1", JSON.stringify({ enabled: true, after: 5 }));
+    await storeCode(phone.vault, "1357");
+    const first = render(<AppLock><p>in</p></AppLock>);
+    for (let i = 0; i < 5; i++) {
+      fireEvent.input(await el("#lock-code"), { target: { value: "1111" } });
+      fireEvent.submit(await el("#lock-code-form"));
+      await waitFor(() => expect(JSON.parse(phone.storage.data.get("manubrium.lock.misses.v1") ?? "{}").misses).toBe(i + 1));
+    }
+    first.unmount();
+    render(<AppLock><p>in</p></AppLock>);
+    await el("#app-lock");
+    await waitFor(() => expect((document.querySelector("#lock-code-go") as HTMLButtonElement).disabled).toBe(true));
+    fireEvent.input(await el("#lock-code"), { target: { value: "1357" } });
+    await waitFor(() => expect(document.querySelector(".lock-wrong")).not.toBeNull());
+    phone.storage.data.delete("manubrium.lock.misses.v1");
   });
 });
 

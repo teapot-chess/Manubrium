@@ -13,7 +13,7 @@
 // server's answer before anything else makes sense, so they are online-only
 // and say so.
 
-import { OfflineError, type Entry, type EntryAnswer, type ResultEntry } from "./api";
+import { ApiError, OfflineError, type Entry, type EntryAnswer, type ResultEntry } from "./api";
 import { t } from "./i18n";
 
 export interface KeyValue {
@@ -61,6 +61,11 @@ function batches(waiting: Queued[]): Queued[][] {
   }
   if (current.length) out.push(current);
   return out;
+}
+
+/** A client error that is about the entries sent, not about the device or the moment. */
+export function refusesBatch(status: number): boolean {
+  return status >= 400 && status < 500 && ![401, 403, 408, 429].includes(status);
 }
 
 export class Outbox {
@@ -225,6 +230,22 @@ export class Outbox {
         if (error instanceof OfflineError) {
           outcome.offline = true;
           break;
+        }
+        // A 4xx that names this batch (too big, malformed, unknown board) will
+        // never get better by being sent again, and would hold up everything
+        // behind it: refuse the batch with the server's sentence and go on.
+        // 401/403 (the device is gone), 408, 429 and 5xx are not the batch's
+        // fault: stop, keep everything, let the caller say so.
+        if (error instanceof ApiError && refusesBatch(error.status)) {
+          for (const q of batch) {
+            q.state = "refused";
+            q.message = error.message || null;
+            q.reason = error.code || null;
+            q.current = null;
+            outcome.refused += 1;
+          }
+          await this.save();
+          continue;
         }
         throw error;
       }
