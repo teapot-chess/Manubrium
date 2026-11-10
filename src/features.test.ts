@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { Board, PlayerCard, Round } from "./api";
 import type { KeyValue } from "./queue";
 import { applyTheme, DEFAULT_THEME, loadTheme, palette, saveTheme, THEME_KEY, THEMES, TOKENS } from "./themes";
-import { checkCode, loadLock, loadThrottle, missed, saveThrottle, LOCK_MISSES_KEY, LOCK_OFF, lockOnReturn, saveLock, storeCode, validCode, waitAfter, LOCK_CODE_KEY } from "./lock";
+import { checkCode, checkCodeResult, loadLock, loadThrottle, missed, saveThrottle, LOCK_MISSES_KEY, LOCK_OFF, lockOnReturn, saveLock, storeCode, validCode, waitAfter, LOCK_CODE_KEY } from "./lock";
 import {
   DEFAULT_MINUTES,
   forfeitChoices,
@@ -118,6 +118,18 @@ describe("the app lock", () => {
     expect(validCode("123")).toBe(false);
     expect(validCode("123456789")).toBe(false);
     expect(validCode("12a4")).toBe(false);
+  });
+
+  it("tells a wrong code from a code that cannot be read", async () => {
+    const vault = new Memory();
+    expect(await checkCodeResult(vault, "1234")).toBe("unreadable");
+    vault.data.set(LOCK_CODE_KEY, "garbage");
+    expect(await checkCodeResult(vault, "1234")).toBe("unreadable");
+    const broken = { get: async () => { throw new Error("key lost"); }, set: async () => undefined };
+    expect(await checkCodeResult(broken, "1234")).toBe("unreadable");
+    await storeCode(vault, "2468");
+    expect(await checkCodeResult(vault, "2469")).toBe("wrong");
+    expect(await checkCodeResult(vault, "2468")).toBe("ok");
   });
 
   it("keeps only a salted hash of the code, and checks against it", async () => {

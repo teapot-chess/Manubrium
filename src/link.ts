@@ -108,7 +108,8 @@ export function parseConnectLink(text: string): ConnectLink {
 }
 
 // A server's base URL as the app stores it: scheme, host and port, no
-// trailing slash, no path. Refuses http to a public address.
+// trailing slash. The server must be at the root of its address: an address
+// with a path is refused. Refuses http to a public address.
 export function normaliseServer(input: string): string {
   let url: URL;
   try {
@@ -117,12 +118,28 @@ export function normaliseServer(input: string): string {
     throw new LinkError(t("link.bad_address"));
   }
 
+  if (url.protocol !== "https:" && url.protocol !== "http:") throw new LinkError(t("link.must_https"));
+
+  // The app talks to <address>/api/...: a server under a sub-path would be
+  // reached at the wrong place and answer 404. Say so instead of saving a
+  // base that cannot work.
+  if (url.pathname.replace(/\/+$/, "") !== "") throw new LinkError(t("link.not_root"));
+
   if (url.protocol === "https:") return url.origin;
-  if (url.protocol === "http:" && isLocalHost(url.hostname)) return url.origin;
-  if (url.protocol === "http:") {
-    throw new LinkError(t("link.no_https"));
-  }
-  throw new LinkError(t("link.must_https"));
+  if (isLocalHost(url.hostname)) return url.origin;
+  throw new LinkError(t(isSharedAddress(url.hostname) ? "link.no_https_shared" : "link.no_https"));
+}
+
+/**
+ * 100.64.0.0/10: carrier-grade NAT, which is also where Tailscale puts its
+ * addresses. Shared with strangers on a carrier network, so plain http there
+ * is not "the hall's own network"; the error says what to use instead.
+ */
+export function isSharedAddress(hostname: string): boolean {
+  const v4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!v4) return false;
+  const [a, b] = [Number(v4[1]), Number(v4[2])];
+  return a === 100 && b >= 64 && b <= 127;
 }
 
 // Loopback, the private IPv4 ranges (RFC 1918), link-local, IPv6 unique
