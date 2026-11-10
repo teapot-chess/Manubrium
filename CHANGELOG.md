@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.2.0 - 2026-11-11
+
 - [Fix] **Removing a server in a dead spot no longer leaves the phone signed in.** If the server could not be reached, the token was thrown away and the phone stayed a valid device on the account, with nobody holding the key to revoke it. The token is now parked in the Keychain / Keystore and the app tries again on start and whenever it comes back online or to the front: push registration first, then the sign-out. It stops once the server has heard it, or has forgotten the phone, or after ninety days of silence.
 - [Fix] **A lock whose code cannot be read has a way out.** When the phone's secure storage loses the key, every code you type is "wrong" for ever and the only exit was a reinstall, which takes the results still waiting to be sent with it. The lock screen now says the code cannot be read (and does not count it as a wrong try), and offers **Reset the lock**: the phone signs out of every server, you choose a new code, and the outbox is left alone. Connect the server again with a new link and what was waiting goes out.
 - [Change] **A server must be at the root of its address.** An address with a path (https://host/pairings) used to be cut back to https://host, which then answered 404 and looked like "not OpenPairings". It is now refused, with a sentence saying the server must be at the root.
@@ -38,8 +40,6 @@ OpenPairings' own changelog.
 - [Change] Android builds push only when built with Firebase's
   `google-services.json` (the `GOOGLE_SERVICES_JSON` secret); without it
   the build works as before and says it cannot receive notifications.
-
-## 1.2.0
 
 - **Default time.** The round screen keeps the round's clock: tap "Clocks
   started", or give the time they did, and it counts down to the default
