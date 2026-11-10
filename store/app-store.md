@@ -51,6 +51,13 @@ A bye board can now be paired with a player who is not playing this round: the b
 **Wat is er nieuw** (1.1.0, NL):
 Een bord met de bye kun je nu paren met een speler die deze ronde niet speelt: de bye wordt hun partij. Vraagt een OpenPairings-server die dat kent (0.120 of nieuwer).
 
+**What's new** (1.2.0):
+Default time: the round screen counts down to it and lists the empty chairs, with the right forfeit ready when time is up. Scan a result slip or a place card to open its board. Tap a player for their games, colours, score and rank. Prizes at the end of the standings. Several arbiters on one round: who is where, keep theirs or use mine, handover notes, board history with undo. Hall boards live on the phone, with board controls. Notifications when a round is paired or published, when a hall board contradicts a result, for incidents and at the default time, plus the round on the lock screen (iOS 16.2 and later). New colour themes and an optional app lock. Needs OpenPairings 0.129 or later; notifications need a server with push set up.
+
+**Wat is er nieuw** (1.2.0, NL):
+Reglementaire wachttijd: het rondescherm telt ze af en toont de lege stoelen, met de juiste forfaitscore klaar als de tijd om is. Scan een uitslagbriefje of een plaatskaartje en het bord gaat open. Tik op een speler voor hun partijen, kleuren, score en plaats. Prijzen onderaan de stand. Meerdere arbiters op één ronde: wie waar zit, die van hen houden of de mijne gebruiken, overdrachtsnotities, bordgeschiedenis met ongedaan maken. Zaalborden live op de telefoon, met bediening. Meldingen als een ronde gepaard of gepubliceerd is, als een zaalbord een uitslag tegenspreekt, voor incidenten en bij de wachttijd, en de ronde op het vergrendelscherm (iOS 16.2 en nieuwer). Nieuwe kleurthema's en een optioneel app-slot. Vraagt OpenPairings 0.129 of nieuwer; meldingen vragen een server met push.
+
+
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
 **Privacy policy URL:** https://pairings.cloud/help/manubrium-privacy
