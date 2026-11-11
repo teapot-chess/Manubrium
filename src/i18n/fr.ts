@@ -798,7 +798,7 @@ export const fr: Record<Key, string> = {
   "lineup.confirm": "Confirmer cette composition",
   "lineup.confirmed_msg": "Composition de {team} confirmée dans le match {n}.",
   "sitout.button": "Ne joue pas la ronde {round}",
-  "sitout.pick": "{name} n'est pas apparié à la ronde {round}. À quel titre ?",
+  "sitout.pick": "{name} n'est pas apparié à la ronde {round}. Comment compte cette ronde ?",
   "sitout.pick_one": "{name} n'est pas apparié à la ronde {round}.",
   "sitout.plays": "Joue quand même",
   "sitout.is": "Ne joue pas la ronde {round} : {kind}.",

@@ -796,7 +796,7 @@ export const en = {
   "lineup.confirm": "Confirm this line-up",
   "lineup.confirmed_msg": "Line-up of {team} in match {n} confirmed.",
   "sitout.button": "Will not play round {round}",
-  "sitout.pick": "{name} is left out of the pairing of round {round}. As what?",
+  "sitout.pick": "{name} is left out of the pairing of round {round}. How should the round count?",
   "sitout.pick_one": "{name} is left out of the pairing of round {round}.",
   "sitout.plays": "Plays after all",
   "sitout.is": "Not playing round {round}: {kind}.",
