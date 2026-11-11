@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/lineups-confirm-request.schema.json",
+  "title": "POST /tournaments/:id/rounds/:n/lineups/confirm request",
+  "description": "Confirm every line-up of the round that is not confirmed yet, both sides of each match: the Pairings page's 'Confirm all line-ups for this round'. No body is needed, and nothing left to confirm is not a refusal. Answered with round-response.schema.json (200). Refusals (error.schema.json): 404 not_paired, 409 not_team_event, 409 archived / handed_off; 403 arbiter_role and 404 as for any desk route.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {}
+}

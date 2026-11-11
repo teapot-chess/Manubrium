@@ -49,7 +49,16 @@ export interface Tournament extends Omit<TournamentLine, "start_date" | "end_dat
   bye_kinds?: { id: string; label: string }[];
   /** The public page on OpenResults, when the tournament is published there. */
   openresults_url?: string | null;
+  /** A team tournament's board layout (newer servers only; absent means "teams"). */
+  team_board_layout?: TeamBoardLayout;
 }
+
+/**
+ * How a team match's boards are laid out, on the desk, in print and here:
+ * each team on its own side on every board, or White on the left on every
+ * board. The tournament says which; the three must never disagree.
+ */
+export type TeamBoardLayout = "teams" | "white_left";
 
 /** What `GET /tournament-options` offers a new tournament. */
 export interface TournamentOptions {
@@ -120,6 +129,44 @@ export interface Round {
   /** `discardable`: the hand edits can still be undone (absent from older servers: no). */
   hand_edits?: { open: boolean; pibe: string | null; discardable?: boolean };
   results: string[];
+  /** A team event's matches (newer servers only). Absent: the flat board list is all there is. */
+  matches?: Match[];
+}
+
+// A team event, as matches (contract revision 4).
+
+export interface MatchTeam { id: number; name: string; short_name: string | null }
+
+/** One of a match's boards: which of the round's boards, and where the first-named team sits. */
+export interface MatchBoard {
+  /** The pairing id: the `id` of one of the round's boards. */
+  id: number;
+  /** The board within the match, from 1. */
+  number: number;
+  /** The first-named team has White on this board. */
+  a_white: boolean;
+}
+
+export type MatchDecision = "forfeit_a" | "forfeit_b" | "double_forfeit" | "match_score";
+export type MatchSide = "a" | "b";
+
+export interface Match {
+  id: number;
+  number: number | null;
+  team_a: MatchTeam;
+  /** Null for the round's bye. */
+  team_b: MatchTeam | null;
+  bye: boolean;
+  boards: MatchBoard[];
+  game_points: { a: number; b: number };
+  /** Null until every board has a result. */
+  match_points: { a: number | null; b: number | null } | null;
+  /** Every board has a result and no postponed game is left. */
+  complete: boolean;
+  /** Settled as a whole at the desk, not on its boards. */
+  decision: MatchDecision | null;
+  /** Whether each side's line-up for the round is confirmed. */
+  lineups: { a: boolean; b: boolean; confirmed: boolean };
 }
 
 /** One hand edit, as `POST /rounds/:n/edits` takes it. */
@@ -672,7 +719,7 @@ export interface Client {
   createTournament(tournament: NewTournament): Promise<TournamentLine>;
   searchPlayers(id: number, q: string, source: string): Promise<SearchHit[]>;
   addPlayerFrom(id: number, from: PlayerSource): Promise<Player>;
-  setByes(id: number, playerId: number, byes: Bye[]): Promise<Player | null>;
+  setByes(id: number, playerId: number, byes: Bye[], acknowledged?: string[]): Promise<Player | null>;
   boardLinks(id: number): Promise<BoardLink[]>;
   createBoardLink(id: number, label?: string): Promise<{ link: BoardLink; code: string }>;
   revokeBoardLink(id: number, linkId: number): Promise<void>;
@@ -694,6 +741,11 @@ export interface Client {
   deleteLiveActivity(id: number): Promise<void>;
   setDefaultTime(id: number, round: number, at: string): Promise<void>;
   cancelDefaultTime(id: number, round: number): Promise<void>;
+
+  /** Confirms one side's line-up of a team match (or both) as it stands; answers the round. */
+  confirmLineup(id: number, n: number, match: number, side: MatchSide | "both"): Promise<Round>;
+  /** Confirms every line-up of the round that still waits; answers the round. */
+  confirmLineups(id: number, n: number): Promise<Round>;
 
   /** A heartbeat: this phone has the tournament open at `round`; answers who else does. */
   team(id: number, round: number | null): Promise<Team>;
@@ -763,8 +815,9 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
       return (await req<{ results: SearchHit[] }>("GET", `${t(id)}/player-search?${query}`)).results;
     },
     addPlayerFrom: async (id, from) => (await req<{ player: Player }>("POST", `${t(id)}/players`, { player: { from } })).player,
-    setByes: async (id, playerId, byes) =>
-      (await req<{ player?: Player } | undefined>("PUT", `${t(id)}/players/${playerId}/byes`, { byes }))?.player ?? null,
+    setByes: async (id, playerId, byes, acknowledged = []) =>
+      (await req<{ player?: Player } | undefined>("PUT", `${t(id)}/players/${playerId}/byes`, acknowledged.length ? { byes, acknowledged } : { byes }))
+        ?.player ?? null,
     boardLinks: async (id) => (await req<{ links: BoardLink[] }>("GET", `${t(id)}/board-links`)).links,
     createBoardLink: (id, label) => req("POST", `${t(id)}/board-links`, label ? { link: { label } } : {}),
     revokeBoardLink: async (id, linkId) => {
@@ -795,6 +848,10 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     cancelDefaultTime: async (id, round) => {
       await req("DELETE", `${t(id)}/default-time?round=${round}`);
     },
+
+    confirmLineup: async (id, n, match, side) =>
+      (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/matches/${match}/lineups/confirm`, { side })).round,
+    confirmLineups: async (id, n) => (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/lineups/confirm`, {})).round,
 
     team: async (id, round) => (await req<{ team: Team }>("PUT", `${t(id)}/team`, { presence: { round } })).team,
     notes: async (id) => (await req<{ notes: HandoverNote[] }>("GET", `${t(id)}/notes`)).notes,

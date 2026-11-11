@@ -65,6 +65,20 @@ Since 1.2 it also:
   time away, with the arbiter's own code as the way in when biometrics will
   not cooperate.
 
+Not yet released, it also:
+
+- shows a **team event's round as matches**: a card per match with the
+  teams, the running game points, the match points once it is over and its
+  boards under it, in the layout the tournament names
+  (`team_board_layout`: each team on its own side with a colour dot per
+  player, or White on the left on every board). An OpenPairings that sends
+  no matches gets the flat list;
+- shows whether each team's **line-up** is confirmed and, for the organiser
+  and editors, confirms one as it stands or a whole round's;
+- notes that a player **will not play the next round** from the player's
+  sheet, with the kind of bye the tournament offers, and takes it back;
+- hides the boards that have a result (**Still playing**).
+
 The server side - the API, device tokens, roles - lives in OpenPairings
 (`docs/manubrium.md`, section "Full app"). This repository is only the app.
 Manubrium Lite, the no-install browser page at `/m`, is OpenPairings' own and
@@ -98,7 +112,8 @@ src/
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
   share.ts       the round and the standings as text, and the browser's share
-  byes.ts        a player's byes: which rounds may still change
+  byes.ts        a player's byes: which rounds may still change, the next round
+  matches.ts     a team round as matches: seats, colours, the layout, the score
   search.ts      when a list search is worth sending, what a hit adds
   alnasl.ts      the line a hall board's report gets beside its pairing
   defaultTime.ts the default-time list, the round's clock, the forfeit to offer
@@ -112,7 +127,8 @@ src/
                  notifications, Face ID / fingerprint
   contract.testkit.ts  test helper: the vendored contract schemas
   ui/            the screens (HallPanel.tsx: the hall apps under More;
-                 DefaultTime.tsx, PlayerSheet.tsx, PrizeList.tsx, PhoneSettings.tsx, AppLock.tsx)
+                 DefaultTime.tsx, PlayerSheet.tsx, PrizeList.tsx, PhoneSettings.tsx, AppLock.tsx;
+                 Matches.tsx: a team round's match cards and the line-ups)
 ```
 
 ## Offline
@@ -128,12 +144,14 @@ An incident's photo rides in the outbox with its incident, shrunk to 1600
 pixels by the camera, and is sent in a request of its own.
 
 Everything else - clearing a result, confirming a Lite phone's result,
-pairing and hand edits, publishing, players, check-in, byes, settings, a new
-tournament, the hall boards' codes, the hall apps' commands - needs the server's
-answer and is online only. The app says so when it is not. Where the desk
-would ask a question before a change (a rule the boards break, a round
-already sent), the server asks it and the app shows it; nothing is answered
-on the arbiter's behalf.
+pairing and hand edits, publishing, players, check-in, byes, confirming
+line-ups, settings, a new tournament, the hall boards' codes, the hall apps'
+commands - needs the server's answer and is online only. The app says so
+when it is not. A team match's score is the one sum the phone does itself:
+results waiting in the outbox are counted into it, marked as waiting, until
+the server's own figure replaces them. Where the desk would ask a question
+before a change (a rule the boards break, a round already sent), the server
+asks it and the app shows it; nothing is answered on the arbiter's behalf.
 
 ## Develop in a browser
 
@@ -323,7 +341,9 @@ the privacy policy and the screenshot list are in `store/`.
 - **Not in the app because the server does not offer it yet:** acknowledging
   from a phone the results Lite refuses for the desk (a decisive postponed
   game, a correction after the next round is paired, a round already sent to
-  FIDE). Team events' hand edits stay at the desk.
+  FIDE). Team events' hand edits stay at the desk, and so do changing a
+  line-up, taking a confirmation back, a forfeit by decision and a match
+  score.
 - **Built against the server's contract, not its finished code.** New
   tournaments, list search, check-in, byes, board reports and board codes
   were written while OpenPairings was still writing its half. The fakes

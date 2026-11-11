@@ -3,7 +3,7 @@
 // on a Lite phone's result are online only.
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { ApiError, OfflineError, type Board, type Round, type Tournament } from "../api";
+import { ApiError, OfflineError, type Board, type MatchSide, type Round, type Tournament } from "../api";
 import { native, onResume, scanQr, takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
@@ -20,6 +20,8 @@ import { PlayerSheet } from "./PlayerSheet";
 import { RoundPush } from "./Notifications";
 import { ConflictNotice, TeamStrip } from "./Team";
 import { HistorySheet } from "./History";
+import { layoutOf, matchView } from "../matches";
+import { ColourDot, LineupsBar, LineupSheet, MatchList } from "./Matches";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
@@ -75,6 +77,10 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [editing, setEditing] = useState<Board | null>(null);
   const [history, setHistory] = useState<Board | null>(null);
   const [player, setPlayer] = useState<number | null>(null);
+  // A team's line-up, open: by match and side, so a refreshed round is what the sheet shows.
+  const [lineupOf, setLineupOf] = useState<{ match: number; side: MatchSide } | null>(null);
+  // Only the boards still without a result: the last half hour of a round.
+  const [openOnly, setOpenOnly] = useState(false);
   // A scanned slip for a round not on screen: opened once that round is.
   const [scanned, setScanned] = useState<{ round: number; pairing: number } | null>(null);
   const deskRole = t.can.includes("pair");
@@ -112,6 +118,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     setBoard(null);
     setEditing(null);
     setHistory(null);
+    setLineupOf(null);
   }, [number, t.id]);
 
   const flush = useCallback(async () => {
@@ -276,6 +283,76 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const missing = round ? round.boards.filter((b) => !b.bye && !b.result).length : 0;
   const toCheck = round ? round.boards.filter((b) => b.phone?.state === "unconfirmed").length : 0;
 
+  // What a board shows: this phone's waiting result before the server's own.
+  const shownResult = (b: Board): string => {
+    const pending = waitingFor.get(b.id);
+    return pending && pending.entry.kind === "result" ? pending.entry.result : b.result;
+  };
+  const stillOpen = (b: Board): boolean => !b.bye && !shownResult(b);
+  const openCount = round ? round.boards.filter(stillOpen).length : 0;
+  const filtering = openOnly && round !== null;
+
+  // A team event's round as matches; null for every other round, and for a
+  // server that does not send them, which leaves the flat list below.
+  const view = round ? matchView(round) : null;
+  const canConfirm = t.can.includes("publish") && !t.read_only;
+  const lineupCard = lineupOf && view ? view.cards.find((c) => c.match.id === lineupOf.match) : undefined;
+  const matchOf = (b: Board) => {
+    for (const card of view?.cards ?? []) {
+      const row = card.rows.find((r) => r.board.id === b.id);
+      if (row) return { card, row };
+    }
+    return null;
+  };
+  // "Match 2, board 3" where the board is one of a match; "Board 7" anywhere else.
+  const boardTitle = (b: Board): string => {
+    const found = matchOf(b);
+    return found ? tr("match.board_title", { match: found.card.match.number ?? "–", board: found.row.number }) : tr("round.board", { label: b.label });
+  };
+
+  const boardDisabled = (b: Board): boolean => t.read_only || ((b.bye || !!b.vacant || !!b.empty) && !deskRole);
+  const openBoard = (b: Board) => (b.bye || b.vacant || b.empty ? setEditing(b) : setBoard(b));
+
+  // The round the server answered a line-up with, drawn at once.
+  function lineupsChanged(answer: Round, message: string) {
+    setLineupOf(null);
+    setInfo(message);
+    if (answer.number === number) {
+      requests.current++;
+      setRound(answer);
+    }
+  }
+
+  const boardItem = (b: Board) => {
+    const pending = waitingFor.get(b.id);
+    const shown = shownResult(b);
+    return (
+      <li key={b.id}>
+        <button
+          type="button"
+          class={`board ${shown ? "done" : ""} ${pending ? "pending" : ""} ${b.phone?.state === "unconfirmed" ? "from-phone" : ""}`}
+          id={`board-${b.id}`}
+          disabled={boardDisabled(b)}
+          onClick={() => openBoard(b)}
+        >
+          <span class="board-no">{b.label}</span>
+          <span class="players">
+            <Name p={b.white} />
+            {b.bye ? <span class="bye">{tr("round.bye")}</span> : <Name p={b.black} />}
+            <BoardReportLine board={b} />
+          </span>
+          <span class="result">
+            {shown ? resultLabel(shown) : "–"}
+            {pending && <span class="state">{tr("round.waiting")}</span>}
+            {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">{tr("round.phone")}</span>}
+            {!pending && b.phone?.state === "confirmed" && <span class="state">{tr("round.checked")}</span>}
+          </span>
+        </button>
+      </li>
+    );
+  };
+  const flat = (boards: Board[]) => (filtering ? boards.filter(stillOpen) : boards);
+
   return (
     <div class="round">
       <div class="round-head">
@@ -352,6 +429,11 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {round && round.boards.length > 0 && (
         <div class="view-tools">
+          {(openCount > 0 || openOnly) && (
+            <button type="button" class={`chip ${openOnly ? "active" : ""}`} id="filter-open" aria-pressed={openOnly} onClick={() => setOpenOnly(!openOnly)}>
+              {tr("round.still_playing", { n: openCount })}
+            </button>
+          )}
           {native && t.can.includes("results") && !t.read_only && (
             <button type="button" class="chip" id="scan-slip" onClick={() => void scan()}>
               {tr("scan.button")}
@@ -363,36 +445,37 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {!round && !error && <Loading />}
       {round && round.boards.length === 0 && <Empty>{tr("round.no_boards")}</Empty>}
-      {round && (
+      {round && filtering && openCount === 0 && round.boards.length > 0 && <Empty>{tr("round.none_open")}</Empty>}
+      {round && view && (
+        <>
+          <LineupsBar ctx={ctx} t={t} round={round} view={view} canConfirm={canConfirm} onDone={lineupsChanged} />
+          <MatchList
+            t={t}
+            view={view}
+            layout={layoutOf(t)}
+            waitingFor={waitingFor}
+            disabled={boardDisabled}
+            hidden={filtering ? (b) => !stillOpen(b) : undefined}
+            canConfirm={canConfirm}
+            onBoard={openBoard}
+            onLineup={(card, side) => setLineupOf({ match: card.match.id, side })}
+            report={(b) => <BoardReportLine board={b} />}
+          />
+          {flat(view.loose).length > 0 && (
+            <>
+              <h3 class="sub" id="loose-boards">
+                {tr("match.loose")}
+              </h3>
+              <ul class="boards" id="boards">
+                {flat(view.loose).map(boardItem)}
+              </ul>
+            </>
+          )}
+        </>
+      )}
+      {round && !view && (
         <ul class="boards" id="boards">
-          {round.boards.map((b) => {
-            const pending = waitingFor.get(b.id);
-            const shown = pending && pending.entry.kind === "result" ? pending.entry.result : b.result;
-            return (
-              <li key={b.id}>
-                <button
-                  type="button"
-                  class={`board ${shown ? "done" : ""} ${pending ? "pending" : ""} ${b.phone?.state === "unconfirmed" ? "from-phone" : ""}`}
-                  id={`board-${b.id}`}
-                  disabled={t.read_only || ((b.bye || b.vacant || b.empty) && !deskRole)}
-                  onClick={() => (b.bye || b.vacant || b.empty ? setEditing(b) : setBoard(b))}
-                >
-                  <span class="board-no">{b.label}</span>
-                  <span class="players">
-                    <Name p={b.white} />
-                    {b.bye ? <span class="bye">{tr("round.bye")}</span> : <Name p={b.black} />}
-                    <BoardReportLine board={b} />
-                  </span>
-                  <span class="result">
-                    {shown ? resultLabel(shown) : "–"}
-                    {pending && <span class="state">{tr("round.waiting")}</span>}
-                    {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">{tr("round.phone")}</span>}
-                    {!pending && b.phone?.state === "confirmed" && <span class="state">{tr("round.checked")}</span>}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+          {flat(round.boards).map(boardItem)}
         </ul>
       )}
 
@@ -420,6 +503,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       {board && round && (
         <ResultSheet
           board={board}
+          title={boardTitle(board)}
           codes={round.results}
           canIncident={t.can.includes("incidents")}
           canEdit={deskRole}
@@ -460,6 +544,19 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       )}
 
       {player !== null && <PlayerSheet ctx={ctx} t={t} playerId={player} onClose={() => setPlayer(null)} />}
+
+      {lineupOf && lineupCard && round && (
+        <LineupSheet
+          ctx={ctx}
+          t={t}
+          round={round}
+          card={lineupCard}
+          side={lineupOf.side}
+          canConfirm={canConfirm}
+          onClose={() => setLineupOf(null)}
+          onDone={lineupsChanged}
+        />
+      )}
 
       {editing && round && (
         <BoardEditSheet ctx={ctx} t={t} round={round} board={editing} onClose={() => setEditing(null)} onDone={edited} />
@@ -520,6 +617,8 @@ function BoardReportLine(props: { board: Board }) {
 
 function ResultSheet(props: {
   board: Board;
+  /** What the sheet is called: "Board 7", or "Match 2, board 3" in a team event. */
+  title: string;
   codes: string[];
   canIncident: boolean;
   canEdit: boolean;
@@ -572,14 +671,17 @@ function ResultSheet(props: {
   }
 
   return (
-    <Sheet title={tr("round.board", { label: board.label })} onClose={props.onClose}>
-      <p class="sheet-sub">
+    <Sheet title={props.title} onClose={props.onClose}>
+      {/* Who is White: the result buttons below read White first, whatever side of a match card the player sat on. */}
+      <p class="sheet-sub result-names">
+        <ColourDot colour="w" />
         {board.white ? (
           <button type="button" class="link" id="result-white" onClick={() => props.onPlayer(board.white!.id)}>
             {board.white.name}
           </button>
         ) : null}{" "}
         –{" "}
+        <ColourDot colour="b" />
         {board.black ? (
           <button type="button" class="link" id="result-black" onClick={() => props.onPlayer(board.black!.id)}>
             {board.black.name}

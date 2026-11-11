@@ -1,0 +1,291 @@
+{
+  "round": {
+    "boards": [
+      {
+        "black": {
+          "id": 7,
+          "name": "Charlie 1",
+          "rating": 2000,
+          "score": 0.0,
+          "title": null
+        },
+        "board": 1,
+        "board_report": null,
+        "bye": false,
+        "clearable": true,
+        "empty": false,
+        "id": 1,
+        "label": "1",
+        "phone": null,
+        "result": "1-0",
+        "vacant": false,
+        "white": {
+          "id": 1,
+          "name": "Alpha 1",
+          "rating": 2300,
+          "score": 0.0,
+          "title": null
+        }
+      },
+      {
+        "black": {
+          "id": 2,
+          "name": "Alpha 2",
+          "rating": 2250,
+          "score": 0.0,
+          "title": null
+        },
+        "board": 2,
+        "board_report": null,
+        "bye": false,
+        "clearable": true,
+        "empty": false,
+        "id": 2,
+        "label": "2",
+        "phone": null,
+        "result": "1/2-1/2",
+        "vacant": false,
+        "white": {
+          "id": 8,
+          "name": "Charlie 2",
+          "rating": 1950,
+          "score": 0.0,
+          "title": null
+        }
+      },
+      {
+        "black": {
+          "id": 4,
+          "name": "Bravo 1",
+          "rating": 2150,
+          "score": 0.0,
+          "title": null
+        },
+        "board": 3,
+        "board_report": null,
+        "bye": false,
+        "clearable": false,
+        "empty": false,
+        "id": 3,
+        "label": "3",
+        "phone": null,
+        "result": "",
+        "vacant": false,
+        "white": {
+          "id": 9,
+          "name": "Delta 1",
+          "rating": 1900,
+          "score": 0.0,
+          "title": null
+        }
+      },
+      {
+        "black": {
+          "id": 10,
+          "name": "Delta 2",
+          "rating": 1850,
+          "score": 0.0,
+          "title": null
+        },
+        "board": 4,
+        "board_report": null,
+        "bye": false,
+        "clearable": false,
+        "empty": false,
+        "id": 4,
+        "label": "4",
+        "phone": null,
+        "result": "",
+        "vacant": false,
+        "white": {
+          "id": 5,
+          "name": "Bravo 2",
+          "rating": 2100,
+          "score": 0.0,
+          "title": null
+        }
+      }
+    ],
+    "byes": [],
+    "hand_edits": {
+      "discardable": false,
+      "open": false,
+      "pibe": null
+    },
+    "latest": true,
+    "matches": [
+      {
+        "boards": [
+          {
+            "a_white": true,
+            "id": 1,
+            "number": 1
+          },
+          {
+            "a_white": false,
+            "id": 2,
+            "number": 2
+          }
+        ],
+        "bye": false,
+        "complete": true,
+        "decision": null,
+        "game_points": {
+          "a": 1.5,
+          "b": 0.5
+        },
+        "id": 1,
+        "lineups": {
+          "a": true,
+          "b": true,
+          "confirmed": true
+        },
+        "match_points": {
+          "a": 2.0,
+          "b": 0.0
+        },
+        "number": 1,
+        "team_a": {
+          "id": 1,
+          "name": "Alpha",
+          "short_name": null
+        },
+        "team_b": {
+          "id": 3,
+          "name": "Charlie",
+          "short_name": null
+        }
+      },
+      {
+        "boards": [
+          {
+            "a_white": true,
+            "id": 3,
+            "number": 1
+          },
+          {
+            "a_white": false,
+            "id": 4,
+            "number": 2
+          }
+        ],
+        "bye": false,
+        "complete": false,
+        "decision": null,
+        "game_points": {
+          "a": 0.0,
+          "b": 0.0
+        },
+        "id": 2,
+        "lineups": {
+          "a": true,
+          "b": false,
+          "confirmed": false
+        },
+        "match_points": null,
+        "number": 2,
+        "team_a": {
+          "id": 4,
+          "name": "Delta",
+          "short_name": null
+        },
+        "team_b": {
+          "id": 2,
+          "name": "Bravo",
+          "short_name": null
+        }
+      },
+      {
+        "boards": [],
+        "bye": true,
+        "complete": true,
+        "decision": null,
+        "game_points": {
+          "a": 1.0,
+          "b": 0.0
+        },
+        "id": 3,
+        "lineups": {
+          "a": true,
+          "b": true,
+          "confirmed": true
+        },
+        "match_points": {
+          "a": 1.0,
+          "b": null
+        },
+        "number": 3,
+        "team_a": {
+          "id": 5,
+          "name": "Echo",
+          "short_name": null
+        },
+        "team_b": null
+      }
+    ],
+    "number": 1,
+    "pool": [
+      {
+        "absent": false,
+        "player": {
+          "id": 3,
+          "name": "Alpha 3",
+          "rating": 2200,
+          "score": 0.0,
+          "title": null
+        },
+        "type": null
+      },
+      {
+        "absent": false,
+        "player": {
+          "id": 6,
+          "name": "Bravo 3",
+          "rating": 2050,
+          "score": 0.0,
+          "title": null
+        },
+        "type": null
+      },
+      {
+        "absent": false,
+        "player": {
+          "id": 11,
+          "name": "Echo 1",
+          "rating": 1800,
+          "score": 0.0,
+          "title": null
+        },
+        "type": null
+      },
+      {
+        "absent": false,
+        "player": {
+          "id": 12,
+          "name": "Echo 2",
+          "rating": 1750,
+          "score": 0.0,
+          "title": null
+        },
+        "type": null
+      }
+    ],
+    "publish_level": 0,
+    "results": [
+      "1-0",
+      "1/2-1/2",
+      "0-1",
+      "1/2-0",
+      "0-1/2",
+      "1-0FF",
+      "0-1FF",
+      "0-0FF",
+      "0-0",
+      "1-0U",
+      "0-1U",
+      "1/2-1/2U",
+      "*W",
+      "*B"
+    ]
+  }
+}

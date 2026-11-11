@@ -2,10 +2,15 @@
 // open to arbiters) - games so far with colours and results, the colour
 // history, score, rating, club, requested byes - and for the arbiter a
 // line when the player is not checked in or is on the default-time list.
+//
+// And the sentence every arbiter hears between rounds: "I will not be
+// playing the next one." The organiser and editors can note it here, and
+// take it back; what the round is then worth, and whether it is allowed at
+// all, is the server's to say.
 
 import { useEffect, useState } from "preact/hooks";
-import type { PlayerCard, Tournament } from "../api";
-import { byeLabel } from "../byes";
+import { ApiError, type PlayerCard, type Tournament } from "../api";
+import { byeLabel, byesToSend, canSitOut, nextRound, setBye } from "../byes";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, Sheet, TryAgain } from "./common";
 import { t as tr } from "../i18n";
@@ -98,6 +103,8 @@ export function PlayerSheet(props: { ctx: Ctx; t: Tournament; playerId: number; 
             )}
           </dl>
 
+          {canSitOut(t, p) && <SitOut ctx={ctx} t={t} card={card} onCard={setCard} />}
+
           <h3>{tr("player.games")}</h3>
           {card.games.length === 0 ? (
             <p class="empty">{tr("player.no_games")}</p>
@@ -119,5 +126,103 @@ export function PlayerSheet(props: { ctx: Ctx; t: Tournament; playerId: number; 
         </div>
       )}
     </Sheet>
+  );
+}
+
+/**
+ * "Will not play round N", and its way back. The bye is one of the kinds
+ * the tournament offers (`bye_kinds`): a plain absence, or where the
+ * tournament asks the bye type, the half-point, zero-point or full-point
+ * bye. Two taps, because a player left out of a pairing by a stray thumb
+ * is a conversation nobody wants.
+ *
+ * The server keeps a player's byes as one list and takes it whole, so the
+ * card is read again just before it is sent: what the desk changed for
+ * another round in the meantime is kept, not overwritten. Where the desk
+ * would ask first (a second half-point bye, a round already sent for
+ * rating) the server's question is shown and answered here. Online only.
+ */
+function SitOut(props: { ctx: Ctx; t: Tournament; card: PlayerCard; onCard: (card: PlayerCard) => void }) {
+  const { ctx, t, card } = props;
+  const player = card.player;
+  const round = nextRound(t)!;
+  const kinds = t.bye_kinds ?? [];
+  const current = (player.byes ?? []).find((b) => b.round === round) ?? null;
+  const [picking, setPicking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [ask, setAsk] = useState<{ ids: string[]; message: string; kind: string | null } | null>(null);
+
+  async function change(kind: string | null, acknowledged: string[] = []) {
+    setBusy(true);
+    setError(null);
+    setSaid(null);
+    try {
+      const fresh = await ctx.api.playerCard(t.id, player.id);
+      const byes = setBye(fresh.player.byes ?? [], round, kind, t.paired_rounds);
+      const list = byesToSend(byes, t.paired_rounds);
+      await (acknowledged.length ? ctx.api.setByes(t.id, player.id, list, acknowledged) : ctx.api.setByes(t.id, player.id, list));
+      // The card as the server now has it, before anything is said: the
+      // sentence and the button under it must not disagree, even for a second.
+      const now = await ctx.api.playerCard(t.id, player.id).catch(() => ({ ...fresh, player: { ...fresh.player, byes } }));
+      props.onCard(now);
+      setAsk(null);
+      setPicking(false);
+      setSaid(kind ? tr("sitout.done", { name: player.name, round, kind: byeLabel(kind) }) : tr("sitout.undone", { name: player.name, round }));
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "needs_acknowledgement") {
+        setAsk({ ids: Array.isArray(e.body.confirm) ? (e.body.confirm as string[]) : [], message: e.message, kind });
+      } else {
+        setAsk(null);
+        setError(describeError(e));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section class="sit-out" id="sit-out">
+      <h3>{tr("more.round", { round })}</h3>
+      {ask ? (
+        <div class="confirm" id="sit-out-ask">
+          <p>{ask.message}</p>
+          <button type="button" class="btn primary block" id="sit-out-confirm" disabled={busy} onClick={() => change(ask.kind, ask.ids)}>
+            {tr("round.confirm")}
+          </button>
+          <button type="button" class="btn block" id="sit-out-ask-keep" disabled={busy} onClick={() => setAsk(null)}>
+            {tr("common.keep")}
+          </button>
+        </div>
+      ) : current ? (
+        <>
+          <p class="missing-note" id="sit-out-state">
+            {tr("sitout.is", { round, kind: byeLabel(current.kind) })}
+          </p>
+          <button type="button" class="btn block" id="sit-out-undo" disabled={busy} onClick={() => change(null)}>
+            {tr("sitout.undo", { round })}
+          </button>
+        </>
+      ) : picking ? (
+        <div class="confirm" id="sit-out-pick">
+          <p>{tr(kinds.length === 1 ? "sitout.pick_one" : "sitout.pick", { name: player.name, round })}</p>
+          {kinds.map((k) => (
+            <button type="button" key={k.id} class="btn block" id={`sit-out-${k.id}`} disabled={busy} onClick={() => change(k.id)}>
+              {byeLabel(k.id)}
+            </button>
+          ))}
+          <button type="button" class="btn ghost block" id="sit-out-keep" disabled={busy} onClick={() => setPicking(false)}>
+            {tr("sitout.plays")}
+          </button>
+        </div>
+      ) : (
+        <button type="button" class="btn block" id="sit-out-open" disabled={busy} onClick={() => setPicking(true)}>
+          {tr("sitout.button", { round })}
+        </button>
+      )}
+      {said && <Notice kind="ok">{said}</Notice>}
+      {error && <Notice kind="error">{error}</Notice>}
+    </section>
   );
 }

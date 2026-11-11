@@ -237,8 +237,14 @@
             }
           }
         },
-        "openresults_url": { "$ref": "#/definitions/text_or_null" }
+        "openresults_url": { "$ref": "#/definitions/text_or_null" },
+        "team_board_layout": { "$ref": "#/definitions/team_board_layout" }
       }
+    },
+    "team_board_layout": {
+      "description": "A team tournament only (absent from every other tournament, and from servers older than contract revision 4: read absent as `teams`). How the boards of a team match are laid out, on screen, on the phone and in print alike. `teams`: each team keeps its side on every board, the first-named team on the left, so the colours in a column alternate. `white_left`: White on the left on every board, so the teams change sides from board to board. Either way every player carries a colour mark.",
+      "type": "string",
+      "enum": ["teams", "white_left"]
     },
     "board_player": {
       "type": "object",
@@ -361,7 +367,88 @@
             "discardable": { "type": "boolean", "description": "Hand edits are open and can still be discarded (POST /rounds/:n/edits/discard): the session remembers where it began and nothing in the round is decided. Absent from servers older than the route; read absent as false." }
           }
         },
-        "results": { "type": "array", "items": { "type": "string" }, "description": "The result codes an arbiter may enter." }
+        "results": { "type": "array", "items": { "type": "string" }, "description": "The result codes an arbiter may enter." },
+        "matches": {
+          "description": "A round of a tournament paired as teams only (absent from every other round, and from servers older than contract revision 4: no `matches` means the flat board list is all there is). The round's matches in match order. `boards` above stays the flat list it always was; each match names the boards that are its own, and a board no match names is in no match.",
+          "type": "array",
+          "items": { "$ref": "#/definitions/match" }
+        }
+      }
+    },
+    "match_team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "short_name"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "name": { "type": "string" },
+        "short_name": { "$ref": "#/definitions/text_or_null", "description": "For narrow columns, when the team has one." }
+      }
+    },
+    "match_points_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b"],
+      "properties": {
+        "a": { "type": ["number", "null"] },
+        "b": { "type": ["number", "null"], "description": "Null for a bye: there is no second team to score." }
+      }
+    },
+    "match": {
+      "description": "One team match of a round: the first-named team (`team_a`) against `team_b`, played on the boards it names. The Pairings page's Matches table, by the same functions.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id", "description": "The match id: what POST /rounds/:n/matches/:match/lineups/confirm names." },
+        "number": { "type": ["integer", "null"], "description": "The match number within the round." },
+        "team_a": { "$ref": "#/definitions/match_team" },
+        "team_b": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_team" }], "description": "Null for the round's bye." },
+        "bye": { "type": "boolean" },
+        "boards": {
+          "description": "The boards of this match, board 1 first. Empty for a bye, and for a match nobody was seated in.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "number", "a_white"],
+            "properties": {
+              "id": { "$ref": "#/definitions/id", "description": "The pairing id: the `id` of one of the round's `boards`." },
+              "number": { "type": "integer", "minimum": 1, "description": "The board within the match, 1 to the tournament's boards per match. Not the round-wide board number, which is the board's own `label`." },
+              "a_white": { "type": "boolean", "description": "Whether the first-named team has White on this board: the board's `white` is then team_a's player and its `black` team_b's, and the other way round when false." }
+            }
+          }
+        },
+        "game_points": {
+          "description": "Game points (board points) so far, as the Matches table shows them.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["a", "b"],
+          "properties": {
+            "a": { "type": "number" },
+            "b": { "type": "number" }
+          }
+        },
+        "match_points": {
+          "description": "Null until every board carries a result (a postponed game counts as the draw it stands for; see `complete`), and for a round robin's bye, which pays none.",
+          "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_points_pair" }]
+        },
+        "complete": { "type": "boolean", "description": "Every board has a result and none is a postponed game still to be played. False with match points present: those points are provisional." },
+        "decision": {
+          "description": "A match settled as a whole rather than on its boards: forfeited by decision to one team, a double forfeit, or given as a match score. Its boards carry the results the decision wrote and take none of their own; undoing it is the desk's. Null for a match decided on its boards.",
+          "enum": [null, "forfeit_a", "forfeit_b", "double_forfeit", "match_score"]
+        },
+        "lineups": {
+          "description": "Whether each side's line-up for this round is confirmed. Until both are, the match is public as team against team only and its boards are provisional. `a` and `b` are true for a side with nothing to choose, and all three are true for a bye, a match that has started, and a tournament where line-ups need no confirming.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["a", "b", "confirmed"],
+          "properties": {
+            "a": { "type": "boolean" },
+            "b": { "type": "boolean" },
+            "confirmed": { "type": "boolean", "description": "The match as a whole: nothing left to confirm." }
+          }
+        }
       }
     },
     "player_brief": {
