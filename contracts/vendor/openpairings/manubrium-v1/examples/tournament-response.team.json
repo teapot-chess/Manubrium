@@ -1,0 +1,526 @@
+{
+  "tournament": {
+    "archived": false,
+    "bye_kinds": [
+      {
+        "id": "absent",
+        "label": "Absent",
+        "points": 0.0
+      }
+    ],
+    "can": [
+      "results",
+      "incidents",
+      "pair",
+      "publish",
+      "players",
+      "standings",
+      "settings"
+    ],
+    "handed_off": false,
+    "id": 1,
+    "name": "Team Swiss",
+    "next_round": {
+      "blocker": "setup_incomplete",
+      "number": 2,
+      "warnings": []
+    },
+    "openresults_url": null,
+    "paired_rounds": 1,
+    "pairing_system": "swiss",
+    "read_only": false,
+    "role": "owner",
+    "rounds": [
+      {
+        "missing_results": 4,
+        "number": 1,
+        "publish_level": 0
+      }
+    ],
+    "rounds_count": 3,
+    "settings": {
+      "ask_bye_type": false,
+      "bye_value": 1.0,
+      "chief_arbiter": null,
+      "city": null,
+      "configured_tiebreaks": [
+        "MP",
+        "GP",
+        "DE",
+        "BB",
+        "SB"
+      ],
+      "deputy_arbiter": null,
+      "editable": [
+        "time_control",
+        "chief_arbiter",
+        "deputy_arbiter",
+        "venue",
+        "city",
+        "ask_bye_type"
+      ],
+      "end_date": null,
+      "federation": null,
+      "fide_rated": false,
+      "points": {
+        "draw": 0.5,
+        "loss": 0.0,
+        "win": 1.0
+      },
+      "postponed_games": false,
+      "publish_mode": "manual",
+      "round_dates": [
+        "",
+        "",
+        ""
+      ],
+      "rounds_count": 3,
+      "shared_places": false,
+      "start_date": null,
+      "tiebreak_options": [
+        {
+          "code": "BH",
+          "name": "Buchholz"
+        },
+        {
+          "code": "BHC1",
+          "name": "Buchholz Cut-1"
+        },
+        {
+          "code": "BHC2",
+          "name": "Buchholz Cut-2"
+        },
+        {
+          "code": "MBH",
+          "name": "Median Buchholz"
+        },
+        {
+          "code": "SB",
+          "name": "Sonneborn-Berger"
+        },
+        {
+          "code": "DE",
+          "name": "Direct encounter"
+        },
+        {
+          "code": "MP",
+          "name": "Match points"
+        },
+        {
+          "code": "GP",
+          "name": "Game points"
+        },
+        {
+          "code": "EMGSB",
+          "name": "Sonneborn-Berger, match points x game points"
+        },
+        {
+          "code": "BH:GP",
+          "name": "Buchholz on game points"
+        },
+        {
+          "code": "EGMSB",
+          "name": "Extended Sonneborn-Berger, opponent's game points x match points scored"
+        },
+        {
+          "code": "EGGSB",
+          "name": "Extended Sonneborn-Berger, opponent's game points x game points scored"
+        },
+        {
+          "code": "EDE",
+          "name": "Extended Direct Encounter for teams"
+        },
+        {
+          "code": "TBR",
+          "name": "Top Board Results"
+        },
+        {
+          "code": "BBE",
+          "name": "Bottom Board Elimination"
+        },
+        {
+          "code": "SSSC",
+          "name": "Scores and Schedule Strength Combination"
+        },
+        {
+          "code": "BB",
+          "name": "Board points weighted (Berlin)"
+        },
+        {
+          "code": "WIN:MP",
+          "name": "Number of wins on match points"
+        },
+        {
+          "code": "WON:MP",
+          "name": "Number of games won over the board on match points"
+        },
+        {
+          "code": "PS:MP",
+          "name": "Progressive score on match points"
+        },
+        {
+          "code": "PS:MP/C1",
+          "name": "Progressive score on match points, Cut-1"
+        },
+        {
+          "code": "PS:MP/C2",
+          "name": "Progressive score on match points, Cut-2"
+        },
+        {
+          "code": "PS:GP",
+          "name": "Progressive score on game points"
+        },
+        {
+          "code": "PS:GP/C1",
+          "name": "Progressive score on game points, Cut-1"
+        },
+        {
+          "code": "PS:GP/C2",
+          "name": "Progressive score on game points, Cut-2"
+        },
+        {
+          "code": "BH:MP/P",
+          "name": "Buchholz on match points, forfeits counted"
+        },
+        {
+          "code": "BH:MP/C1/P",
+          "name": "Buchholz on match points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "BH:MP/C2/P",
+          "name": "Buchholz on match points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "BH:MP/M1/P",
+          "name": "Buchholz on match points, Median-1, forfeits counted"
+        },
+        {
+          "code": "BH:MP/M2",
+          "name": "Buchholz on match points, Median-2"
+        },
+        {
+          "code": "BH:MP/M2/P",
+          "name": "Buchholz on match points, Median-2, forfeits counted"
+        },
+        {
+          "code": "BH:GP/P",
+          "name": "Buchholz on game points, forfeits counted"
+        },
+        {
+          "code": "BH:GP/C1",
+          "name": "Buchholz on game points, Cut-1"
+        },
+        {
+          "code": "BH:GP/C1/P",
+          "name": "Buchholz on game points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "BH:GP/C2",
+          "name": "Buchholz on game points, Cut-2"
+        },
+        {
+          "code": "BH:GP/C2/P",
+          "name": "Buchholz on game points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "BH:GP/M1",
+          "name": "Buchholz on game points, Median-1"
+        },
+        {
+          "code": "BH:GP/M1/P",
+          "name": "Buchholz on game points, Median-1, forfeits counted"
+        },
+        {
+          "code": "BH:GP/M2",
+          "name": "Buchholz on game points, Median-2"
+        },
+        {
+          "code": "BH:GP/M2/P",
+          "name": "Buchholz on game points, Median-2, forfeits counted"
+        },
+        {
+          "code": "FB:MP",
+          "name": "Fore Buchholz on match points"
+        },
+        {
+          "code": "FB:MP/P",
+          "name": "Fore Buchholz on match points, forfeits counted"
+        },
+        {
+          "code": "FB:MP/C1",
+          "name": "Fore Buchholz on match points, Cut-1"
+        },
+        {
+          "code": "FB:MP/C1/P",
+          "name": "Fore Buchholz on match points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "FB:MP/C2",
+          "name": "Fore Buchholz on match points, Cut-2"
+        },
+        {
+          "code": "FB:MP/C2/P",
+          "name": "Fore Buchholz on match points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "FB:MP/M1",
+          "name": "Fore Buchholz on match points, Median-1"
+        },
+        {
+          "code": "FB:MP/M1/P",
+          "name": "Fore Buchholz on match points, Median-1, forfeits counted"
+        },
+        {
+          "code": "FB:MP/M2",
+          "name": "Fore Buchholz on match points, Median-2"
+        },
+        {
+          "code": "FB:MP/M2/P",
+          "name": "Fore Buchholz on match points, Median-2, forfeits counted"
+        },
+        {
+          "code": "FB:GP",
+          "name": "Fore Buchholz on game points"
+        },
+        {
+          "code": "FB:GP/P",
+          "name": "Fore Buchholz on game points, forfeits counted"
+        },
+        {
+          "code": "FB:GP/C1",
+          "name": "Fore Buchholz on game points, Cut-1"
+        },
+        {
+          "code": "FB:GP/C1/P",
+          "name": "Fore Buchholz on game points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "FB:GP/C2",
+          "name": "Fore Buchholz on game points, Cut-2"
+        },
+        {
+          "code": "FB:GP/C2/P",
+          "name": "Fore Buchholz on game points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "FB:GP/M1",
+          "name": "Fore Buchholz on game points, Median-1"
+        },
+        {
+          "code": "FB:GP/M1/P",
+          "name": "Fore Buchholz on game points, Median-1, forfeits counted"
+        },
+        {
+          "code": "FB:GP/M2",
+          "name": "Fore Buchholz on game points, Median-2"
+        },
+        {
+          "code": "FB:GP/M2/P",
+          "name": "Fore Buchholz on game points, Median-2, forfeits counted"
+        },
+        {
+          "code": "AOB:MP",
+          "name": "Average of opponents' Buchholz on match points"
+        },
+        {
+          "code": "AOB:MP/F",
+          "name": "Average of opponents' Buchholz on match points, over Fore Buchholz"
+        },
+        {
+          "code": "AOB:GP",
+          "name": "Average of opponents' Buchholz on game points"
+        },
+        {
+          "code": "AOB:GP/F",
+          "name": "Average of opponents' Buchholz on game points, over Fore Buchholz"
+        },
+        {
+          "code": "KS:MP",
+          "name": "Koya system on match points"
+        },
+        {
+          "code": "KS:MP/L1",
+          "name": "Koya system on match points, limit +1/2"
+        },
+        {
+          "code": "KS:MP/L2",
+          "name": "Koya system on match points, limit +1"
+        },
+        {
+          "code": "KS:MP/L-1",
+          "name": "Koya system on match points, limit -1/2"
+        },
+        {
+          "code": "KS:MP/L-2",
+          "name": "Koya system on match points, limit -1"
+        },
+        {
+          "code": "KS:GP",
+          "name": "Koya system on game points"
+        },
+        {
+          "code": "KS:GP/L1",
+          "name": "Koya system on game points, limit +1/2"
+        },
+        {
+          "code": "KS:GP/L2",
+          "name": "Koya system on game points, limit +1"
+        },
+        {
+          "code": "KS:GP/L-1",
+          "name": "Koya system on game points, limit -1/2"
+        },
+        {
+          "code": "KS:GP/L-2",
+          "name": "Koya system on game points, limit -1"
+        },
+        {
+          "code": "MPVGP",
+          "name": "Match points or game points"
+        },
+        {
+          "code": "EMMSB",
+          "name": "Extended Sonneborn-Berger, match points x match points"
+        },
+        {
+          "code": "EMMSB/C1",
+          "name": "Extended Sonneborn-Berger, match points x match points, Cut-1"
+        },
+        {
+          "code": "EMMSB/C2",
+          "name": "Extended Sonneborn-Berger, match points x match points, Cut-2"
+        },
+        {
+          "code": "EMMSB/P",
+          "name": "Extended Sonneborn-Berger, match points x match points, forfeits counted"
+        },
+        {
+          "code": "EMMSB/C1/P",
+          "name": "Extended Sonneborn-Berger, match points x match points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "EMMSB/C2/P",
+          "name": "Extended Sonneborn-Berger, match points x match points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "EMGSB/C1",
+          "name": "Sonneborn-Berger, match points x game points, Cut-1"
+        },
+        {
+          "code": "EMGSB/C2",
+          "name": "Sonneborn-Berger, match points x game points, Cut-2"
+        },
+        {
+          "code": "EMGSB/P",
+          "name": "Sonneborn-Berger, match points x game points, forfeits counted"
+        },
+        {
+          "code": "EMGSB/C1/P",
+          "name": "Sonneborn-Berger, match points x game points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "EMGSB/C2/P",
+          "name": "Sonneborn-Berger, match points x game points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "EGMSB/C1",
+          "name": "Extended Sonneborn-Berger, game points x match points, Cut-1"
+        },
+        {
+          "code": "EGMSB/C2",
+          "name": "Extended Sonneborn-Berger, game points x match points, Cut-2"
+        },
+        {
+          "code": "EGMSB/P",
+          "name": "Extended Sonneborn-Berger, game points x match points, forfeits counted"
+        },
+        {
+          "code": "EGMSB/C1/P",
+          "name": "Extended Sonneborn-Berger, game points x match points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "EGMSB/C2/P",
+          "name": "Extended Sonneborn-Berger, game points x match points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "EGGSB/C1",
+          "name": "Extended Sonneborn-Berger, game points x game points, Cut-1"
+        },
+        {
+          "code": "EGGSB/C2",
+          "name": "Extended Sonneborn-Berger, game points x game points, Cut-2"
+        },
+        {
+          "code": "EGGSB/P",
+          "name": "Extended Sonneborn-Berger, game points x game points, forfeits counted"
+        },
+        {
+          "code": "EGGSB/C1/P",
+          "name": "Extended Sonneborn-Berger, game points x game points, Cut-1, forfeits counted"
+        },
+        {
+          "code": "EGGSB/C2/P",
+          "name": "Extended Sonneborn-Berger, game points x game points, Cut-2, forfeits counted"
+        },
+        {
+          "code": "EDE/P",
+          "name": "Extended Direct Encounter, forfeits counted"
+        },
+        {
+          "code": "EDEBT",
+          "name": "Extended Direct Encounter, then Board Count and Top Board Results"
+        },
+        {
+          "code": "EDEBT/P",
+          "name": "Extended Direct Encounter, then Board Count and Top Board Results, forfeits counted"
+        },
+        {
+          "code": "EDEBB",
+          "name": "Extended Direct Encounter, then Board Count and Bottom Board Elimination"
+        },
+        {
+          "code": "EDEBB/P",
+          "name": "Extended Direct Encounter, then Board Count and Bottom Board Elimination, forfeits counted"
+        },
+        {
+          "code": "EDET",
+          "name": "Extended Direct Encounter, then Top Board Results"
+        },
+        {
+          "code": "EDET/P",
+          "name": "Extended Direct Encounter, then Top Board Results, forfeits counted"
+        },
+        {
+          "code": "EDEB",
+          "name": "Extended Direct Encounter, then Bottom Board Elimination"
+        },
+        {
+          "code": "EDEB/P",
+          "name": "Extended Direct Encounter, then Bottom Board Elimination, forfeits counted"
+        },
+        {
+          "code": "SSSC/P",
+          "name": "Scores and Schedule Strength Combination, forfeits counted"
+        },
+        {
+          "code": "SSSC/F",
+          "name": "Scores and Schedule Strength Combination, over Fore Buchholz"
+        },
+        {
+          "code": "SSSC/F/P",
+          "name": "Scores and Schedule Strength Combination, over Fore Buchholz, forfeits counted"
+        }
+      ],
+      "tiebreaks": [
+        "DE",
+        "SB"
+      ],
+      "time_control": null,
+      "type": "team-swiss",
+      "venue": null
+    },
+    "status": "running",
+    "team": true,
+    "team_board_layout": "teams"
+  }
+}

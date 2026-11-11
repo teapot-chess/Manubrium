@@ -501,22 +501,31 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Bye[]>(player.byes ?? []);
   const [said, setSaid] = useState<string | null>(null);
+  // The desk's question before a second half-point bye, or a round already sent: asked here too.
+  const [ask, setAsk] = useState<{ ids: string[]; message: string } | null>(null);
   const kinds = t.bye_kinds ?? [];
   const label = (id: string) => kinds.find((k) => k.id === id)?.label ?? id;
   const rows = byeRows(t.rounds_count ?? 0, t.paired_rounds, byes);
   const changed = byesChanged(saved, byes, t.paired_rounds);
 
-  async function save() {
+  async function save(acknowledged: string[] = []) {
     setBusy(true);
     setError(null);
     setSaid(null);
     try {
-      await ctx.api.setByes(t.id, player.id, byesToSend(byes, t.paired_rounds));
+      const list = byesToSend(byes, t.paired_rounds);
+      await (acknowledged.length ? ctx.api.setByes(t.id, player.id, list, acknowledged) : ctx.api.setByes(t.id, player.id, list));
       setSaved(byes);
+      setAsk(null);
       setSaid(tr("pl.byes_saved"));
       props.onSaved();
     } catch (e) {
-      setError(describeError(e));
+      if (e instanceof ApiError && e.code === "needs_acknowledgement") {
+        setAsk({ ids: Array.isArray(e.body.confirm) ? (e.body.confirm as string[]) : [], message: e.message });
+      } else {
+        setAsk(null);
+        setError(describeError(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -554,9 +563,21 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
           </li>
         ))}
       </ul>
-      <button type="button" class="btn block" id="save-byes" disabled={busy || !changed} onClick={save}>
-        {busy ? tr("set.saving") : tr("pl.save_byes")}
-      </button>
+      {ask ? (
+        <div class="confirm" id="byes-ask">
+          <p>{ask.message}</p>
+          <button type="button" class="btn primary block" id="byes-confirm" disabled={busy} onClick={() => save(ask.ids)}>
+            {tr("round.confirm")}
+          </button>
+          <button type="button" class="btn block" id="byes-ask-keep" disabled={busy} onClick={() => setAsk(null)}>
+            {tr("common.keep")}
+          </button>
+        </div>
+      ) : (
+        <button type="button" class="btn block" id="save-byes" disabled={busy || !changed} onClick={() => save()}>
+          {busy ? tr("set.saving") : tr("pl.save_byes")}
+        </button>
+      )}
       {said && !changed && <Notice kind="ok">{said}</Notice>}
       {error && <Notice kind="error">{error}</Notice>}
     </section>

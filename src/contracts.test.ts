@@ -26,6 +26,11 @@ import {
   type BoardReport,
   type BoardStatus,
   type Board,
+  type Match,
+  type MatchBoard,
+  type MatchDecision,
+  type MatchTeam,
+  type TeamBoardLayout,
   type Bye,
   type Capability,
   type Client,
@@ -58,6 +63,7 @@ import {
 } from "./api";
 import { boardReportLabel } from "./alnasl";
 import { byeRows, byesToSend } from "./byes";
+import { layoutOf, lineup, matchScore, matchView, pointValues, seats } from "./matches";
 import { Outbox, type KeyValue } from "./queue";
 import { hitDetails, sourceOf } from "./search";
 import { pairingsText, standingsText } from "./share";
@@ -132,6 +138,9 @@ const ROUTES: Route[] = [
   { method: "DELETE", path: /^\/tournaments\/\d+\/live-activity$/, contract: "DELETE /tournaments/:id/live-activity", response: "live-activity-response" },
   { method: "PUT", path: /^\/tournaments\/\d+\/default-time$/, contract: "PUT /tournaments/:id/default-time", request: "default-time-request", response: "default-time-response" },
   { method: "DELETE", path: /^\/tournaments\/\d+\/default-time$/, contract: "DELETE /tournaments/:id/default-time", response: "default-time-response" },
+  // Team events: line-ups confirmed from the floor (contract revision 4).
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/lineups\/confirm$/, contract: "POST /tournaments/:id/rounds/:n/lineups/confirm", request: "lineups-confirm-request", response: "round-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups\/confirm$/, contract: "POST /tournaments/:id/rounds/:n/matches/:match/lineups/confirm", request: "lineup-confirm-request", response: "round-response" },
   // Live board control (contract revision 2).
   // Several arbiters (contract revision 3).
   { method: "PUT", path: /^\/tournaments\/\d+\/team$/, contract: "PUT /tournaments/:id/team", request: "team-request", response: "team-response" },
@@ -327,6 +336,8 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   updateNote: (c) => c.updateNote(2, 1, { resolved: true }),
   boardHistory: (c) => c.boardHistory(2, 1, 101),
   undo: (c) => c.undo(2, 1, 101, 2),
+  confirmLineup: (c) => c.confirmLineup(2, 1, 31, "a"),
+  confirmLineups: (c) => c.confirmLineups(2, 1),
 };
 
 async function everyCall(c: Client) {
@@ -526,6 +537,77 @@ describe("what the answers mean to the app", () => {
   });
 });
 
+describe("what a team event's answers mean to the app", () => {
+  const teamRounds = Object.keys(examples)
+    .filter((n) => n.startsWith("round-response.team"))
+    .map((n) => ex<{ round: Round }>(n).round);
+
+  it("has team rounds to read, and reads an individual round as no matches at all", () => {
+    expect(teamRounds.length).toBeGreaterThan(0);
+    expect(matchView(ex<{ round: Round }>("round-response.json").round)).toBeNull();
+  });
+
+  it("puts every board of a team round under its match, the first-named team where the server says", () => {
+    for (const round of teamRounds) {
+      const view = matchView(round)!;
+      expect(view.cards).toHaveLength(round.matches!.length);
+      expect(view.loose).toEqual([]);
+      for (const card of view.cards) {
+        expect(card.rows).toHaveLength(card.match.boards.length);
+        for (const row of card.rows) {
+          const { left, right } = seats(row, "teams");
+          expect(left.team).toBe("a");
+          expect(right.team).toBe("b");
+          expect(left.colour).toBe(row.aWhite ? "w" : "b");
+          // White on the left on every board, whichever team that is.
+          expect(seats(row, "white_left").left).toMatchObject({ colour: "w", player: row.board.white });
+        }
+        if (!card.match.bye) {
+          expect(lineup(card, "a").map((s) => s.player?.name)).toEqual(card.rows.map((r) => (r.aWhite ? r.board.white : r.board.black)?.name));
+        }
+      }
+    }
+  });
+
+  it("shows the server's own score when nothing waits on the phone", () => {
+    const values = pointValues(ex<{ tournament: Tournament }>("tournament-response.team.json").tournament);
+    for (const round of teamRounds) {
+      for (const card of matchView(round)!.cards) {
+        expect(matchScore(card, new Map(), values)).toEqual({ a: card.match.game_points.a, b: card.match.game_points.b, matchPoints: card.match.match_points, waiting: 0 });
+      }
+    }
+  });
+
+  it("adds up a match from its boards as the server does, so a waiting result counts the same", () => {
+    const values = pointValues(ex<{ tournament: Tournament }>("tournament-response.team.json").tournament);
+    const scored = matchView(ex<{ round: Round }>("round-response.team-scored.json").round)!;
+    const played = scored.cards.find((c) => c.rows.some((r) => r.board.result))!;
+    // The same match with its results still on the phone: every board blank, each result waiting.
+    const blank = {
+      match: { ...played.match, game_points: { a: 0, b: 0 }, match_points: null },
+      rows: played.rows.map((r) => ({ ...r, board: { ...r.board, result: "" } })),
+    };
+    const waiting = new Map(played.rows.filter((r) => r.board.result).map((r) => [r.board.id, r.board.result]));
+    expect(matchScore(blank, waiting, values)).toMatchObject({ a: played.match.game_points.a, b: played.match.game_points.b, matchPoints: null, waiting: waiting.size });
+  });
+
+  it("reads the layout a team tournament names, and each team on its own side when none is named", () => {
+    const team = ex<{ tournament: Tournament }>("tournament-response.team.json").tournament;
+    expect(team.team).toBe(true);
+    expect(layoutOf(team)).toBe(team.team_board_layout);
+    expect(layoutOf(ex<{ tournament: Tournament }>("tournament-response.json").tournament)).toBe("teams");
+  });
+
+  it("knows every layout and every decision the contract has", () => {
+    const same = (mine: Record<string, true>, theirs: unknown[]) => expect(Object.keys(mine).sort()).toEqual([...(theirs as string[])].sort());
+    same({ teams: true, white_left: true } satisfies Record<TeamBoardLayout, true>, enumOf(definition("team_board_layout")));
+    same(
+      { forfeit_a: true, forfeit_b: true, double_forfeit: true, match_score: true } satisfies Record<MatchDecision, true>,
+      enumOf(definition("match").properties!.decision),
+    );
+  });
+});
+
 describe("what live boards mean to the app", () => {
   it("reads every live-boards example: states and alarms in words or raw, never empty", () => {
     const data = ex<LiveBoards>("live-boards-response.json");
@@ -589,6 +671,7 @@ describe("the app's types against the contract's shapes", () => {
         settings: "required",
         bye_kinds: "optional",
         openresults_url: "optional nullable",
+        team_board_layout: "optional",
       }),
       "tournament",
     ],
@@ -628,9 +711,29 @@ describe("the app's types against the contract's shapes", () => {
         pool: "optional",
         hand_edits: "optional",
         results: "required",
+        matches: "optional",
       }),
       "round",
     ],
+    [
+      "Match",
+      shape<Match>()({
+        id: "required",
+        number: "required nullable",
+        team_a: "required",
+        team_b: "required nullable",
+        bye: "required",
+        boards: "required",
+        game_points: "required",
+        match_points: "required nullable",
+        complete: "required",
+        decision: "required nullable",
+        lineups: "required",
+      }),
+      "match",
+    ],
+    ["MatchTeam", shape<MatchTeam>()({ id: "required", name: "required", short_name: "required nullable" }), "match_team"],
+    ["MatchBoard", shape<MatchBoard>()({ id: "required", number: "required", a_white: "required" }), "common.schema.json#/definitions/match/properties/boards/items"],
     ["StandingRow", shape<StandingRow>()({ rank: "required nullable", player: "required nullable", points: "required nullable", tiebreaks: "required" }), "common.schema.json#/definitions/standings/properties/rows/items"],
     ["Standings", shape<Standings>()({ tiebreaks: "required", rows: "required", tiebreaks_through: "optional", rounds_paired: "optional" }), "standings"],
     [
@@ -974,6 +1077,17 @@ describe("every request the app builds", () => {
       ...["1-0", "0-1", "1/2-1/2", "*"].map((result) => box("finish", { result })),
     ];
     for (const r of requests) valid(await captured((c) => c.sendBoardCommand(2, r)));
+  });
+
+  it("confirms a line-up for either side or both, and a whole round with no body to speak of", async () => {
+    for (const side of ["a", "b", "both"] as const) valid(await captured((c) => c.confirmLineup(2, 1, 31, side)));
+    valid(await captured((c) => c.confirmLineups(2, 1)));
+  });
+
+  it("sends a player's byes with the answer to the server's question, when it asked one", async () => {
+    const s = await captured((c) => c.setByes(2, 6, [{ round: 3, kind: "requested-half" }], ["second_half_bye"]));
+    valid(s);
+    expect(s.body).toEqual({ byes: [{ round: 3, kind: "requested-half" }], acknowledged: ["second_half_bye"] });
   });
 
   it("publishes at every level", async () => {

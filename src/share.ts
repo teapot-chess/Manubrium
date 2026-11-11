@@ -6,6 +6,7 @@
 import type { Board, Round, Standings, Tournament } from "./api";
 import { t as tr } from "./i18n";
 import { byeLabel } from "./byes";
+import { matchView, points } from "./matches";
 
 /** "1/2-1/2" is how the server spells it; a message can afford the glyph. */
 export function shareResult(code: string): string {
@@ -34,23 +35,45 @@ function boardResult(b: Board): string {
   return b.result ? shareResult(b.result) : "–";
 }
 
-/** The round's pairings: board, white, result, black; then who is not playing. */
+/**
+ * The round's pairings: board, white, result, black; then who is not
+ * playing. A team event's boards come match by match, each under its teams
+ * and score; the columns stay White and Black, which is what a chat group
+ * can read without a legend.
+ */
 export function pairingsText(t: Pick<Tournament, "name" | "openresults_url">, round: Round): string {
-  const rows = round.boards.map((b) => ({
+  const view = matchView(round);
+  const row = (b: Board) => ({
     no: b.label || String(b.board),
     white: named(b.white),
     result: boardResult(b),
     black: b.bye ? "" : named(b.black),
-  }));
+  });
+  const rows = round.boards.map(row);
   const noW = Math.max(2, ...rows.map((r) => r.no.length));
   const whiteW = Math.max(5, ...rows.map((r) => [...r.white].length));
   const resW = Math.max(3, ...rows.map((r) => [...r.result].length));
 
   const lines = [`${t.name}`, tr("more.round", { round: round.number }), ""];
-  if (rows.length === 0) lines.push(tr("round.no_boards"));
+  const head = `${pad(tr("share.bd"), noW, true)}  ${pad(tr("share.white"), whiteW)}  ${pad(tr("share.res"), resW)}  ${tr("share.black")}`;
+  const line = (r: (typeof rows)[number]) => `${pad(r.no, noW, true)}  ${pad(r.white, whiteW)}  ${pad(r.result, resW)}  ${r.black}`.trimEnd();
+  if (view) {
+    for (const { match, rows: boards } of view.cards) {
+      const n = match.number ?? "–";
+      lines.push(
+        match.bye || !match.team_b
+          ? tr("share.match_bye", { n, a: match.team_a.name })
+          : tr("share.match", { n, a: match.team_a.name, score: `${points(match.game_points.a)}–${points(match.game_points.b)}`, b: match.team_b.name }),
+      );
+      for (const r of boards) lines.push(line(row(r.board)));
+      lines.push("");
+    }
+    if (view.loose.length > 0) lines.push(tr("match.loose"), ...view.loose.map((b) => line(row(b))), "");
+    while (lines[lines.length - 1] === "") lines.pop();
+  } else if (rows.length === 0) lines.push(tr("round.no_boards"));
   else {
-    lines.push(`${pad(tr("share.bd"), noW, true)}  ${pad(tr("share.white"), whiteW)}  ${pad(tr("share.res"), resW)}  ${tr("share.black")}`);
-    for (const r of rows) lines.push(`${pad(r.no, noW, true)}  ${pad(r.white, whiteW)}  ${pad(r.result, resW)}  ${r.black}`.trimEnd());
+    lines.push(head);
+    for (const r of rows) lines.push(line(r));
   }
   if (round.byes.length > 0) {
     lines.push("", tr("round.not_playing", { list: round.byes.map((b) => `${b.player.name} (${byeLabel(b.type)})`).join(", ") }));

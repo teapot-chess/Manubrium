@@ -410,7 +410,7 @@ td.player button.link { text-align: left; }
 .game-round { width: 34px; padding-left: 14px; font-weight: 700; color: var(--text-soft); font-variant-numeric: tabular-nums; }
 .colour-dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--text-soft); flex: none; }
 .colour-dot.w { background: #ffffff; }
-.colour-dot.b { background: #1b1b1b; border-color: #1b1b1b; }
+.colour-dot.b { background: #000000; }
 .colour-dot.none { border-style: dashed; }
 .game-result { padding: 0 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
@@ -465,3 +465,50 @@ h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; col
 .notice.conflict { display: grid; gap: 8px; }
 .notice.conflict .two-btn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .undo-reason { color: var(--warn); }
+
+/* ---------- team events: a round as matches ---------- */
+.matches { display: flex; flex-direction: column; gap: 14px; }
+.match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.match.provisional { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+.match-head { padding: 10px 12px; background: var(--surface-alt); }
+.match-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); }
+.match-lineups { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; text-align: right; }
+.match-lineups.waiting { color: var(--warn); }
+.match-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 6px; }
+.match-team { font-weight: 700; font-size: 15.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.match-team.b { text-align: right; }
+.match-score { padding: 2px 10px; border-radius: 10px; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--accent-soft); color: var(--accent); }
+.match-score.waiting { background: transparent; outline: 1.5px dashed var(--accent); }
+.match-score.bye { font-size: 13px; font-weight: 600; font-style: italic; background: transparent; color: var(--text-soft); }
+.match-notes { margin: 6px 0 0; font-size: 12.5px; color: var(--text-soft); text-align: center; }
+.lineup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.lineup-chips .chip { justify-content: center; text-align: center; min-height: 36px; }
+.match-boards { gap: 0; }
+.match-boards li { border-top: 1px solid var(--border); }
+.board.match-board {
+  grid-template-columns: 30px minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px 8px;
+  padding: 10px 10px 10px 4px; border: 0; border-radius: 0; background: transparent;
+}
+.board.match-board.pending { outline: 1.5px dashed var(--accent); outline-offset: -3px; }
+.board.match-board.from-phone { box-shadow: inset 3px 0 0 var(--warn); }
+.match-board .board-no { display: flex; flex-direction: column; align-items: center; font-size: 16px; line-height: 1.1; }
+.match-board .board-no small { font-size: 10.5px; font-weight: 600; opacity: 0.75; }
+.match-board .result { min-width: 52px; padding: 6px; font-size: 15.5px; }
+.match-board .board-report { grid-column: 2 / -1; }
+.seat { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.seat .colour-dot { margin-top: 4px; }
+.seat-text { display: flex; flex-direction: column; min-width: 0; }
+.seat-name {
+  font-weight: 600; font-size: 14.5px; line-height: 1.25; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.seat-name em { font-style: normal; color: var(--accent); font-weight: 700; }
+.seat small { font-size: 12px; color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lineups-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; margin: 0 0 10px; border-radius: var(--radius);
+  background: var(--warn-soft); color: var(--warn); font-size: 14px;
+}
+.lineups-bar .chip { flex: none; color: var(--text); }
+.result-names { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sit-out .missing-note { margin: 0; }

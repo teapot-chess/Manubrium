@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/lineup-confirm-request.schema.json",
+  "title": "POST /tournaments/:id/rounds/:n/matches/:match/lineups/confirm request",
+  "description": "Confirm one side's line-up of a team match (or both) as it stands on the boards: the Pairings page's 'Confirm <team>'. `a` is the first-named team, `b` the other. A side already confirmed stays as it was. Answered with round-response.schema.json (200), the round as it now is. Refusals (error.schema.json): 400 bad_request (no such side), 404 match_not_found (not a match of this round), 404 not_paired, 409 not_team_event, 422 bye_match, 409 archived / handed_off; 403 arbiter_role for an arbiter (the owner and editors only, as on the Pairings page) and 404 as for any desk route. Changing a line-up, and taking a confirmation back, stay at the desk.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "side"
+  ],
+  "properties": {
+    "side": {
+      "type": "string",
+      "enum": [
+        "a",
+        "b",
+        "both"
+      ]
+    }
+  }
+}
