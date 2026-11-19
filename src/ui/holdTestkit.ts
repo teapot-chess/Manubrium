@@ -8,7 +8,7 @@ import { HOLD_MS, holdTiming } from "../hold";
 /** Makes a hold last a few milliseconds, for tests on real timers. Call `slowHolds` after. */
 export function fastHolds(ms = 5): void {
   holdTiming.ms = ms;
-  holdTiming.vibrate = () => undefined;
+  holdTiming.buzz = () => undefined;
 }
 
 export function slowHolds(): void {

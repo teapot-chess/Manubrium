@@ -7,27 +7,21 @@
 // the hold has lasted long enough. `ui/HoldButton.tsx` wires it to a
 // button; the tests drive it directly with fake timers.
 
+import { buzz, type Buzz } from "./haptics";
+
 /** How long a result button must be held. */
 export const HOLD_MS = 1000;
 
 /**
  * The timing and the buzz, in one object so a test can change them. The
- * buzz is `navigator.vibrate` where the webview has it (Android); iOS does
- * not, and native haptics (@capacitor/haptics) are not a dependency yet.
+ * buzz is native haptics in the app and navigator.vibrate in a browser
+ * that has one (src/haptics.ts): a light one when a press starts, so the
+ * thumb knows it is being held, and a firmer one when it locks.
  */
-export const holdTiming = {
+export const holdTiming: { ms: number; buzz: (kind: Buzz) => void } = {
   ms: HOLD_MS,
-  vibrate(ms: number): void {
-    try {
-      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(ms);
-    } catch {
-      // A webview that refuses to buzz is still a webview that locks.
-    }
-  },
+  buzz,
 };
-
-/** The buzz when a hold locks, in milliseconds: short, so it reads as a click. */
-export const LOCK_BUZZ_MS = 25;
 
 export interface HoldOptions {
   /** The hold lasted long enough: enter the result. */
@@ -55,12 +49,13 @@ export class HoldController {
     this.holding = true;
     this.clickPending = viaPointer;
     o.onChange?.(true);
+    holdTiming.buzz("start");
     this.timer = setTimeout(() => {
       this.timer = null;
       this.holding = false;
       const now = this.options();
       now.onChange?.(false);
-      holdTiming.vibrate(LOCK_BUZZ_MS);
+      holdTiming.buzz("lock");
       now.onLock();
     }, o.ms ?? holdTiming.ms);
   }

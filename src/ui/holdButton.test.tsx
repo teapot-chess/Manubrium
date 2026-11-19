@@ -30,7 +30,7 @@ const notice = () => document.querySelector('[role="status"]')?.textContent ?? n
 beforeEach(() => {
   vi.useFakeTimers();
   holdTiming.ms = HOLD_MS;
-  holdTiming.vibrate = vi.fn() as never;
+  holdTiming.buzz = vi.fn() as never;
 });
 
 afterEach(() => {
@@ -64,7 +64,7 @@ describe("the hold button, by touch or mouse", () => {
     await wait(5000);
     expect(onLock).toHaveBeenCalledTimes(1);
     expect(notice()).toBeNull();
-    expect(holdTiming.vibrate).toHaveBeenCalled();
+    expect(holdTiming.buzz).toHaveBeenCalled();
   });
 
   it("cancels when the finger slides off before a second, and says nothing", async () => {
