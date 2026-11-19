@@ -15,6 +15,7 @@ import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
 import { commandsFor, LiveBoardsScreen } from "./LiveBoards";
 import { MoreScreen } from "./MoreScreen";
+import { fastHolds, hold, slowHolds } from "./holdTestkit";
 
 vi.mock("../platform", () => ({
   native: false,
@@ -204,10 +205,12 @@ async function sheet(api: FakeApi, t?: Tournament) {
 }
 
 beforeEach(async () => {
+  fastHolds();
   await saveLanguage({ get: async () => null, set: async () => undefined }, "en");
 });
 
 afterEach(() => {
+  slowHolds();
   cleanup();
   resetBack();
 });
@@ -319,7 +322,7 @@ describe("a board's sheet", () => {
   it("accepts the board's result after a confirmation naming the result and the players", async () => {
     const api = fakeApi(live([table({ board_result: "1/2-1/2" })]));
     await sheet(api);
-    fireEvent.click(await el("#cmd-accept-result"));
+    await hold(await el("#cmd-accept-result"));
     expect(api.sendBoardCommand).not.toHaveBeenCalled();
     const ask = await el("#live-confirm");
     expect(ask.textContent).toContain("Player One – Player Two");
@@ -342,7 +345,7 @@ describe("a board's sheet", () => {
     const api = fakeApi(live([table({ board_result: "1-0" })]));
     api.sendBoardCommand.mockRejectedValue(new ApiError(409, "result_entered", "raw"));
     await sheet(api);
-    fireEvent.click(await el("#cmd-accept-result"));
+    await hold(await el("#cmd-accept-result"));
     fireEvent.click(await el("#live-confirm-yes"));
     await screen.findByText(/already has a result/);
   });
@@ -407,7 +410,7 @@ describe("a board's sheet", () => {
     await sheet(api);
     fireEvent.click(await el("#cmd-finish"));
     await screen.findByText(/on the box only/);
-    fireEvent.click(await el("#finish-1_0"));
+    await hold(await el("#finish-1_0"));
     expect((await el("#live-confirm")).textContent).toContain("Only on the box");
     fireEvent.click(document.querySelector("#live-confirm-yes")!);
     await waitFor(() => expect(api.sendBoardCommand).toHaveBeenCalledWith(7, expect.objectContaining({ kind: "finish", args: { result: "1-0" } })));

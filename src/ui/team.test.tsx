@@ -14,6 +14,7 @@ import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
 import { resetBack } from "../back";
 import { RoundScreen } from "./RoundScreen";
+import { fastHolds, hold, slowHolds } from "./holdTestkit";
 
 const phone = vi.hoisted(() => {
   const kv = () => {
@@ -145,6 +146,7 @@ const el = (selector: string) =>
 const show = (api: FakeApi) => render(<Harness api={api} />);
 
 beforeEach(async () => {
+  fastHolds();
   phone.storage.data.clear();
   phone.vault.data.clear();
   n = 0;
@@ -153,6 +155,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  slowHolds();
   cleanup();
   resetBack();
 });
@@ -222,7 +225,7 @@ describe("a collision", () => {
   async function enterOnBoardOne(api: FakeApi) {
     show(api);
     fireEvent.click(await el("#board-1"));
-    fireEvent.click(await screen.findByText("0-1"));
+    await hold(await screen.findByText("0-1"));
   }
 
   it("asks keep theirs or use mine, and mine expects what the board holds", async () => {
@@ -235,7 +238,7 @@ describe("a collision", () => {
 
     await el("#conflict-mine");
     expect(document.querySelector(".conflict")!.textContent).toContain("You entered 0-1, but the board now says 1-0");
-    fireEvent.click(document.querySelector("#conflict-mine")!);
+    await hold(document.querySelector("#conflict-mine")!);
 
     await waitFor(() => expect(sync).toHaveBeenCalledTimes(2));
     const second = sync.mock.calls[1][1] as { result: string; expected: string }[];

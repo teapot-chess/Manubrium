@@ -169,6 +169,190 @@ export interface Match {
   lineups: { a: boolean; b: boolean; confirmed: boolean };
 }
 
+// One match in full, the teams and what happens in the middle of an event
+// (contract revision 5). The server decides everything here; `can` says
+// which of a match's actions apply now, and the phone shows only those.
+
+export interface PlayerBrief { id: number; name: string; title: string | null; rating: number | null }
+
+/** A line-up: a player id per board, board 1 first, null for an empty seat. */
+export type Seats = (number | null)[];
+
+export interface LineupRosterPlayer {
+  id: number;
+  name: string;
+  title: string | null;
+  rating: number | null;
+  /** The place in the roster's board order. */
+  order: number;
+  /** May play this round: active, not absent for it, started. */
+  available: boolean;
+}
+
+/** What a plug-in's regulations make of a line-up. A finding never blocks a save. */
+export interface LineupFinding {
+  severity: "violation" | "warning";
+  team: MatchSide | null;
+  board: number | null;
+  rule: string;
+  message: string;
+  penalty: string | null;
+}
+
+/** Null when no plug-in checks the line-ups; an empty list when they were checked and nothing was found. */
+export type LineupFindings = LineupFinding[] | null;
+
+export interface MatchLineup {
+  /** `ticks`: tick who sits out, the roster in board order fills the boards. `selects`: a player per board. */
+  mode: "ticks" | "selects";
+  /** An empty seat is a player not entered, not a forfeit. */
+  optional: boolean;
+  free_order: boolean;
+  boards: number;
+  a: Seats;
+  b: Seats;
+  /** What the rosters would seat: where a reset goes. */
+  default_a: Seats;
+  default_b: Seats;
+  roster_a: LineupRosterPlayer[];
+  roster_b: LineupRosterPlayer[];
+  findings: LineupFindings;
+}
+
+export interface MatchCan {
+  lineups: boolean;
+  unconfirm_a: boolean;
+  unconfirm_b: boolean;
+  swap_home: boolean;
+  decide: boolean;
+  double_forfeit: boolean;
+  withdraw_decision: boolean;
+  score: boolean;
+  clear_score: boolean;
+}
+
+/** One team match in full: the round's match row and what the match page knows besides. */
+export interface MatchDetail extends Match {
+  round: number;
+  /** `a`: the first-named team is at home (league-style colours). */
+  home: "a" | null;
+  match_score: { a: number; b: number } | null;
+  /** Null for a bye. */
+  lineup: MatchLineup | null;
+  can: MatchCan;
+}
+
+/** A line-up as it is sent: a player per board, or who sits out. */
+export type LineupsBody = { a: Seats; b: Seats } | { out: { a: number[]; b: number[] } };
+
+export type MatchDecisionKind = "forfeit_a" | "forfeit_b" | "double_forfeit";
+
+/** The answer to every change of a match: the round as it now is, and the match in full. */
+export interface MatchChange { round: Round; match: MatchDetail }
+
+export interface RosterPlayer {
+  id: number;
+  name: string;
+  title: string | null;
+  rating: number | null;
+  federation: string | null;
+  /** The place in the team's board order; 1 is the top board. */
+  order: number;
+  status: "active" | "withdrawn" | "expelled";
+  /** The next round to pair could seat this player. */
+  plays_next: boolean;
+}
+
+/** A team of a team event, with its roster in board order. */
+export interface EventTeam {
+  id: number;
+  name: string;
+  short_name: string | null;
+  number: number | null;
+  captain: string | null;
+  /** Owner and editors only. */
+  captain_contact?: string | null;
+  club: string | null;
+  series: string | null;
+  rating: number | null;
+  /** The first round the team no longer plays; null while it is in the event. */
+  withdrawn_from_round: number | null;
+  /** Rounds the team sits out as a team; it plays every other one. */
+  rounds: { round: number; status: "absent" | "half_bye" }[];
+  roster: RosterPlayer[];
+}
+
+/** One match of a team, from that team's side. */
+export interface TeamMatchLine {
+  round: number;
+  match_id: number;
+  /** Null for a bye. */
+  opponent: MatchTeam | null;
+  bye: boolean;
+  game_points: number;
+  opponent_game_points: number | null;
+  match_points: number | null;
+  complete: boolean;
+}
+
+export interface TeamDetail { team: EventTeam; matches: TeamMatchLine[] }
+
+export type TeamRoundStatus = "plays" | "absent" | "half_bye";
+
+export interface TeamStandingRow {
+  rank: number;
+  team: { id: number; name: string; short_name: string | null; series: string | null };
+  mp: number;
+  gp: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  /** Postponed boards still to be played: counted as draws until they are. */
+  pending_boards: number;
+  annulled: boolean;
+  withdrawn_from_round: number | null;
+  tiebreaks: Record<string, number | null>;
+}
+
+export interface TeamPlayerRow {
+  rank: number;
+  player: PlayerBrief;
+  team: MatchTeam | null;
+  games: number;
+  points: number;
+  percentage: number | null;
+}
+
+export interface TeamStandings {
+  /** The score ranked by first: match points, or game points where the competition does. */
+  primary: "MP" | "GP";
+  rounds_paired: number;
+  series: string[];
+  tiebreaks: { code: string; name: string }[];
+  rows: TeamStandingRow[];
+  players: TeamPlayerRow[];
+}
+
+export interface BoardPrizeRow {
+  rank: number;
+  player: PlayerBrief;
+  team: MatchTeam | null;
+  /** Boards with a result, forfeits included. */
+  games: number;
+  /** Games actually played. */
+  played: number;
+  points: number;
+  percentage: number | null;
+  performance: number | null;
+}
+
+export interface BoardPrizes {
+  min_games: number;
+  default_min_games: number;
+  boards: { board: number; rows: BoardPrizeRow[] }[];
+}
+
 /** One hand edit, as `POST /rounds/:n/edits` takes it. */
 export type HandEdit =
   | { kind: "swap"; a: number; b: number }
@@ -747,6 +931,39 @@ export interface Client {
   /** Confirms every line-up of the round that still waits; answers the round. */
   confirmLineups(id: number, n: number): Promise<Round>;
 
+  /** One team match in full: line-ups, rosters, findings, and what this account may do to it. */
+  match(id: number, n: number, match: number): Promise<MatchDetail>;
+  /** Saves both line-ups (a player per board, or who sits out); a side that changed counts as confirmed. */
+  setLineups(id: number, n: number, match: number, lineups: LineupsBody): Promise<MatchChange>;
+  /** What a plug-in's regulations make of line-ups not saved yet. Writes nothing. */
+  checkLineups(id: number, n: number, match: number, lineups: LineupsBody): Promise<LineupFindings>;
+  /** Both line-ups back to the rosters', both provisional again. */
+  resetLineups(id: number, n: number, match: number): Promise<MatchChange>;
+  /** Takes a confirmation back: that side is provisional again. */
+  unconfirmLineup(id: number, n: number, match: number, side: MatchSide | "both"): Promise<MatchChange>;
+  /** League-style colours: the away team becomes the home team. */
+  swapHome(id: number, n: number, match: number): Promise<MatchChange>;
+  /** Settles the match as a whole: a forfeit to one team, or a double forfeit. */
+  decideMatch(id: number, n: number, match: number, decision: MatchDecisionKind, acknowledged?: string[]): Promise<MatchChange>;
+  withdrawDecision(id: number, n: number, match: number): Promise<MatchChange>;
+  /** Decides a match nobody sits at by its score, in boards. */
+  setMatchScore(id: number, n: number, match: number, score: { a: number; b: number }): Promise<MatchChange>;
+  clearMatchScore(id: number, n: number, match: number): Promise<MatchChange>;
+  /** The teams in draw order, rosters in board order; open to arbiters. */
+  teams(id: number): Promise<EventTeam[]>;
+  teamDetail(id: number, team: number): Promise<TeamDetail>;
+  /** The team leaves from round `fromRound` on; its open matches are forfeited to the opponents. */
+  withdrawTeam(id: number, team: number, fromRound: number, acknowledged?: string[]): Promise<TeamDetail>;
+  reinstateTeam(id: number, team: number): Promise<TeamDetail>;
+  /** What the team does in a round not yet paired. */
+  setTeamRound(id: number, team: number, round: number, status: TeamRoundStatus): Promise<TeamDetail>;
+  /** A player of the tournament onto the team's roster, at the bottom of its board order. */
+  addTeamPlayer(id: number, team: number, player: number): Promise<TeamDetail>;
+  removeTeamPlayer(id: number, team: number, player: number): Promise<TeamDetail>;
+  teamStandings(id: number): Promise<TeamStandings>;
+  /** The board prizes; `minGames` absent means the desk's default. */
+  boardPrizes(id: number, minGames?: number): Promise<BoardPrizes>;
+
   /** A heartbeat: this phone has the tournament open at `round`; answers who else does. */
   team(id: number, round: number | null): Promise<Team>;
   /** The open handover notes, pinned first. */
@@ -852,6 +1069,30 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     confirmLineup: async (id, n, match, side) =>
       (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/matches/${match}/lineups/confirm`, { side })).round,
     confirmLineups: async (id, n) => (await req<{ round: Round }>("POST", `${t(id)}/rounds/${n}/lineups/confirm`, {})).round,
+
+    match: async (id, n, match) => (await req<{ match: MatchDetail }>("GET", `${t(id)}/rounds/${n}/matches/${match}`)).match,
+    setLineups: (id, n, match, lineups) => req("PUT", `${t(id)}/rounds/${n}/matches/${match}/lineups`, lineups),
+    checkLineups: async (id, n, match, lineups) =>
+      (await req<{ findings: LineupFindings }>("POST", `${t(id)}/rounds/${n}/matches/${match}/lineups/check`, lineups)).findings,
+    resetLineups: (id, n, match) => req("POST", `${t(id)}/rounds/${n}/matches/${match}/lineups/reset`),
+    unconfirmLineup: (id, n, match, side) => req("POST", `${t(id)}/rounds/${n}/matches/${match}/lineups/unconfirm`, { side }),
+    swapHome: (id, n, match) => req("POST", `${t(id)}/rounds/${n}/matches/${match}/home/swap`),
+    decideMatch: (id, n, match, decision, acknowledged = []) =>
+      req("PUT", `${t(id)}/rounds/${n}/matches/${match}/decision`, acknowledged.length ? { decision, acknowledged } : { decision }),
+    withdrawDecision: (id, n, match) => req("DELETE", `${t(id)}/rounds/${n}/matches/${match}/decision`),
+    setMatchScore: (id, n, match, score) => req("PUT", `${t(id)}/rounds/${n}/matches/${match}/score`, { a: score.a, b: score.b }),
+    clearMatchScore: (id, n, match) => req("DELETE", `${t(id)}/rounds/${n}/matches/${match}/score`),
+    teams: async (id) => (await req<{ teams: EventTeam[] }>("GET", `${t(id)}/teams`)).teams,
+    teamDetail: (id, team) => req("GET", `${t(id)}/teams/${team}`),
+    withdrawTeam: (id, team, fromRound, acknowledged = []) =>
+      req("POST", `${t(id)}/teams/${team}/withdraw`, acknowledged.length ? { from_round: fromRound, acknowledged } : { from_round: fromRound }),
+    reinstateTeam: (id, team) => req("POST", `${t(id)}/teams/${team}/reinstate`),
+    setTeamRound: (id, team, round, status) => req("PUT", `${t(id)}/teams/${team}/rounds/${round}`, { status }),
+    addTeamPlayer: (id, team, player) => req("PUT", `${t(id)}/teams/${team}/players/${player}`),
+    removeTeamPlayer: (id, team, player) => req("DELETE", `${t(id)}/teams/${team}/players/${player}`),
+    teamStandings: async (id) => (await req<{ standings: TeamStandings }>("GET", `${t(id)}/team-standings`)).standings,
+    boardPrizes: async (id, minGames) =>
+      (await req<{ board_prizes: BoardPrizes }>("GET", `${t(id)}/board-prizes${minGames === undefined ? "" : `?min_games=${minGames}`}`)).board_prizes,
 
     team: async (id, round) => (await req<{ team: Team }>("PUT", `${t(id)}/team`, { presence: { round } })).team,
     notes: async (id) => (await req<{ notes: HandoverNote[] }>("GET", `${t(id)}/notes`)).notes,

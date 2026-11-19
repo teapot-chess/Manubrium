@@ -13,6 +13,7 @@ import { onResume } from "../platform";
 import type { Queued } from "../queue";
 import type { Ctx } from "./App";
 import { describeError, Notice, resultLabel, Sheet } from "./common";
+import { HoldButton } from "./HoldButton";
 import { t as tr } from "../i18n";
 
 const NOTE_MAX = 500;
@@ -243,9 +244,9 @@ export function ConflictNotice(props: {
         <button type="button" class="btn" id="conflict-keep" onClick={props.onKeep}>
           {tr("conflict.theirs")}
         </button>
-        <button type="button" class="btn primary" id="conflict-mine" disabled={theirs === null} onClick={() => theirs !== null && props.onMine(theirs)}>
+        <HoldButton id="conflict-mine" class="primary" disabled={theirs === null} onLock={() => theirs !== null && props.onMine(theirs)}>
           {tr("conflict.mine")}
-        </button>
+        </HoldButton>
       </div>
     </div>
   );

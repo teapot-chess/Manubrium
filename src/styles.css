@@ -512,3 +512,81 @@ h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; col
 .lineups-bar .chip { flex: none; color: var(--text); }
 .result-names { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sit-out .missing-note { margin: 0; }
+
+/* ---------- hold to enter ---------- */
+.hold-wrap { position: relative; display: block; min-width: 0; }
+.hold-wrap > .btn { width: 100%; }
+.hold-wrap > .btn.block { margin-top: 10px; }
+.btn.hold {
+  position: relative; overflow: hidden; isolation: isolate;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.btn.hold .hold-label { position: relative; }
+/* The fill sweeps from the left over the hold, and snaps back when it is let go. */
+.hold-fill {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 38%, transparent);
+  transform: scaleX(0); transform-origin: left center; transition: none;
+}
+.btn.primary .hold-fill { background: color-mix(in srgb, var(--accent-ink) 32%, transparent); }
+.btn.danger .hold-fill { background: color-mix(in srgb, var(--danger) 30%, transparent); }
+.btn.hold.holding .hold-fill { transform: scaleX(1); transition: transform var(--hold-ms, 1000ms) linear; }
+.btn.hold.holding { transform: scale(0.98); }
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep: an outline says the hold is running, and it is as long as ever. */
+  .btn.hold.holding .hold-fill { transform: scaleX(0); }
+  .btn.hold.holding { transform: none; outline: 3px solid var(--accent); outline-offset: 2px; }
+}
+.hold-notice {
+  position: fixed; left: 0; right: 0; margin-inline: auto; bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 200; width: max-content; max-width: min(320px, calc(100vw - 32px));
+  padding: 10px 16px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 600;
+  background: var(--text); color: var(--bg); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  animation: rise 160ms ease-out;
+}
+.hold-tip { text-align: center; margin: 4px 0 0; }
+
+/* ---------- team events: a match in full, the teams, their standings ---------- */
+.tm-teams { margin-bottom: 4px; }
+.match-meta .match-open { margin-left: auto; margin-right: 8px; padding: 3px 10px; font-size: 12px; }
+.tm-lineup { margin: 0 0 12px; }
+.tm-lineup-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0 0; }
+.tm-lineup .two-btn:empty { display: none; }
+.tm-lineup .two-btn { grid-template-columns: 1fr; }
+.tm-selects { display: grid; gap: 4px; }
+.field > span { display: block; margin-bottom: 4px; }
+.tag.danger { background: var(--danger-soft); color: var(--danger); }
+.row.finding { gap: 10px; padding-left: 12px; }
+.row .game-round + .colour-dot { margin-right: 8px; }
+.tm-boards .row-title, .tm-boards .row-sub { display: flex; align-items: center; gap: 6px; }
+
+.teams { display: flex; flex-direction: column; gap: 12px; }
+.team-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.team-card.withdrawn { opacity: 0.75; }
+.team-card-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border: 0; text-align: left;
+  background: var(--surface-alt); cursor: pointer; font: inherit; color: inherit;
+}
+.team-card-head .row-main { padding: 0; }
+.team-card-head .chevron { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--text-soft); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.roster { list-style: none; margin: 0; padding: 4px 14px 8px; }
+.roster li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; border-top: 1px solid var(--border); font-size: 14.5px; }
+.roster li:first-child { border-top: 0; }
+.roster li.gone { color: var(--text-soft); text-decoration: line-through; }
+.roster-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.roster-meta { color: var(--text-soft); font-size: 13px; white-space: nowrap; }
+.team-rounds { margin: 0; padding: 0 14px 10px; }
+.round-status { padding: 6px 12px; justify-content: space-between; gap: 8px; }
+.round-status .row-main { padding: 0; flex: none; }
+.segmented.tight { display: inline-grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: auto; }
+.segmented.tight button { min-height: 38px; padding: 0 10px; font-size: 13px; }
+.segmented.three { grid-template-columns: repeat(3, 1fr); margin-bottom: 12px; }
+
+.team-standings .table-wrap { margin-top: 0; }
+tr.withdrawn td { color: var(--text-soft); }
+td small.tag { margin-left: 6px; }
+.min-games { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.min-games .stepper { display: inline-flex; align-items: center; gap: 10px; }
+.min-games output { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; font-size: 17px; }
+.min-games .chip { min-height: 34px; min-width: 34px; justify-content: center; }
+.min-games .chip:disabled { opacity: 0.4; }

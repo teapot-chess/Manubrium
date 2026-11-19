@@ -17,6 +17,7 @@ import { resetBack } from "../back";
 import { PlayerSheet } from "./PlayerSheet";
 import { PlayersScreen } from "./PlayersScreen";
 import { RoundScreen } from "./RoundScreen";
+import { fastHolds, hold, slowHolds } from "./holdTestkit";
 
 const phone = vi.hoisted(() => {
   const kv = () => {
@@ -172,6 +173,7 @@ const seatsOf = (id: number) =>
   [...document.querySelectorAll(`#board-${id} .seat`)].map((s) => [s.querySelector(".colour-dot")!.className.includes(" w") ? "w" : "b", s.querySelector(".seat-name")!.textContent]);
 
 beforeEach(async () => {
+  fastHolds();
   phone.storage.data.clear();
   phone.vault.data.clear();
   n = 0;
@@ -180,6 +182,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  slowHolds();
   cleanup();
   resetBack();
 });
@@ -282,7 +285,7 @@ describe("a result on a match's board", () => {
     // The sheet names the match and the board, and says who is White.
     await screen.findByText("Match 1, board 2");
     expect(text("#result-white")).toBe("Bravo Two");
-    fireEvent.click(screen.getByText("1-0"));
+    await hold(screen.getByText("1-0"));
 
     // No signal: the result waits, mirrored on the row because Alpha (left) is Black...
     await waitFor(() => expect(text("#board-2 .result")).toContain("0-1"));

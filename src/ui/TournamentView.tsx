@@ -7,8 +7,10 @@ import { RoundScreen } from "./RoundScreen";
 import { StandingsScreen } from "./StandingsScreen";
 import { PlayersScreen } from "./PlayersScreen";
 import { MoreScreen } from "./MoreScreen";
+import { TeamsScreen } from "./TeamsScreen";
+import { TeamStandingsScreen } from "./TeamStandings";
 
-type Tab = "round" | "standings" | "players" | "more";
+type Tab = "round" | "teams" | "standings" | "players" | "more";
 
 export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: () => void }) {
   const { ctx, line } = props;
@@ -34,6 +36,7 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
   const can = (c: string) => t?.can.includes(c as never) ?? false;
   const tabs: { id: Tab; label: string; show: boolean }[] = [
     { id: "round", label: tr("tabs.round"), show: true },
+    { id: "teams", label: tr("tabs.teams"), show: t?.team ?? false },
     { id: "standings", label: tr("tabs.standings"), show: can("standings") },
     { id: "players", label: tr("tabs.players"), show: can("players") },
     { id: "more", label: tr("tabs.more"), show: true },
@@ -68,7 +71,8 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
         )}
         {!t && !error && <Loading />}
         {t && tab === "round" && <RoundScreen ctx={ctx} t={t} reloadTournament={load} />}
-        {t && tab === "standings" && <StandingsScreen ctx={ctx} t={t} />}
+        {t && tab === "teams" && <TeamsScreen ctx={ctx} t={t} />}
+        {t && tab === "standings" && (t.team ? <TeamStandingsScreen ctx={ctx} t={t} /> : <StandingsScreen ctx={ctx} t={t} />)}
         {t && tab === "players" && <PlayersScreen ctx={ctx} t={t} />}
         {t && tab === "more" && <MoreScreen ctx={ctx} t={t} reloadTournament={load} />}
       </main>
