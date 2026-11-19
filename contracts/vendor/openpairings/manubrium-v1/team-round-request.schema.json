@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/team-round-request.schema.json",
+  "title": "PUT /tournaments/:id/teams/:team/rounds/:n request",
+  "description": "What a team does in a round not yet paired: `plays`, `absent` (not paired, no points) or `half_bye` (a requested half-point bye, a team Swiss only). Answered with team-detail-response.schema.json.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["status"],
+  "properties": {
+    "status": { "enum": ["plays", "absent", "half_bye"] }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/lineups-request.schema.json",
+  "title": "PUT /tournaments/:id/rounds/:n/matches/:match/lineups request (also .../lineups/check)",
+  "description": "Both line-ups of a team match, in either of the desk's two shapes: `a` and `b`, a player id (or null for an empty seat) per board, board 1 first; or `out`, who of each roster sits out, and the roster in board order fills the boards (the desk's 'who sits out' editor). A save rewrites the boards and confirms each side it changed. Answered with match-change-response.schema.json (PUT) or lineups-check-response.schema.json (check).",
+  "type": "object",
+  "additionalProperties": true,
+  "oneOf": [
+    { "required": ["a", "b"] },
+    { "required": ["out"] }
+  ],
+  "properties": {
+    "a": { "$ref": "common.schema.json#/definitions/seats" },
+    "b": { "$ref": "common.schema.json#/definitions/seats" },
+    "out": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "a": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/id" } },
+        "b": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/id" } }
+      }
+    }
+  }
+}

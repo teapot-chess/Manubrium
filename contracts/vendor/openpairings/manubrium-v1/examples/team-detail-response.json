@@ -1,0 +1,63 @@
+{
+  "matches": [
+    {
+      "bye": false,
+      "complete": true,
+      "game_points": 1.5,
+      "match_id": 1,
+      "match_points": 2.0,
+      "opponent": {
+        "id": 3,
+        "name": "Charlie",
+        "short_name": null
+      },
+      "opponent_game_points": 0.5,
+      "round": 1
+    }
+  ],
+  "team": {
+    "captain": null,
+    "captain_contact": null,
+    "club": null,
+    "id": 1,
+    "name": "Alpha",
+    "number": 1,
+    "rating": 2275,
+    "roster": [
+      {
+        "federation": null,
+        "id": 1,
+        "name": "Alpha 1",
+        "order": 1,
+        "plays_next": true,
+        "rating": 2300,
+        "status": "active",
+        "title": null
+      },
+      {
+        "federation": null,
+        "id": 2,
+        "name": "Alpha 2",
+        "order": 2,
+        "plays_next": true,
+        "rating": 2250,
+        "status": "active",
+        "title": null
+      },
+      {
+        "federation": null,
+        "id": 3,
+        "name": "Alpha 3",
+        "order": 3,
+        "plays_next": true,
+        "rating": 2200,
+        "status": "active",
+        "title": null
+      }
+    ],
+    "rounds": [],
+    "series": null,
+    "short_name": null,
+    "withdrawn_from_round": null
+  }
+}

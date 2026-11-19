@@ -1,0 +1,122 @@
+{
+  "match": {
+    "boards": [
+      {
+        "a_white": true,
+        "id": 1,
+        "number": 1
+      },
+      {
+        "a_white": false,
+        "id": 2,
+        "number": 2
+      }
+    ],
+    "bye": false,
+    "can": {
+      "clear_score": false,
+      "decide": true,
+      "double_forfeit": true,
+      "lineups": true,
+      "score": false,
+      "swap_home": false,
+      "unconfirm_a": false,
+      "unconfirm_b": false,
+      "withdraw_decision": false
+    },
+    "complete": false,
+    "decision": null,
+    "game_points": {
+      "a": 0.0,
+      "b": 0.0
+    },
+    "home": null,
+    "id": 1,
+    "lineup": {
+      "a": [
+        1,
+        2
+      ],
+      "b": [
+        7,
+        8
+      ],
+      "boards": 2,
+      "default_a": [
+        1,
+        2
+      ],
+      "default_b": [
+        7,
+        8
+      ],
+      "findings": null,
+      "free_order": false,
+      "mode": "ticks",
+      "optional": false,
+      "roster_a": [
+        {
+          "available": true,
+          "id": 1,
+          "name": "Alpha 1",
+          "order": 1,
+          "rating": 2300,
+          "title": null
+        },
+        {
+          "available": true,
+          "id": 2,
+          "name": "Alpha 2",
+          "order": 2,
+          "rating": 2250,
+          "title": null
+        },
+        {
+          "available": true,
+          "id": 3,
+          "name": "Alpha 3",
+          "order": 3,
+          "rating": 2200,
+          "title": null
+        }
+      ],
+      "roster_b": [
+        {
+          "available": true,
+          "id": 7,
+          "name": "Charlie 1",
+          "order": 1,
+          "rating": 2000,
+          "title": null
+        },
+        {
+          "available": true,
+          "id": 8,
+          "name": "Charlie 2",
+          "order": 2,
+          "rating": 1950,
+          "title": null
+        }
+      ]
+    },
+    "lineups": {
+      "a": false,
+      "b": true,
+      "confirmed": false
+    },
+    "match_points": null,
+    "match_score": null,
+    "number": 1,
+    "round": 1,
+    "team_a": {
+      "id": 1,
+      "name": "Alpha",
+      "short_name": null
+    },
+    "team_b": {
+      "id": 3,
+      "name": "Charlie",
+      "short_name": null
+    }
+  }
+}
