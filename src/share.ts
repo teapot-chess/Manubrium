@@ -3,7 +3,7 @@
 // padded columns because some of them use a monospaced font, and the rest
 // are no worse off for it.
 
-import type { Board, Round, Standings, Tournament } from "./api";
+import type { Board, Round, Standings, TeamStandings, Tournament } from "./api";
 import { t as tr } from "./i18n";
 import { byeLabel } from "./byes";
 import { matchView, points } from "./matches";
@@ -133,4 +133,43 @@ export async function copyText(
   } catch {
     return "failed";
   }
+}
+
+/**
+ * A team event's standings: place, team, match and game points, then the
+ * event's own tie-breaks, the way the Teams view shows them. The individual
+ * ranking and the board prizes stay on the phone; a chat group asks who
+ * won, not who scored 71% on board 3.
+ */
+export function teamStandingsText(t: Pick<Tournament, "name" | "openresults_url">, s: TeamStandings): string {
+  // MP and GP have columns of their own; the tie-breaks repeat them.
+  const extra = s.tiebreaks.filter((tb) => tb.code !== "MP" && tb.code !== "GP");
+  const rows = s.rows.map((r) => {
+    const marks = [r.withdrawn_from_round !== null ? tr("teams.withdrawn_from", { n: r.withdrawn_from_round }) : null, r.annulled ? tr("tstand.annulled") : null].filter(Boolean);
+    return [
+      String(r.rank),
+      marks.length > 0 ? `${r.team.name} (${marks.join(", ")})` : r.team.name,
+      points(r.mp),
+      points(r.gp),
+      ...extra.map((tb) => formatNumber(r.tiebreaks[tb.code])),
+    ];
+  });
+  const head = ["#", tr("tstand.team"), tr("tstand.mp"), tr("tstand.gp"), ...extra.map((tb) => tb.code)];
+  const widths = head.map((h, i) => Math.max([...h].length, ...rows.map((r) => [...r[i]].length)));
+  const line = (cells: string[]) => cells.map((c, i) => pad(c, widths[i], i !== 1)).join("  ").trimEnd();
+
+  const lines = [`${t.name}`, tr("tabs.standings"), ""];
+  if (rows.length === 0) lines.push(tr("tstand.none"));
+  else {
+    lines.push(line(head), ...rows.map(line), "");
+    lines.push(s.primary === "MP" ? tr("tstand.ranked_mp") : tr("tstand.ranked_gp"));
+    if (s.rows.some((r) => r.pending_boards > 0)) lines.push(tr("tstand.provisional"));
+    const legend = [
+      `${tr("tstand.mp")}: ${tr("tstand.mp_title")}`,
+      `${tr("tstand.gp")}: ${tr("tstand.gp_title")}`,
+      ...extra.map((tb) => `${tb.code}: ${tb.name}`),
+    ];
+    lines.push(legend.join("; "));
+  }
+  return [...lines, ...footer(t)].join("\n");
 }

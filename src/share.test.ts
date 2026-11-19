@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Board, BoardReport, Round, Standings } from "./api";
+import type { Board, BoardReport, Round, Standings, TeamStandings } from "./api";
 import { boardReportLabel } from "./alnasl";
-import { copyText, pairingsText, standingsText, webShare } from "./share";
+import { copyText, pairingsText, standingsText, teamStandingsText, webShare } from "./share";
+import { examples } from "./contract.testkit";
 
 const p = (id: number, name: string, title: string | null = null) => ({ id, name, title, rating: 2000, score: 0 });
 
@@ -144,5 +145,44 @@ describe("a hall board's report", () => {
   it("says nothing without a report", () => {
     expect(boardReportLabel(null)).toBeNull();
     expect(boardReportLabel(undefined)).toBeNull();
+  });
+});
+
+describe("a team event's standings as text", () => {
+  const standings = () => structuredClone((examples["team-standings-response.json"] as { standings: TeamStandings }).standings);
+
+  it("lists place, team, match and game points and the event's own tie-breaks, with a legend and the link", () => {
+    expect(teamStandingsText({ name: "Hall League", openresults_url: "https://openresults.cloud/t/9" }, standings())).toBe(
+      [
+        "Hall League",
+        "Standings",
+        "",
+        "#  Team     MP  GP  BH",
+        "1  Alpha     2   2   0",
+        "2  Delta     2   2   0",
+        "3  Echo      1   1   1",
+        "4  Bravo     0   0   2",
+        "5  Charlie   0   0   2",
+        "",
+        "Ranked on match points, then the tie-breaks shown.",
+        "MP: Match points; GP: Game points; BH: Buchholz",
+        "",
+        "https://openresults.cloud/t/9",
+      ].join("\n"),
+    );
+  });
+
+  it("marks a withdrawn or annulled team, halves and provisional places", () => {
+    const s = standings();
+    s.rows[0] = { ...s.rows[0], gp: 3.5, pending_boards: 1 };
+    s.rows[4] = { ...s.rows[4], withdrawn_from_round: 3, annulled: true };
+    const text = teamStandingsText({ name: "Hall League", openresults_url: null }, s);
+    expect(text).toMatch(/^1  Alpha +2  3½  +0$/m);
+    expect(text).toContain("Charlie (out from round 3, annulled)");
+    expect(text).toContain("Postponed games still to be played count as draws");
+  });
+
+  it("says so when no team has played", () => {
+    expect(teamStandingsText({ name: "Hall League", openresults_url: null }, { ...standings(), rows: [] })).toBe("Hall League\nStandings\n\nNo team has played yet.");
   });
 });

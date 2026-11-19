@@ -758,6 +758,24 @@ describe("the team standings and the board prizes", () => {
     expect(text("#team-players tbody tr")).toContain("100%");
   });
 
+  it("shares the team table like the individual standings, whichever view is open", async () => {
+    const { shareText } = await import("../platform");
+    show(fakeApi());
+    await click("#tstand-players");
+    await click("#share-team-standings");
+    await waitFor(() => expect(shareText).toHaveBeenCalledWith("Hall Cup, standings", expect.stringContaining("Alpha")));
+    const sent = (shareText as Mock).mock.calls.at(-1)![1] as string;
+    expect(sent).toContain("MP: Match points");
+    expect(sent).not.toContain("Alpha 1");
+  });
+
+  it("offers no share while nobody has played", async () => {
+    const empty = { ...ex<{ standings: TeamStandings }>("team-standings-response.json").standings, rows: [], players: [] };
+    show(fakeApi({ teamStandings: vi.fn(async () => empty) }));
+    await screen.findByText("No team has played yet.");
+    expect(present("#share-team-standings")).toBe(false);
+  });
+
   it("says when nobody has played yet", async () => {
     const empty = { ...ex<{ standings: TeamStandings }>("team-standings-response.json").standings, rows: [], players: [] };
     show(fakeApi({ teamStandings: vi.fn(async () => empty) }));
