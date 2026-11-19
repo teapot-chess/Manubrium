@@ -18,6 +18,10 @@ Manubrium is the phone companion to OpenPairings, the open tournament manager fo
 
 <b>For the organiser.</b> Pair the next round, publish it, read the standings, add a late player or withdraw one - from the phone, as soon as the last result is in.
 
+<b>Team events.</b> A team round is a card per match, with the line-ups, forfeits and the match score. A Teams tab for withdrawals, byes and late reserves; team standings, the individual ranking and board prizes.
+
+<b>Hold to enter.</b> A result is entered by holding its button for a second, with a buzz when it locks. A pocket or an elbow enters nothing.
+
 <b>Several servers, one app.</b> Connect to as many OpenPairings servers as you work with. A connect code on your account page links the phone in one scan; each phone gets its own token, which the account page can revoke.
 
 <b>Plain and offline-first.</b> No sign-up, no analytics, no account of its own. The app talks only to the servers you add and stores only what it needs to reach them. It follows the phone's light or dark theme.
@@ -32,6 +36,9 @@ https://pairings.cloud. **Privacy policy URL:** the published
 
 **Release notes** (500, first version):
 First release: results, incidents, pairing, publishing, standings and players, with an outbox for the hall's dead spots.
+
+**Release notes** (500, 1.3.0):
+Team events from the phone: match details with line-ups and forfeits, a Teams tab, team standings and board prizes, sharing the team table. Every result is entered by holding its button for a second, with a buzz when it locks. Team events need OpenPairings 0.150 or later.
 
 ## Policy forms
 
