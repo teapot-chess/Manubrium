@@ -585,6 +585,273 @@
     "expected": {
       "description": "What the board said when the arbiter tapped (\"\" for no result): compare-and-set.",
       "type": "string"
+    },
+    "team": {
+      "description": "A team of a team event, with its roster in board order (contract revision 5). `number` is its pairing number once the first round froze them, its seed before. `rounds` lists only the rounds the team sits out as a team - `absent` (no points) or `half_bye` (a requested half-point bye, a team Swiss only); it plays every other round. `captain_contact` is sent to the owner and editors only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "short_name", "number", "captain", "club", "series", "rating", "withdrawn_from_round", "rounds", "roster"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "name": { "type": "string" },
+        "short_name": { "$ref": "#/definitions/text_or_null" },
+        "number": { "type": ["integer", "null"] },
+        "captain": { "$ref": "#/definitions/text_or_null" },
+        "captain_contact": { "$ref": "#/definitions/text_or_null" },
+        "club": { "$ref": "#/definitions/text_or_null" },
+        "series": { "$ref": "#/definitions/text_or_null", "description": "The series (division) label, when the event has several." },
+        "rating": { "type": ["integer", "null"], "description": "The team's rating as the Teams page shows it; null when it has none." },
+        "withdrawn_from_round": { "type": ["integer", "null"], "description": "The first round the team no longer plays; null while it is in the event." },
+        "rounds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["round", "status"],
+            "properties": {
+              "round": { "type": "integer", "minimum": 1 },
+              "status": { "enum": ["absent", "half_bye"] }
+            }
+          }
+        },
+        "roster": {
+          "type": "array",
+          "description": "The roster in board order: `order` 1 is the top board.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "title", "rating", "federation", "order", "status", "plays_next"],
+            "properties": {
+              "id": { "$ref": "#/definitions/id" },
+              "name": { "type": "string" },
+              "title": { "$ref": "#/definitions/text_or_null" },
+              "rating": { "type": ["integer", "null"] },
+              "federation": { "$ref": "#/definitions/text_or_null" },
+              "order": { "type": "integer", "minimum": 1 },
+              "status": { "enum": ["active", "withdrawn", "expelled"] },
+              "plays_next": { "type": "boolean", "description": "The next round to pair could seat this player (active, not absent that round, started)." }
+            }
+          }
+        }
+      }
+    },
+    "team_match_line": {
+      "description": "One match of a team, from that team's side.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["round", "match_id", "opponent", "bye", "game_points", "opponent_game_points", "match_points", "complete"],
+      "properties": {
+        "round": { "type": "integer", "minimum": 1 },
+        "match_id": { "$ref": "#/definitions/id" },
+        "opponent": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_team" }], "description": "Null for a bye." },
+        "bye": { "type": "boolean" },
+        "game_points": { "type": "number" },
+        "opponent_game_points": { "type": ["number", "null"] },
+        "match_points": { "type": ["number", "null"], "description": "Null until every board of the match has a result." },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "lineup_finding": {
+      "description": "What a plugin's regulations make of a line-up (the hosted edition's Belgian Interclubs, say). A finding never blocks a save: the checks report, the arbiter decides.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "team", "board", "rule", "message", "penalty"],
+      "properties": {
+        "severity": { "enum": ["violation", "warning"] },
+        "team": { "enum": ["a", "b", null] },
+        "board": { "type": ["integer", "null"] },
+        "rule": { "type": "string" },
+        "message": { "type": "string" },
+        "penalty": { "$ref": "#/definitions/text_or_null" }
+      }
+    },
+    "lineup_findings": {
+      "description": "Null when no plugin checks this tournament's line-ups; an empty list when they were checked and nothing was found.",
+      "oneOf": [{ "type": "null" }, { "type": "array", "items": { "$ref": "#/definitions/lineup_finding" } }]
+    },
+    "lineup_roster_player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "title", "rating", "order", "available"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "name": { "type": "string" },
+        "title": { "$ref": "#/definitions/text_or_null" },
+        "rating": { "type": ["integer", "null"] },
+        "order": { "type": "integer", "minimum": 1, "description": "The place in the roster's board order." },
+        "available": { "type": "boolean", "description": "May play this round: active, not absent for it, started." }
+      }
+    },
+    "seats": {
+      "description": "A line-up: a player id per board of the match, board 1 first, null for an empty seat.",
+      "type": "array",
+      "items": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/id" }] }
+    },
+    "match_detail": {
+      "description": "One team match in full (contract revision 5): every field of the round's `match`, and what the match page knows besides. `lineup` is null for a bye. `lineup.mode` is the desk's editor: `ticks` (tick who sits out; the roster in board order fills the boards) or `selects` (a player per board: the board order is chosen per round, set by a plugin, or line-ups are optional). `home` is `a` where the event plays home and away (the first-named team is at home), null otherwise. `can` says what this account may do to the match now; an arbiter is told all false.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups", "round", "home", "match_score", "lineup", "can"],
+      "properties": {
+        "id": { "$ref": "#/definitions/match/properties/id" },
+        "number": { "$ref": "#/definitions/match/properties/number" },
+        "team_a": { "$ref": "#/definitions/match/properties/team_a" },
+        "team_b": { "$ref": "#/definitions/match/properties/team_b" },
+        "bye": { "$ref": "#/definitions/match/properties/bye" },
+        "boards": { "$ref": "#/definitions/match/properties/boards" },
+        "game_points": { "$ref": "#/definitions/match/properties/game_points" },
+        "match_points": { "$ref": "#/definitions/match/properties/match_points" },
+        "complete": { "$ref": "#/definitions/match/properties/complete" },
+        "decision": { "$ref": "#/definitions/match/properties/decision" },
+        "lineups": { "$ref": "#/definitions/match/properties/lineups" },
+        "round": { "type": "integer", "minimum": 1 },
+        "home": { "enum": ["a", null] },
+        "match_score": {
+          "description": "The score the match was decided by, when it was (`decision` match_score).",
+          "oneOf": [{ "type": "null" }, { "type": "object", "additionalProperties": false, "required": ["a", "b"], "properties": { "a": { "type": "number" }, "b": { "type": "number" } } }]
+        },
+        "lineup": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "optional", "free_order", "boards", "a", "b", "default_a", "default_b", "roster_a", "roster_b", "findings"],
+              "properties": {
+                "mode": { "enum": ["ticks", "selects"] },
+                "optional": { "type": "boolean", "description": "Line-ups are optional: an empty seat is a player not entered, not a forfeit, and a match nobody sits at can be decided by its score." },
+                "free_order": { "type": "boolean", "description": "Any roster player may sit on any board." },
+                "boards": { "type": "integer", "minimum": 1 },
+                "a": { "$ref": "#/definitions/seats" },
+                "b": { "$ref": "#/definitions/seats" },
+                "default_a": { "$ref": "#/definitions/seats", "description": "What the rosters would seat: where a reset goes." },
+                "default_b": { "$ref": "#/definitions/seats" },
+                "roster_a": { "type": "array", "items": { "$ref": "#/definitions/lineup_roster_player" } },
+                "roster_b": { "type": "array", "items": { "$ref": "#/definitions/lineup_roster_player" } },
+                "findings": { "$ref": "#/definitions/lineup_findings" }
+              }
+            }
+          ]
+        },
+        "can": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lineups", "unconfirm_a", "unconfirm_b", "swap_home", "decide", "double_forfeit", "withdraw_decision", "score", "clear_score"],
+          "properties": {
+            "lineups": { "type": "boolean", "description": "Change the line-ups (no result entered yet)." },
+            "unconfirm_a": { "type": "boolean" },
+            "unconfirm_b": { "type": "boolean" },
+            "swap_home": { "type": "boolean" },
+            "decide": { "type": "boolean", "description": "Forfeit the match to one team." },
+            "double_forfeit": { "type": "boolean" },
+            "withdraw_decision": { "type": "boolean" },
+            "score": { "type": "boolean", "description": "Decide it by its score: optional line-ups, nobody seated, nothing entered." },
+            "clear_score": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "team_standings": {
+      "description": "The team standings as the Standings page ranks them (contract revision 5). `primary` is the score ranked by first: MP, or GP where the competition ranks game points first. `tiebreaks` are the ones applied, in order; each row's `tiebreaks` has a value per code (null where none could be worked out). `annulled`: a team round robin left this withdrawn team's matches out. `players` is the individual ranking of the event: every player who played a game, by points, then percentage.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "rounds_paired", "series", "tiebreaks", "rows", "players"],
+      "properties": {
+        "primary": { "enum": ["MP", "GP"] },
+        "rounds_paired": { "type": "integer", "minimum": 0 },
+        "series": { "type": "array", "items": { "type": "string" }, "description": "The series labels in use; empty when the event has none." },
+        "tiebreaks": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": false, "required": ["code", "name"], "properties": { "code": { "type": "string" }, "name": { "type": "string" } } }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rank", "team", "mp", "gp", "played", "won", "drawn", "lost", "pending_boards", "annulled", "withdrawn_from_round", "tiebreaks"],
+            "properties": {
+              "rank": { "type": "integer", "minimum": 1 },
+              "team": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "name", "short_name", "series"],
+                "properties": {
+                  "id": { "$ref": "#/definitions/id" },
+                  "name": { "type": "string" },
+                  "short_name": { "$ref": "#/definitions/text_or_null" },
+                  "series": { "$ref": "#/definitions/text_or_null" }
+                }
+              },
+              "mp": { "type": "number" },
+              "gp": { "type": "number" },
+              "played": { "type": "integer", "minimum": 0 },
+              "won": { "type": "integer", "minimum": 0 },
+              "drawn": { "type": "integer", "minimum": 0 },
+              "lost": { "type": "integer", "minimum": 0 },
+              "pending_boards": { "type": "integer", "minimum": 0, "description": "Postponed boards still to be played: counted as draws until they are, so the place is provisional." },
+              "annulled": { "type": "boolean" },
+              "withdrawn_from_round": { "type": ["integer", "null"] },
+              "tiebreaks": { "type": "object", "additionalProperties": { "type": ["number", "null"] } }
+            }
+          }
+        },
+        "players": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rank", "player", "team", "games", "points", "percentage"],
+            "properties": {
+              "rank": { "type": "integer", "minimum": 1 },
+              "player": { "$ref": "#/definitions/player_brief" },
+              "team": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_team" }] },
+              "games": { "type": "integer", "minimum": 0 },
+              "points": { "type": "number" },
+              "percentage": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "board_prizes": {
+      "description": "The board prizes (contract revision 5): for each board number, the players who sat at it, ranked on what they scored there - points, then percentage, then performance. A player who moved boards is listed under each board with that board's games only. `min_games` is the minimum used (a player with fewer games on a board is left out there); `default_min_games` the desk's default, half the rounds paired.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_games", "default_min_games", "boards"],
+      "properties": {
+        "min_games": { "type": "integer", "minimum": 0 },
+        "default_min_games": { "type": "integer", "minimum": 1 },
+        "boards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["board", "rows"],
+            "properties": {
+              "board": { "type": "integer", "minimum": 1 },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["rank", "player", "team", "games", "played", "points", "percentage", "performance"],
+                  "properties": {
+                    "rank": { "type": "integer", "minimum": 1 },
+                    "player": { "$ref": "#/definitions/player_brief" },
+                    "team": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_team" }] },
+                    "games": { "type": "integer", "minimum": 0, "description": "Boards with a result, forfeits included." },
+                    "played": { "type": "integer", "minimum": 0, "description": "Games actually played." },
+                    "points": { "type": "number" },
+                    "percentage": { "type": ["number", "null"] },
+                    "performance": { "type": ["integer", "null"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

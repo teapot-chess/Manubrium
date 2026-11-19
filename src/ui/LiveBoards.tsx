@@ -33,6 +33,7 @@ import {
 import { poll, watchForeground, type Foreground } from "../poll";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, Sheet, TopBar, TryAgain } from "./common";
+import { HoldButton } from "./HoldButton";
 import "./liveBoards.css";
 
 const keyOf = (x: { link_id: number | null; board: number | null }) => `${x.link_id}:${x.board}`;
@@ -423,17 +424,16 @@ function BoardSheet(props: {
         {canCommand && (
           <>
             {canAccept && (
-              <button
-                type="button"
-                class="btn primary block"
+              <HoldButton
+                class="primary block"
                 id="cmd-accept-result"
                 disabled={busy}
-                onClick={() =>
+                onLock={() =>
                   confirm("accept_result", { kind: "accept_result", game: x.game! }, { result: resultLabel(x.board_result!), white, black }, false)
                 }
               >
                 {tr("live.accept_result", { result: resultLabel(x.board_result!) })}
-              </button>
+              </HoldButton>
             )}
 
             {runs.length > 0 && (
@@ -699,9 +699,9 @@ function FinishPanel(props: { onClose: () => void; onSend: (result: string) => v
       <p class="sheet-sub">{tr("live.finish_text")}</p>
       <div class="result-grid live-finish">
         {FINISH_RESULTS.map((r) => (
-          <button type="button" class="btn" key={r} id={`finish-${r.replace(/\W/g, "_")}`} onClick={() => props.onSend(r)}>
+          <HoldButton key={r} id={`finish-${r.replace(/\W/g, "_")}`} onLock={() => props.onSend(r)}>
             {finishLabel(r)}
-          </button>
+          </HoldButton>
         ))}
       </div>
     </Sheet>

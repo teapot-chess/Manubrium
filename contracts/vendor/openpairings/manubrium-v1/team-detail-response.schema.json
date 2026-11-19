@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/team-detail-response.schema.json",
+  "title": "One team and its matches",
+  "description": "GET /tournaments/:id/teams/:team (arbiters too), and the answer to every change to a team (the owner and editors only): POST /teams/:team/withdraw, POST /teams/:team/reinstate, PUT /teams/:team/rounds/:n, PUT and DELETE /teams/:team/players/:player. `matches` is the team's matches so far from its side, round by round. Refusals (error.schema.json): 404 team_not_found, 404 player_not_found, 409 not_team_event, 403 arbiter_role for a change by an arbiter; and the Teams page's own: 422 already_withdrawn, not_withdrawn, withdrawal_round_not_reached, bad_round, round_paired (a paired round's team is changed on the match: a forfeit by decision), half_bye_round_robin, not_on_team, roster_locked_in_fide_mode; 409 needs_acknowledgement (a withdrawal that forfeits a match already sent in a rating report: `confirm` holds the ids to send back in `acknowledged`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["team", "matches"],
+  "properties": {
+    "team": { "$ref": "common.schema.json#/definitions/team" },
+    "matches": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/team_match_line" } }
+  }
+}

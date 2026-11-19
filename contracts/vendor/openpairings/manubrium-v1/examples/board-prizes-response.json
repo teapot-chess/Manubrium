@@ -1,0 +1,170 @@
+{
+  "board_prizes": {
+    "boards": [
+      {
+        "board": 1,
+        "rows": [
+          {
+            "games": 1,
+            "percentage": 100.0,
+            "performance": 2550,
+            "played": 1,
+            "player": {
+              "id": 9,
+              "name": "Delta 1",
+              "rating": 1900,
+              "title": null
+            },
+            "points": 1.0,
+            "rank": 1,
+            "team": {
+              "id": 4,
+              "name": "Delta",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 100.0,
+            "performance": 2400,
+            "played": 1,
+            "player": {
+              "id": 1,
+              "name": "Alpha 1",
+              "rating": 2300,
+              "title": null
+            },
+            "points": 1.0,
+            "rank": 2,
+            "team": {
+              "id": 1,
+              "name": "Alpha",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 0.0,
+            "performance": 1900,
+            "played": 1,
+            "player": {
+              "id": 7,
+              "name": "Charlie 1",
+              "rating": 2000,
+              "title": null
+            },
+            "points": 0.0,
+            "rank": 3,
+            "team": {
+              "id": 3,
+              "name": "Charlie",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 0.0,
+            "performance": 1500,
+            "played": 1,
+            "player": {
+              "id": 4,
+              "name": "Bravo 1",
+              "rating": 2150,
+              "title": null
+            },
+            "points": 0.0,
+            "rank": 4,
+            "team": {
+              "id": 2,
+              "name": "Bravo",
+              "short_name": null
+            }
+          }
+        ]
+      },
+      {
+        "board": 2,
+        "rows": [
+          {
+            "games": 1,
+            "percentage": 100.0,
+            "performance": 2500,
+            "played": 1,
+            "player": {
+              "id": 10,
+              "name": "Delta 2",
+              "rating": 1850,
+              "title": null
+            },
+            "points": 1.0,
+            "rank": 1,
+            "team": {
+              "id": 4,
+              "name": "Delta",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 100.0,
+            "performance": 2350,
+            "played": 1,
+            "player": {
+              "id": 2,
+              "name": "Alpha 2",
+              "rating": 2250,
+              "title": null
+            },
+            "points": 1.0,
+            "rank": 2,
+            "team": {
+              "id": 1,
+              "name": "Alpha",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 0.0,
+            "performance": 1850,
+            "played": 1,
+            "player": {
+              "id": 8,
+              "name": "Charlie 2",
+              "rating": 1950,
+              "title": null
+            },
+            "points": 0.0,
+            "rank": 3,
+            "team": {
+              "id": 3,
+              "name": "Charlie",
+              "short_name": null
+            }
+          },
+          {
+            "games": 1,
+            "percentage": 0.0,
+            "performance": 1450,
+            "played": 1,
+            "player": {
+              "id": 5,
+              "name": "Bravo 2",
+              "rating": 2100,
+              "title": null
+            },
+            "points": 0.0,
+            "rank": 4,
+            "team": {
+              "id": 2,
+              "name": "Bravo",
+              "short_name": null
+            }
+          }
+        ]
+      }
+    ],
+    "default_min_games": 1,
+    "min_games": 1
+  }
+}

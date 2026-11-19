@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/board-prizes-response.schema.json",
+  "title": "GET /tournaments/:id/board-prizes response",
+  "description": "The board prizes of a team event (contract revision 5), as the Team sheets page ranks them: points first. `?min_games=n` sets the minimum number of games on a board; absent, the desk's default. The desk roles only. Refusals (error.schema.json): 409 not_team_event, 403 arbiter_role, 404 as for any tournament route.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["board_prizes"],
+  "properties": {
+    "board_prizes": { "$ref": "common.schema.json#/definitions/board_prizes" }
+  }
+}

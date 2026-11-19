@@ -1,0 +1,276 @@
+{
+  "standings": {
+    "players": [
+      {
+        "games": 1,
+        "percentage": 100.0,
+        "player": {
+          "id": 1,
+          "name": "Alpha 1",
+          "rating": 2300,
+          "title": null
+        },
+        "points": 1.0,
+        "rank": 1,
+        "team": {
+          "id": 1,
+          "name": "Alpha",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 100.0,
+        "player": {
+          "id": 2,
+          "name": "Alpha 2",
+          "rating": 2250,
+          "title": null
+        },
+        "points": 1.0,
+        "rank": 1,
+        "team": {
+          "id": 1,
+          "name": "Alpha",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 100.0,
+        "player": {
+          "id": 9,
+          "name": "Delta 1",
+          "rating": 1900,
+          "title": null
+        },
+        "points": 1.0,
+        "rank": 1,
+        "team": {
+          "id": 4,
+          "name": "Delta",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 100.0,
+        "player": {
+          "id": 10,
+          "name": "Delta 2",
+          "rating": 1850,
+          "title": null
+        },
+        "points": 1.0,
+        "rank": 1,
+        "team": {
+          "id": 4,
+          "name": "Delta",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 0.0,
+        "player": {
+          "id": 4,
+          "name": "Bravo 1",
+          "rating": 2150,
+          "title": null
+        },
+        "points": 0.0,
+        "rank": 5,
+        "team": {
+          "id": 2,
+          "name": "Bravo",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 0.0,
+        "player": {
+          "id": 5,
+          "name": "Bravo 2",
+          "rating": 2100,
+          "title": null
+        },
+        "points": 0.0,
+        "rank": 5,
+        "team": {
+          "id": 2,
+          "name": "Bravo",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 0.0,
+        "player": {
+          "id": 7,
+          "name": "Charlie 1",
+          "rating": 2000,
+          "title": null
+        },
+        "points": 0.0,
+        "rank": 5,
+        "team": {
+          "id": 3,
+          "name": "Charlie",
+          "short_name": null
+        }
+      },
+      {
+        "games": 1,
+        "percentage": 0.0,
+        "player": {
+          "id": 8,
+          "name": "Charlie 2",
+          "rating": 1950,
+          "title": null
+        },
+        "points": 0.0,
+        "rank": 5,
+        "team": {
+          "id": 3,
+          "name": "Charlie",
+          "short_name": null
+        }
+      }
+    ],
+    "primary": "MP",
+    "rounds_paired": 1,
+    "rows": [
+      {
+        "annulled": false,
+        "drawn": 0,
+        "gp": 2.0,
+        "lost": 0,
+        "mp": 2.0,
+        "pending_boards": 0,
+        "played": 1,
+        "rank": 1,
+        "team": {
+          "id": 1,
+          "name": "Alpha",
+          "series": null,
+          "short_name": null
+        },
+        "tiebreaks": {
+          "BH": 0.0,
+          "GP": 2.0,
+          "MP": 2.0
+        },
+        "withdrawn_from_round": null,
+        "won": 1
+      },
+      {
+        "annulled": false,
+        "drawn": 0,
+        "gp": 2.0,
+        "lost": 0,
+        "mp": 2.0,
+        "pending_boards": 0,
+        "played": 1,
+        "rank": 2,
+        "team": {
+          "id": 4,
+          "name": "Delta",
+          "series": null,
+          "short_name": null
+        },
+        "tiebreaks": {
+          "BH": 0.0,
+          "GP": 2.0,
+          "MP": 2.0
+        },
+        "withdrawn_from_round": null,
+        "won": 1
+      },
+      {
+        "annulled": false,
+        "drawn": 0,
+        "gp": 1.0,
+        "lost": 0,
+        "mp": 1.0,
+        "pending_boards": 0,
+        "played": 0,
+        "rank": 3,
+        "team": {
+          "id": 5,
+          "name": "Echo",
+          "series": null,
+          "short_name": null
+        },
+        "tiebreaks": {
+          "BH": 1.0,
+          "GP": 1.0,
+          "MP": 1.0
+        },
+        "withdrawn_from_round": null,
+        "won": 0
+      },
+      {
+        "annulled": false,
+        "drawn": 0,
+        "gp": 0.0,
+        "lost": 1,
+        "mp": 0.0,
+        "pending_boards": 0,
+        "played": 1,
+        "rank": 4,
+        "team": {
+          "id": 2,
+          "name": "Bravo",
+          "series": null,
+          "short_name": null
+        },
+        "tiebreaks": {
+          "BH": 2.0,
+          "GP": 0.0,
+          "MP": 0.0
+        },
+        "withdrawn_from_round": null,
+        "won": 0
+      },
+      {
+        "annulled": false,
+        "drawn": 0,
+        "gp": 0.0,
+        "lost": 1,
+        "mp": 0.0,
+        "pending_boards": 0,
+        "played": 1,
+        "rank": 5,
+        "team": {
+          "id": 3,
+          "name": "Charlie",
+          "series": null,
+          "short_name": null
+        },
+        "tiebreaks": {
+          "BH": 2.0,
+          "GP": 0.0,
+          "MP": 0.0
+        },
+        "withdrawn_from_round": null,
+        "won": 0
+      }
+    ],
+    "series": [],
+    "tiebreaks": [
+      {
+        "code": "MP",
+        "name": "Match points"
+      },
+      {
+        "code": "GP",
+        "name": "Game points"
+      },
+      {
+        "code": "BH",
+        "name": "Buchholz"
+      }
+    ]
+  }
+}

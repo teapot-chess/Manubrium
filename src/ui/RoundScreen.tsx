@@ -22,6 +22,8 @@ import { ConflictNotice, TeamStrip } from "./Team";
 import { HistorySheet } from "./History";
 import { layoutOf, matchView } from "../matches";
 import { ColourDot, LineupsBar, LineupSheet, MatchList } from "./Matches";
+import { MatchSheet } from "./MatchSheet";
+import { HoldButton } from "./HoldButton";
 
 const MAIN_RESULTS = ["1-0", "1/2-1/2", "0-1"];
 const publishLabels = (): string[] => [0, 1, 2, 3].map((n) => tr(`round.publish.${n}` as "round.publish.0"));
@@ -79,6 +81,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [player, setPlayer] = useState<number | null>(null);
   // A team's line-up, open: by match and side, so a refreshed round is what the sheet shows.
   const [lineupOf, setLineupOf] = useState<{ match: number; side: MatchSide } | null>(null);
+  // A team match open in full, by id, so a refreshed round is what the sheet draws behind it.
+  const [matchOpen, setMatchOpen] = useState<number | null>(null);
   // Only the boards still without a result: the last half hour of a round.
   const [openOnly, setOpenOnly] = useState(false);
   // A scanned slip for a round not on screen: opened once that round is.
@@ -119,6 +123,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     setEditing(null);
     setHistory(null);
     setLineupOf(null);
+    setMatchOpen(null);
   }, [number, t.id]);
 
   const flush = useCallback(async () => {
@@ -297,6 +302,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const view = round ? matchView(round) : null;
   const canConfirm = t.can.includes("publish") && !t.read_only;
   const lineupCard = lineupOf && view ? view.cards.find((c) => c.match.id === lineupOf.match) : undefined;
+  const openCard = matchOpen !== null && view ? view.cards.find((c) => c.match.id === matchOpen) : undefined;
   const matchOf = (b: Board) => {
     for (const card of view?.cards ?? []) {
       const row = card.rows.find((r) => r.board.id === b.id);
@@ -321,6 +327,13 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       requests.current++;
       setRound(answer);
     }
+  }
+
+  // The round a change to a match answered with, drawn behind its sheet at once.
+  function matchChanged(answer: Round) {
+    if (answer.number !== number) return;
+    requests.current++;
+    setRound(answer);
   }
 
   const boardItem = (b: Board) => {
@@ -459,6 +472,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
             canConfirm={canConfirm}
             onBoard={openBoard}
             onLineup={(card, side) => setLineupOf({ match: card.match.id, side })}
+            onMatch={(card) => setMatchOpen(card.match.id)}
             report={(b) => <BoardReportLine board={b} />}
           />
           {flat(view.loose).length > 0 && (
@@ -555,6 +569,23 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
           canConfirm={canConfirm}
           onClose={() => setLineupOf(null)}
           onDone={lineupsChanged}
+          onOpenMatch={() => {
+            setLineupOf(null);
+            setMatchOpen(lineupCard.match.id);
+          }}
+        />
+      )}
+
+      {openCard && round && (
+        <MatchSheet
+          ctx={ctx}
+          t={t}
+          round={round}
+          card={openCard}
+          layout={layoutOf(t)}
+          canConfirm={canConfirm}
+          onClose={() => setMatchOpen(null)}
+          onRound={matchChanged}
         />
       )}
 
@@ -698,25 +729,28 @@ function ResultSheet(props: {
             <button type="button" class="btn danger" id="reject-result" onClick={() => setAsking("reject")}>
               {tr("round.reject")}
             </button>
-            <button type="button" class="btn primary" id="confirm-result" onClick={props.onConfirm}>
+            <HoldButton id="confirm-result" class="primary" onLock={props.onConfirm}>
               {tr("round.confirm")}
-            </button>
+            </HoldButton>
           </div>
         </div>
       )}
       <div class="result-grid">
         {MAIN_RESULTS.filter((c) => props.codes.includes(c)).map((c) => (
-          <button type="button" key={c} class={`btn big ${board.result === c ? "primary" : ""}`} onClick={() => props.onResult(c)}>
+          <HoldButton key={c} id={`result-${c.replace(/\W/g, "_")}`} class={`big ${board.result === c ? "primary" : ""}`} onLock={() => props.onResult(c)}>
             {resultLabel(c)}
-          </button>
+          </HoldButton>
         ))}
       </div>
+      <p class="fine hold-tip" id="hold-tip">
+        {tr("hold.tip")}
+      </p>
       {more ? (
         <div class="result-grid small">
           {others.map((c) => (
-            <button type="button" key={c} class={`btn ${board.result === c ? "primary" : ""}`} onClick={() => props.onResult(c)}>
+            <HoldButton key={c} id={`result-${c.replace(/\W/g, "_")}`} class={board.result === c ? "primary" : ""} onLock={() => props.onResult(c)}>
               {resultLabel(c)}
-            </button>
+            </HoldButton>
           ))}
         </div>
       ) : (

@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/match-response.schema.json",
+  "title": "GET /tournaments/:id/rounds/:n/matches/:match response",
+  "description": "One team match in full (contract revision 5): line-ups, rosters, the plugins' findings, and what this account may do to it. Arbiters read it too, with every `can` false. Refusals (error.schema.json): 404 match_not_found, 404 not_paired, 409 not_team_event, 404 as for any tournament route.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["match"],
+  "properties": {
+    "match": { "$ref": "common.schema.json#/definitions/match_detail" }
+  }
+}

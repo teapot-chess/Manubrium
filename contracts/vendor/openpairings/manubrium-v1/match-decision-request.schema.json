@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/match-decision-request.schema.json",
+  "title": "PUT /tournaments/:id/rounds/:n/matches/:match/decision request",
+  "description": "Settle a team match as a whole: forfeited to the first-named team (`forfeit_a`), to the other (`forfeit_b`), or a double forfeit (neither team turned up; refused once a game was played). Every board is rewritten and the previous results kept, so DELETE .../decision gives them back. A restore point is taken first, as at the desk. Answered with match-change-response.schema.json.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["decision"],
+  "properties": {
+    "decision": { "enum": ["forfeit_a", "forfeit_b", "double_forfeit"] },
+    "acknowledged": { "$ref": "common.schema.json#/definitions/acknowledged" }
+  }
+}

@@ -28,7 +28,17 @@ import {
   type Board,
   type Match,
   type MatchBoard,
+  type LineupsBody,
+  type MatchCan,
+  type MatchDetail,
+  type MatchLineup,
   type MatchDecision,
+  type BoardPrizes,
+  type EventTeam,
+  type LineupFinding,
+  type LineupRosterPlayer,
+  type TeamMatchLine,
+  type TeamStandings,
   type MatchTeam,
   type TeamBoardLayout,
   type Bye,
@@ -64,6 +74,7 @@ import {
 import { boardReportLabel } from "./alnasl";
 import { byeRows, byesToSend } from "./byes";
 import { layoutOf, lineup, matchScore, matchView, pointValues, seats } from "./matches";
+import { futureRounds, lineupBody, otherScore, outFromSeats, roundStatus, scoreChoices, seatsFromOut, sortFindings, withdrawRounds } from "./teamEvents";
 import { Outbox, type KeyValue } from "./queue";
 import { hitDetails, sourceOf } from "./search";
 import { pairingsText, standingsText } from "./share";
@@ -141,6 +152,26 @@ const ROUTES: Route[] = [
   // Team events: line-ups confirmed from the floor (contract revision 4).
   { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/lineups\/confirm$/, contract: "POST /tournaments/:id/rounds/:n/lineups/confirm", request: "lineups-confirm-request", response: "round-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups\/confirm$/, contract: "POST /tournaments/:id/rounds/:n/matches/:match/lineups/confirm", request: "lineup-confirm-request", response: "round-response" },
+  // Team events, mid-event: one match in full, the teams, their standings (contract revision 5).
+  { method: "GET", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+$/, contract: "GET /tournaments/:id/rounds/:n/matches/:match", response: "match-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups$/, contract: "PUT /tournaments/:id/rounds/:n/matches/:match/lineups", request: "lineups-request", response: "match-change-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups\/check$/, contract: "POST /tournaments/:id/rounds/:n/matches/:match/lineups/check", request: "lineups-request", response: "lineups-check-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups\/reset$/, contract: "POST .../lineups/reset", response: "match-change-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/lineups\/unconfirm$/, contract: "POST /tournaments/:id/rounds/:n/matches/:match/lineups/unconfirm", request: "lineup-unconfirm-request", response: "match-change-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/home\/swap$/, contract: "POST .../home/swap", response: "match-change-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/decision$/, contract: "PUT /tournaments/:id/rounds/:n/matches/:match/decision", request: "match-decision-request", response: "match-change-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/decision$/, contract: "DELETE .../decision", response: "match-change-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/score$/, contract: "PUT /tournaments/:id/rounds/:n/matches/:match/score", request: "match-score-request", response: "match-change-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/rounds\/\d+\/matches\/\d+\/score$/, contract: "DELETE .../score", response: "match-change-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/teams$/, contract: "GET /tournaments/:id/teams", response: "teams-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/teams\/\d+$/, contract: "GET /tournaments/:id/teams/:team", response: "team-detail-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/teams\/\d+\/withdraw$/, contract: "POST /tournaments/:id/teams/:team/withdraw", request: "team-withdraw-request", response: "team-detail-response" },
+  { method: "POST", path: /^\/tournaments\/\d+\/teams\/\d+\/reinstate$/, contract: "POST .../reinstate", response: "team-detail-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/teams\/\d+\/rounds\/\d+$/, contract: "PUT /tournaments/:id/teams/:team/rounds/:n", request: "team-round-request", response: "team-detail-response" },
+  { method: "PUT", path: /^\/tournaments\/\d+\/teams\/\d+\/players\/\d+$/, contract: "/teams/:team/players/:player", response: "team-detail-response" },
+  { method: "DELETE", path: /^\/tournaments\/\d+\/teams\/\d+\/players\/\d+$/, contract: "/teams/:team/players/:player", response: "team-detail-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/team-standings$/, contract: "GET /tournaments/:id/team-standings", response: "team-standings-response" },
+  { method: "GET", path: /^\/tournaments\/\d+\/board-prizes$/, contract: "GET /tournaments/:id/board-prizes", response: "board-prizes-response" },
   // Live board control (contract revision 2).
   // Several arbiters (contract revision 3).
   { method: "PUT", path: /^\/tournaments\/\d+\/team$/, contract: "PUT /tournaments/:id/team", request: "team-request", response: "team-response" },
@@ -338,6 +369,25 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   undo: (c) => c.undo(2, 1, 101, 2),
   confirmLineup: (c) => c.confirmLineup(2, 1, 31, "a"),
   confirmLineups: (c) => c.confirmLineups(2, 1),
+  match: (c) => c.match(2, 1, 1),
+  setLineups: (c) => c.setLineups(2, 1, 1, { a: [101, 102], b: [201, null] }),
+  checkLineups: (c) => c.checkLineups(2, 1, 1, { out: { a: [101], b: [] } }),
+  resetLineups: (c) => c.resetLineups(2, 1, 1),
+  unconfirmLineup: (c) => c.unconfirmLineup(2, 1, 1, "a"),
+  swapHome: (c) => c.swapHome(2, 1, 1),
+  decideMatch: (c) => c.decideMatch(2, 1, 1, "forfeit_a"),
+  withdrawDecision: (c) => c.withdrawDecision(2, 1, 1),
+  setMatchScore: (c) => c.setMatchScore(2, 1, 1, { a: 2.5, b: 1.5 }),
+  clearMatchScore: (c) => c.clearMatchScore(2, 1, 1),
+  teams: (c) => c.teams(2),
+  teamDetail: (c) => c.teamDetail(2, 1),
+  withdrawTeam: (c) => c.withdrawTeam(2, 1, 2),
+  reinstateTeam: (c) => c.reinstateTeam(2, 1),
+  setTeamRound: (c) => c.setTeamRound(2, 1, 3, "half_bye"),
+  addTeamPlayer: (c) => c.addTeamPlayer(2, 1, 12),
+  removeTeamPlayer: (c) => c.removeTeamPlayer(2, 1, 12),
+  teamStandings: (c) => c.teamStandings(2),
+  boardPrizes: (c) => c.boardPrizes(2),
 };
 
 async function everyCall(c: Client) {
@@ -382,6 +432,13 @@ describe("every answer in the contract, through the app's client", () => {
     ["live-board-game-response", (c) => c.liveGame(2, "9b1d6c0e4f7a4a1e8d2c5b6a7f809112"), (e) => e],
     ["live-board-command-response", (c) => c.boardCommand(2, 41), (e) => e.command],
     ["team-response", (c) => c.team(2, 1), (e) => e.team],
+    ["match-response", (c) => c.match(2, 1, 1), (e) => e.match],
+    ["match-change-response", (c) => c.swapHome(2, 1, 1), (e) => e],
+    ["lineups-check-response", (c) => c.checkLineups(2, 1, 1, { out: { a: [], b: [] } }), (e) => e.findings],
+    ["teams-response", (c) => c.teams(2), (e) => e.teams],
+    ["team-detail-response", (c) => c.teamDetail(2, 1), (e) => e],
+    ["team-standings-response", (c) => c.teamStandings(2), (e) => e.standings],
+    ["board-prizes-response", (c) => c.boardPrizes(2), (e) => e.board_prizes],
     ["notes-response", (c) => c.notes(2), (e) => e.notes],
     ["note-response", (c) => c.createNote(2, { body: "x" }), (e) => e.note],
     ["board-history-response", (c) => c.boardHistory(2, 1, 101), (e) => e.history],
@@ -608,6 +665,44 @@ describe("what a team event's answers mean to the app", () => {
   });
 });
 
+describe("what a team event's mid-event answers mean to the app", () => {
+  it("works out who sits out of a line-up the server sent, and the same line-up back from it", () => {
+    const { lineup } = ex<{ match: MatchDetail }>("match-response.json").match as MatchDetail & { lineup: MatchLineup };
+    // Alpha seats its first two of three: the third sits out.
+    const out = outFromSeats(lineup.roster_a, lineup.a);
+    expect([...out]).toEqual([3]);
+    expect(seatsFromOut(lineup.roster_a, out, lineup.boards)).toEqual(lineup.a);
+    // Nobody out: the roster in board order fills the boards, cut to the match.
+    expect(seatsFromOut(lineup.roster_a, new Set(), lineup.boards)).toEqual([1, 2]);
+    // An unavailable player never plays, ticked or not; a short roster leaves empty seats.
+    const roster = lineup.roster_b.map((p, i) => ({ ...p, available: i !== 0 }));
+    expect(seatsFromOut(roster, new Set(), 2)).toEqual([8, null]);
+  });
+
+  it("reads a team's rounds: it plays every round it is not listed for", () => {
+    const team = { rounds: [{ round: 3, status: "absent" as const }, { round: 4, status: "half_bye" as const }] };
+    expect([1, 2, 3, 4].map((n) => roundStatus(team, n))).toEqual(["plays", "plays", "absent", "half_bye"]);
+  });
+
+  it("offers the rounds a team can still change or leave from", () => {
+    expect(futureRounds({ paired_rounds: 2, rounds_count: 5 })).toEqual([3, 4, 5]);
+    expect(futureRounds({ paired_rounds: 5, rounds_count: 5 })).toEqual([]);
+    expect(withdrawRounds({ paired_rounds: 2, rounds_count: 5 })).toEqual([2, 3]);
+    expect(withdrawRounds({ paired_rounds: 0, rounds_count: 5 })).toEqual([1]);
+    expect(withdrawRounds({ paired_rounds: 5, rounds_count: 5 })).toEqual([5]);
+  });
+
+  it("offers a match score in halves that adds up to the boards", () => {
+    expect(scoreChoices(2)).toEqual([0, 0.5, 1, 1.5, 2]);
+    expect(otherScore(4, 2.5)).toBe(1.5);
+  });
+
+  it("puts a violation before a warning and keeps the plug-in's order otherwise", () => {
+    const f = (severity: "violation" | "warning", message: string): LineupFinding => ({ severity, team: "a", board: null, rule: "r", message, penalty: null });
+    expect(sortFindings([f("warning", "w1"), f("violation", "v1"), f("warning", "w2"), f("violation", "v2")]).map((x) => x.message)).toEqual(["v1", "v2", "w1", "w2"]);
+  });
+});
+
 describe("what live boards mean to the app", () => {
   it("reads every live-boards example: states and alarms in words or raw, never empty", () => {
     const data = ex<LiveBoards>("live-boards-response.json");
@@ -633,6 +728,119 @@ describe("the app's types against the contract's shapes", () => {
   // The compiler holds each spec to its type (see `shape`); the test holds
   // the spec to the schema.
   const cases: [string, Record<string, string>, string][] = [
+    [
+      "MatchDetail",
+      shape<MatchDetail>()({
+        id: "required",
+        number: "required nullable",
+        team_a: "required",
+        team_b: "required nullable",
+        bye: "required",
+        boards: "required",
+        game_points: "required",
+        match_points: "required nullable",
+        complete: "required",
+        decision: "required nullable",
+        lineups: "required",
+        round: "required",
+        home: "required nullable",
+        match_score: "required nullable",
+        lineup: "required nullable",
+        can: "required",
+      }),
+      "match_detail",
+    ],
+    [
+      "MatchLineup",
+      shape<MatchLineup>()({
+        mode: "required",
+        optional: "required",
+        free_order: "required",
+        boards: "required",
+        a: "required",
+        b: "required",
+        default_a: "required",
+        default_b: "required",
+        roster_a: "required",
+        roster_b: "required",
+        findings: "required nullable",
+      }),
+      "common.schema.json#/definitions/match_detail/properties/lineup",
+    ],
+    [
+      "MatchCan",
+      shape<MatchCan>()({
+        lineups: "required",
+        unconfirm_a: "required",
+        unconfirm_b: "required",
+        swap_home: "required",
+        decide: "required",
+        double_forfeit: "required",
+        withdraw_decision: "required",
+        score: "required",
+        clear_score: "required",
+      }),
+      "common.schema.json#/definitions/match_detail/properties/can",
+    ],
+    [
+      "LineupRosterPlayer",
+      shape<LineupRosterPlayer>()({ id: "required", name: "required", title: "required nullable", rating: "required nullable", order: "required", available: "required" }),
+      "lineup_roster_player",
+    ],
+    [
+      "LineupFinding",
+      shape<LineupFinding>()({
+        severity: "required",
+        team: "required nullable",
+        board: "required nullable",
+        rule: "required",
+        message: "required",
+        penalty: "required nullable",
+      }),
+      "lineup_finding",
+    ],
+    [
+      "EventTeam",
+      shape<EventTeam>()({
+        id: "required",
+        name: "required",
+        short_name: "required nullable",
+        number: "required nullable",
+        captain: "required nullable",
+        captain_contact: "optional nullable",
+        club: "required nullable",
+        series: "required nullable",
+        rating: "required nullable",
+        withdrawn_from_round: "required nullable",
+        rounds: "required",
+        roster: "required",
+      }),
+      "team",
+    ],
+    [
+      "TeamMatchLine",
+      shape<TeamMatchLine>()({
+        round: "required",
+        match_id: "required",
+        opponent: "required nullable",
+        bye: "required",
+        game_points: "required",
+        opponent_game_points: "required nullable",
+        match_points: "required nullable",
+        complete: "required",
+      }),
+      "team_match_line",
+    ],
+    [
+      "TeamStandings",
+      shape<TeamStandings>()({ primary: "required", rounds_paired: "required", series: "required", tiebreaks: "required", rows: "required", players: "required" }),
+      "team_standings",
+    ],
+    [
+      "BoardPrizes",
+      shape<BoardPrizes>()({ min_games: "required", default_min_games: "required", boards: "required" }),
+      "board_prizes",
+    ],
     ["ServerInfo", shape<ServerInfo>()({ name: "required", version: "required", api: "required", desktop: "required" }), "server"],
     ["Device", shape<Device>()({ id: "required", name: "required nullable", platform: "required nullable" }), "device"],
     ["UserInfo", shape<UserInfo>()({ email: "required", name: "required nullable" }), "user"],
@@ -1088,6 +1296,47 @@ describe("every request the app builds", () => {
     const s = await captured((c) => c.setByes(2, 6, [{ round: 3, kind: "requested-half" }], ["second_half_bye"]));
     valid(s);
     expect(s.body).toEqual({ byes: [{ round: 3, kind: "requested-half" }], acknowledged: ["second_half_bye"] });
+  });
+
+  it("sends a team match's line-ups as the seats or as who sits out, and checks them the same way", async () => {
+    const bodies: LineupsBody[] = [{ a: [101, 102], b: [201, null] }, { out: { a: [101], b: [] } }];
+    for (const body of bodies) {
+      valid(await captured((c) => c.setLineups(2, 1, 1, body)));
+      valid(await captured((c) => c.checkLineups(2, 1, 1, body)));
+    }
+    const ticks = lineupBody("ticks", { a: [], b: [], outA: new Set([3]), outB: new Set() });
+    const selects = lineupBody("selects", { a: [1, null], b: [7, 8], outA: new Set(), outB: new Set() });
+    expect(ticks).toEqual({ out: { a: [3], b: [] } });
+    expect(selects).toEqual({ a: [1, null], b: [7, 8] });
+    for (const body of [ticks, selects]) valid(await captured((c) => c.setLineups(2, 1, 1, body)));
+  });
+
+  it("sends every decision, a match score, and a confirmation taken back in the shape the schema takes", async () => {
+    for (const d of ["forfeit_a", "forfeit_b", "double_forfeit"] as const) valid(await captured((c) => c.decideMatch(2, 1, 1, d)));
+    const asked = await captured((c) => c.decideMatch(2, 1, 1, "forfeit_a", ["finalised_result_changed"]));
+    valid(asked);
+    expect(asked.body).toEqual({ decision: "forfeit_a", acknowledged: ["finalised_result_changed"] });
+    const score = await captured((c) => c.setMatchScore(2, 1, 1, { a: 2.5, b: 1.5 }));
+    valid(score);
+    expect(score.body).toEqual({ a: 2.5, b: 1.5 });
+    for (const side of ["a", "b", "both"] as const) valid(await captured((c) => c.unconfirmLineup(2, 1, 1, side)));
+  });
+
+  it("withdraws a team with the answer to the server's question, sits it out, and puts a reserve on its roster", async () => {
+    valid(await captured((c) => c.withdrawTeam(2, 1, 3)));
+    const asked = await captured((c) => c.withdrawTeam(2, 1, 3, ["finalised_result_changed"]));
+    valid(asked);
+    expect(asked.body).toEqual({ from_round: 3, acknowledged: ["finalised_result_changed"] });
+    for (const status of ["plays", "absent", "half_bye"] as const) valid(await captured((c) => c.setTeamRound(2, 1, 4, status)));
+    valid(await captured((c) => c.addTeamPlayer(2, 1, 12)));
+    valid(await captured((c) => c.removeTeamPlayer(2, 1, 12)));
+  });
+
+  it("asks for the board prizes with a minimum number of games, or the desk's default", async () => {
+    const withMin = await captured((c) => c.boardPrizes(2, 3));
+    expect(withMin.url).toContain("/board-prizes?min_games=3");
+    const without = await captured((c) => c.boardPrizes(2));
+    expect(without.url.endsWith("/board-prizes")).toBe(true);
   });
 
   it("publishes at every level", async () => {

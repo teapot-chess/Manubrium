@@ -24,6 +24,7 @@ import { loadPhoneSettings } from "../phoneSettings";
 import type { Ctx } from "./App";
 import { resultLabel, Sheet } from "./common";
 import { t as tr } from "../i18n";
+import { HoldButton } from "./HoldButton";
 
 const clockTime = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -225,19 +226,18 @@ export function DefaultTimeCard(props: {
           <p>{tr("dt.forfeit_text")}</p>
           <div class="sheet-actions">
             {asking.codes.map((c) => (
-              <button
-                type="button"
+              <HoldButton
                 key={c}
-                class="btn danger block"
+                class="danger block"
                 id={`dt-forfeit-confirm-${c}`}
-                onClick={() => {
+                onLock={() => {
                   const b = asking.board;
                   setAsking(null);
                   props.onForfeit(b, c);
                 }}
               >
                 {tr("dt.enter_code", { code: resultLabel(c) })}
-              </button>
+              </HoldButton>
             ))}
             <button type="button" class="btn block" id="dt-forfeit-keep" onClick={() => setAsking(null)}>
               {tr("common.keep")}

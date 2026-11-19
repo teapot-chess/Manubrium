@@ -21,6 +21,7 @@ import { RoundScreen } from "./RoundScreen";
 import { currentRound } from "../currentRound";
 import { StandingsScreen } from "./StandingsScreen";
 import { changes, initial, SettingsEditor } from "./SettingsEditor";
+import { fastHolds, hold, slowHolds } from "./holdTestkit";
 
 const phone = vi.hoisted(() => {
   const kv = () => {
@@ -199,6 +200,7 @@ const el = (selector: string) =>
 const needs = (body: Record<string, unknown>) => new ApiError(409, "needs_acknowledgement", "Confirm first.", { error: "needs_acknowledgement", ...body });
 
 beforeEach(async () => {
+  fastHolds();
   phone.storage.data.clear();
   phone.vault.data.clear();
   phone.scanned = null;
@@ -209,6 +211,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  slowHolds();
   cleanup();
   resetBack();
 });
@@ -226,7 +229,7 @@ describe("a Lite phone's result in the round", () => {
 
     fireEvent.click(document.querySelector("#board-1")!);
     expect(screen.getByText(/was entered on the phone/).textContent).toContain("Hall phone");
-    fireEvent.click(document.querySelector("#confirm-result")!);
+    await hold(document.querySelector("#confirm-result")!);
 
     await waitFor(() => expect(api.confirmResult).toHaveBeenCalledWith(7, 1, 1, "1-0"));
     await screen.findByText(/confirmed\./);
@@ -265,8 +268,10 @@ describe("a Lite phone's result in the round", () => {
     render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
 
     fireEvent.click(await el("#board-1"));
-    fireEvent.click(document.querySelector("#confirm-result")!);
-    await screen.findByText(/the board now says 0-1/);
+    // The sentence is up until the round is read again; look for it while the button is held.
+    const refusal = screen.findByText(/the board now says 0-1/);
+    await hold(document.querySelector("#confirm-result")!);
+    await refusal;
   });
 });
 
@@ -567,7 +572,7 @@ describe("the offline queue on the organiser's phone", () => {
     render(<RoundScreen ctx={ctxWith(api)} t={tournament("owner")} reloadTournament={async () => undefined} />);
 
     fireEvent.click(await el("#board-2"));
-    fireEvent.click(await el(".result-grid button"));
+    await hold(await el(".result-grid button"));
 
     // Still there until somebody reads it: refused is not dropped.
     await waitFor(() => expect(outbox.list(server.base, 7)).toMatchObject([{ state: "refused", reason: "not_saved" }]));
@@ -1342,7 +1347,7 @@ describe("a slow answer for another round", () => {
     expect(screen.getByText("Round 1")).toBeTruthy();
 
     fireEvent.click(document.querySelector("#board-11")!);
-    fireEvent.click(await screen.findByText("1-0"));
+    await hold(await screen.findByText("1-0"));
     await waitFor(() => expect(api.sync).toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "result", round: 1, pairing: 11 })]));
   });
 
@@ -1432,7 +1437,7 @@ describe("1.2: the default time, scanning and a player's card", () => {
     await el("#dt-board-1");
     expect(document.querySelector("#dt-board-2")).toBeNull();
     fireEvent.click(await el("#dt-forfeit-1"));
-    fireEvent.click(await el("#dt-forfeit-confirm-0-1FF"));
+    await hold(await el("#dt-forfeit-confirm-0-1FF"));
     await waitFor(() => expect(api.sync).toHaveBeenCalledWith(7, [expect.objectContaining({ kind: "result", pairing: 1, result: "0-1FF" })]));
   });
 

@@ -8,7 +8,7 @@
 // Also the line-ups: whether each team's is confirmed, and - for the
 // organiser and editors - confirming one as it stands, or all of them. The
 // server decides who may and what a confirmation does; the phone asks and
-// draws the round it answers with. Changing a line-up stays at the desk.
+// draws the round it answers with. Changing a line-up, a forfeit and a match score are in the match's own sheet (MatchSheet.tsx).
 //
 // Tapping a board is the round screen's business and works as on any board.
 
@@ -62,6 +62,8 @@ export function MatchList(props: {
   canConfirm: boolean;
   onBoard: (b: Board) => void;
   onLineup: (card: MatchCard, side: MatchSide) => void;
+  /** Opens the match in full: line-ups, forfeits, score. */
+  onMatch: (card: MatchCard) => void;
   /** The hall board's line under a pairing; the round screen owns how it looks. */
   report: (b: Board) => ComponentChildren;
 }) {
@@ -83,6 +85,11 @@ export function MatchList(props: {
             <header class="match-head">
               <div class="match-meta">
                 <span class="match-no">{tr("match.number", { n: match.number ?? "–" })}</span>
+                {match.bye ? null : (
+                  <button type="button" class="chip match-open" id={`match-open-${match.id}`} onClick={() => props.onMatch(card)}>
+                    {tr("tm.open")}
+                  </button>
+                )}
                 {match.bye ? null : match.lineups.confirmed ? (
                   <span class="match-lineups" id={`lineups-confirmed-${match.id}`}>
                     {tr("match.lineups_confirmed")}
@@ -274,6 +281,8 @@ export function LineupSheet(props: {
   canConfirm: boolean;
   onClose: () => void;
   onDone: (round: Round, message: string) => void;
+  /** Opens the match in full, where a line-up is changed. */
+  onOpenMatch: () => void;
 }) {
   const { ctx, t, round, card, side } = props;
   const { match } = card;
@@ -324,6 +333,9 @@ export function LineupSheet(props: {
           {tr("lineup.confirm")}
         </button>
       )}
+      <button type="button" class="btn ghost block" id="lineup-open-match" onClick={props.onOpenMatch}>
+        {tr("lineup.open_match")}
+      </button>
     </Sheet>
   );
 }

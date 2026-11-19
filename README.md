@@ -75,6 +75,33 @@ Not yet released, it also:
   no matches gets the flat list;
 - shows whether each team's **line-up** is confirmed and, for the organiser
   and editors, confirms one as it stands or a whole round's;
+- opens a **match in full** from its card: the boards, both line-ups with
+  their confirmation, what a plug-in's regulations make of them (the
+  *Check* button), and, where the server's `can` allows, changing the
+  line-ups (tick who sits out, or pick a player per board, whichever the
+  tournament's editor is), resetting them, taking a confirmation back,
+  swapping the home team, a forfeit to either team, a double forfeit, a
+  match score, and withdrawing a decision or a score. An arbiter reads and
+  sees none of the buttons;
+- has a **Teams** tab in a team event: every team with its captain and its
+  roster in board order, who has left, and for the organiser and editors
+  what the Teams page does in mid-event - a team withdraws from a round or
+  comes back, sits a round out or takes a half-point bye, a late reserve
+  goes on the roster, a player comes off it;
+- shows a team event's **standings** as the Standings page ranks them (match
+  or game points, then the event's tie-breaks), the individual ranking, and
+  the **board prizes** per board with the minimum number of games to count;
+- pairs a **team Swiss** like an individual one (a team round robin is paired
+  at the desk, all rounds at once);
+- enters every result by **holding its button for a second**: a tap shows
+  "Hold for a second to lock the result" and enters nothing. A fill sweeps
+  across the button while held (an outline instead under *reduce motion*),
+  lifting or sliding off cancels, Enter or Space held does it from a
+  keyboard, and the lock buzzes where the webview can (`navigator.vibrate`:
+  Android; iOS has none, and native haptics via `@capacitor/haptics` are a
+  follow-up, since that package is not a dependency yet). The same hold
+  guards a forfeit, a match score, a withdrawal and "use mine" after a
+  collision. The logic is `src/hold.ts`, the button `src/ui/HoldButton.tsx`;
 - notes that a player **will not play the next round** from the player's
   sheet, with the kind of bye the tournament offers, and takes it back;
 - hides the boards that have a result (**Still playing**).
@@ -114,6 +141,8 @@ src/
   share.ts       the round and the standings as text, and the browser's share
   byes.ts        a player's byes: which rounds may still change, the next round
   matches.ts     a team round as matches: seats, colours, the layout, the score
+  teamEvents.ts  the line-up editor's preview (who sits out), rounds a team can still change
+  hold.ts        hold to enter: the rules (a second, tap, slide off), no DOM
   search.ts      when a list search is worth sending, what a hit adds
   alnasl.ts      the line a hall board's report gets beside its pairing
   defaultTime.ts the default-time list, the round's clock, the forfeit to offer
@@ -128,7 +157,10 @@ src/
   contract.testkit.ts  test helper: the vendored contract schemas
   ui/            the screens (HallPanel.tsx: the hall apps under More;
                  DefaultTime.tsx, PlayerSheet.tsx, PrizeList.tsx, PhoneSettings.tsx, AppLock.tsx;
-                 Matches.tsx: a team round's match cards and the line-ups)
+                 Matches.tsx: a team round's match cards and the line-ups;
+                 MatchSheet.tsx: a match in full; TeamsScreen.tsx: the teams;
+                 TeamStandings.tsx: team standings and board prizes;
+                 HoldButton.tsx: the button every result is entered with)
 ```
 
 ## Offline
@@ -145,7 +177,7 @@ pixels by the camera, and is sent in a request of its own.
 
 Everything else - clearing a result, confirming a Lite phone's result,
 pairing and hand edits, publishing, players, check-in, byes, confirming
-line-ups, settings, a new tournament, the hall boards' codes, the hall apps'
+line-ups, a team match's changes, the teams' mid-event changes, settings, a new tournament, the hall boards' codes, the hall apps'
 commands - needs the server's answer and is online only. The app says so
 when it is not. A team match's score is the one sum the phone does itself:
 results waiting in the outbox are counted into it, marked as waiting, until
@@ -341,9 +373,16 @@ the privacy policy and the screenshot list are in `store/`.
 - **Not in the app because the server does not offer it yet:** acknowledging
   from a phone the results Lite refuses for the desk (a decisive postponed
   game, a correction after the next round is paired, a round already sent to
-  FIDE). Team events' hand edits stay at the desk, and so do changing a
-  line-up, taking a confirmation back, a forfeit by decision and a match
-  score.
+  FIDE).
+- **Team events: what still stays at the desk.** Setting the teams up
+  (creating, renaming, seeding, the roster's board order, imports), pairing
+  a team round robin (the whole schedule at once), pairing hand edits that
+  rewrite a match, the cross table and the printed match sheets.
+- **Hold to enter has no native haptics yet.** The lock buzzes through
+  `navigator.vibrate` where the webview has it; on iOS it is silent until
+  `@capacitor/haptics` is added. A screen reader's plain "activate" is a tap
+  too, so it enters nothing: a result is entered with the hold gesture, or
+  with Enter or Space held.
 - **Built against the server's contract, not its finished code.** New
   tournaments, list search, check-in, byes, board reports and board codes
   were written while OpenPairings was still writing its half. The fakes

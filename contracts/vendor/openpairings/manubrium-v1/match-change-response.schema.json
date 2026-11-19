@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/match-change-response.schema.json",
+  "title": "A team match changed",
+  "description": "The answer to every change to a team match (contract revision 5; the owner and editors only, 403 arbiter_role otherwise): PUT .../matches/:match/lineups, POST .../lineups/reset, POST .../lineups/unconfirm, POST .../home/swap, PUT and DELETE .../decision, PUT and DELETE .../score. The round as it now is, and the match in full. Refusals (error.schema.json) besides the routing ones: 400 bad_request; 422 match_started, gap, no_players, board_order, unavailable, twice, not_on_team, bye_match, not_home_and_away, already_forfeited, games_played, match_score_set, not_forfeited, nobody_to_seat, not_optional, players_seated, bad_score, no_match_score, round_closed_in_fide_mode; 409 archived / handed_off; 409 needs_acknowledgement for a decision that would change a board already sent in a rating report, or decide a postponed game otherwise (`confirm`: finalised_result_changed, adjourned_non_draw_result).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["round", "match"],
+  "properties": {
+    "round": { "$ref": "common.schema.json#/definitions/round" },
+    "match": { "$ref": "common.schema.json#/definitions/match_detail" }
+  }
+}

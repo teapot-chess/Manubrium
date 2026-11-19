@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/lineup-unconfirm-request.schema.json",
+  "title": "POST /tournaments/:id/rounds/:n/matches/:match/lineups/unconfirm request",
+  "description": "Take a line-up's confirmation back: that side is provisional again, and the match's boards leave the results site until it is confirmed again. Answered with match-change-response.schema.json.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["side"],
+  "properties": {
+    "side": { "enum": ["a", "b", "both"] }
+  }
+}

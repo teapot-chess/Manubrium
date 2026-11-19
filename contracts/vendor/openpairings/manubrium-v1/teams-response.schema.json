@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/teams-response.schema.json",
+  "title": "GET /tournaments/:id/teams response",
+  "description": "A team event's teams in draw order, each with its roster in board order (contract revision 5). Open to arbiters too: who plays for whom is what the hall asks first; `captain_contact` is left out for them. Refusals (error.schema.json): 409 not_team_event for a tournament without teams, 404 as for any tournament route.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["teams"],
+  "properties": {
+    "teams": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/team" } }
+  }
+}

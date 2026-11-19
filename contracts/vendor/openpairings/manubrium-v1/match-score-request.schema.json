@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/match-score-request.schema.json",
+  "title": "PUT /tournaments/:id/rounds/:n/matches/:match/score request",
+  "description": "Decide a team match by its score alone, in boards (2.5 for 2½): only where line-ups are optional and nobody sits at the match. The two must add up to the boards per match, in halves. DELETE .../score withdraws it. Answered with match-change-response.schema.json.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["a", "b"],
+  "properties": {
+    "a": { "type": "number", "minimum": 0 },
+    "b": { "type": "number", "minimum": 0 }
+  }
+}

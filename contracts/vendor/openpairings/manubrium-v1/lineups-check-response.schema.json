@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/lineups-check-response.schema.json",
+  "title": "POST /tournaments/:id/rounds/:n/matches/:match/lineups/check response",
+  "description": "What the plugins' regulations make of two line-ups not saved yet (the request is lineups-request.schema.json). Nothing is written. `findings` is null when no plugin checks this tournament's line-ups.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": { "$ref": "common.schema.json#/definitions/lineup_findings" }
+  }
+}
