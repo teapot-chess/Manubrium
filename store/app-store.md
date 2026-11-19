@@ -28,6 +28,12 @@ Enter results and log incidents from the floor, with a photo of the scoresheet o
 FOR THE ORGANISER
 Start a tournament, add players straight from the FIDE or Belgian rating list, tick them off as they arrive, record their requested byes. Pair the next round, publish it, share the pairings and the standings - from the phone, as soon as the last result is in.
 
+TEAM EVENTS
+A team round is a card per match, with the line-ups, forfeits and the match score. A Teams tab for withdrawals, byes and late reserves; team standings, the individual ranking and board prizes, shared in one tap.
+
+HOLD TO ENTER
+A result is entered by holding its button for a second, with a tap from the phone when it locks. A pocket, an elbow or a brushed screen enters nothing.
+
 HALL BOARDS
 With Alnasl in the hall, what each electronic board saw sits small beside its pairing, in red when it disagrees with the result entered. A board never enters a result; the arbiter does.
 
@@ -56,6 +62,12 @@ Default time: the round screen counts down to it and lists the empty chairs, wit
 
 **Wat is er nieuw** (1.2.0, NL):
 Reglementaire wachttijd: het rondescherm telt ze af en toont de lege stoelen, met de juiste forfaitscore klaar als de tijd om is. Scan een uitslagbriefje of een plaatskaartje en het bord gaat open. Tik op een speler voor hun partijen, kleuren, score en plaats. Prijzen onderaan de stand. Meerdere arbiters op één ronde: wie waar zit, die van hen houden of de mijne gebruiken, overdrachtsnotities, bordgeschiedenis met ongedaan maken. Zaalborden live op de telefoon, met bediening. Meldingen als een ronde gepaard of gepubliceerd is, als een zaalbord een uitslag tegenspreekt, voor incidenten en bij de wachttijd, en de ronde op het vergrendelscherm (iOS 16.2 en nieuwer). Nieuwe kleurthema's en een optioneel app-slot. Vraagt OpenPairings 0.129 of nieuwer; meldingen vragen een server met push.
+
+**What's new** (1.3.0):
+Team events from the phone: a match in full with both line-ups, editing and confirming them, forfeits and a match decided by its score; a Teams tab for withdrawals, byes and late reserves; team standings, the individual ranking and board prizes, with the team table shared like the individual standings. A team Swiss is paired from the phone. Every result is now entered by holding its button for a second, so a brushed screen enters nothing, and the phone taps back while you hold. Team events need OpenPairings 0.150 or later.
+
+**Wat is er nieuw** (1.3.0, NL):
+Teamcompetities vanaf de telefoon: een match volledig, met beide opstellingen, ze aanpassen en bevestigen, forfaits en een match beslist op de score; een tab Teams voor terugtrekkingen, byes en late reserves; de teamstand, de individuele rangschikking en de bordprijzen, en de teamstand deel je zoals de individuele stand. Een team-Zwitsers paar je vanaf de telefoon. Elke uitslag voer je nu in door de knop een seconde ingedrukt te houden, zodat een toevallige aanraking niets invoert, en de telefoon tikt terug terwijl je houdt. Teamcompetities vragen OpenPairings 0.150 of nieuwer.
 
 
 **Support URL:** https://pairings.cloud/help

@@ -20,8 +20,9 @@ Since the second batch it also:
   and a filter for the ones still on the train;
 - edits a player's **requested byes** round by round; paired rounds are
   history and only shown;
-- **shares** the round's pairings or the standings as plain text, with the
-  OpenResults link when there is one;
+- **shares** the round's pairings or the standings as plain text - a team
+  event's standings as its team table - with the OpenResults link when
+  there is one;
 - shows what the **hall boards (Alnasl)** report beside each pairing - the
   board's result or how far the game is, in red when it disagrees - and
   makes and revokes the boards' codes under More. A board never enters a
@@ -90,16 +91,18 @@ Not yet released, it also:
   goes on the roster, a player comes off it;
 - shows a team event's **standings** as the Standings page ranks them (match
   or game points, then the event's tie-breaks), the individual ranking, and
-  the **board prizes** per board with the minimum number of games to count;
+  the **board prizes** per board with the minimum number of games to count,
+  and shares the team table like the individual standings;
 - pairs a **team Swiss** like an individual one (a team round robin is paired
   at the desk, all rounds at once);
 - enters every result by **holding its button for a second**: a tap shows
   "Hold for a second to lock the result" and enters nothing. A fill sweeps
   across the button while held (an outline instead under *reduce motion*),
   lifting or sliding off cancels, Enter or Space held does it from a
-  keyboard, and the lock buzzes where the webview can (`navigator.vibrate`:
-  Android; iOS has none, and native haptics via `@capacitor/haptics` are a
-  follow-up, since that package is not a dependency yet). The same hold
+  keyboard. In the app the phone taps back through `@capacitor/haptics`
+  (the Taptic Engine on an iPhone, the vibrator on Android): lightly when
+  the press starts, firmer when it locks; in a browser `navigator.vibrate`
+  does it where there is one (`src/haptics.ts`). The same hold
   guards a forfeit, a match score, a withdrawal and "use mine" after a
   collision. The logic is `src/hold.ts`, the button `src/ui/HoldButton.tsx`;
 - notes that a player **will not play the next round** from the player's
@@ -138,11 +141,12 @@ src/
   i18n/          English, Dutch and French dictionaries, and t()
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
-  share.ts       the round and the standings as text, and the browser's share
+  share.ts       the round, the standings and a team table as text, and the browser's share
   byes.ts        a player's byes: which rounds may still change, the next round
   matches.ts     a team round as matches: seats, colours, the layout, the score
   teamEvents.ts  the line-up editor's preview (who sits out), rounds a team can still change
   hold.ts        hold to enter: the rules (a second, tap, slide off), no DOM
+  haptics.ts     the buzz a hold makes: native haptics, or navigator.vibrate
   search.ts      when a list search is worth sending, what a hit adds
   alnasl.ts      the line a hall board's report gets beside its pairing
   defaultTime.ts the default-time list, the round's clock, the forfeit to offer
@@ -378,11 +382,9 @@ the privacy policy and the screenshot list are in `store/`.
   (creating, renaming, seeding, the roster's board order, imports), pairing
   a team round robin (the whole schedule at once), pairing hand edits that
   rewrite a match, the cross table and the printed match sheets.
-- **Hold to enter has no native haptics yet.** The lock buzzes through
-  `navigator.vibrate` where the webview has it; on iOS it is silent until
-  `@capacitor/haptics` is added. A screen reader's plain "activate" is a tap
-  too, so it enters nothing: a result is entered with the hold gesture, or
-  with Enter or Space held.
+- **A screen reader's plain "activate" is a tap**, so on a result button
+  it enters nothing: a result is entered with the hold gesture, or with
+  Enter or Space held.
 - **Built against the server's contract, not its finished code.** New
   tournaments, list search, check-in, byes, board reports and board codes
   were written while OpenPairings was still writing its half. The fakes

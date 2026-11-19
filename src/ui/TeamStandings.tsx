@@ -2,14 +2,14 @@
 // (match points or game points first, then the event's tie-breaks), the
 // individual ranking of everyone who played a game, and the board prizes
 // per board with the minimum number of games to count. Read-only; the
-// desk roles, like the individual standings.
+// desk roles, like the individual standings, and shared the same way.
 
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { BoardPrizes, TeamStandings, Tournament } from "../api";
 import { points } from "../matches";
-import { formatNumber as format } from "../share";
+import { formatNumber as format, teamStandingsText } from "../share";
 import type { Ctx } from "./App";
-import { describeError, Empty, Loading, Notice, TryAgain } from "./common";
+import { describeError, Empty, Loading, Notice, ShareButton, TryAgain } from "./common";
 import { PlayerSheet } from "./PlayerSheet";
 import { t as tr } from "../i18n";
 
@@ -57,6 +57,11 @@ export function TeamStandingsScreen(props: { ctx: Ctx; t: Tournament }) {
               </button>
             ))}
           </div>
+          {s.rows.length > 0 && (
+            <div class="view-tools">
+              <ShareButton id="share-team-standings" title={tr("standings.share_title", { name: t.name })} text={() => teamStandingsText(t, s)} />
+            </div>
+          )}
           {view === "teams" && <TeamTable s={s} />}
           {view === "players" && <PlayerTable s={s} onPlayer={setPlayer} />}
           {view === "boards" && <BoardPrizesPanel ctx={ctx} t={t} onPlayer={setPlayer} />}

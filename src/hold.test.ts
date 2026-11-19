@@ -3,7 +3,8 @@
 // scrolling - cancels. Fake timers, so a second is a second.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HOLD_MS, HoldController, holdTiming, LOCK_BUZZ_MS } from "./hold";
+import { HOLD_MS, HoldController, holdTiming } from "./hold";
+import { WEB_BUZZ_MS, webBuzz } from "./haptics";
 
 function make(ms?: number) {
   const calls = { lock: 0, tap: 0, changes: [] as boolean[] };
@@ -17,18 +18,18 @@ function make(ms?: number) {
 }
 
 let buzz: ReturnType<typeof vi.fn>;
-const original = holdTiming.vibrate;
+const original = holdTiming.buzz;
 
 beforeEach(() => {
   vi.useFakeTimers();
   buzz = vi.fn();
-  holdTiming.vibrate = buzz as never;
+  holdTiming.buzz = buzz as never;
   holdTiming.ms = HOLD_MS;
 });
 
 afterEach(() => {
   vi.useRealTimers();
-  holdTiming.vibrate = original;
+  holdTiming.buzz = original;
   holdTiming.ms = HOLD_MS;
 });
 
@@ -44,7 +45,8 @@ describe("hold to enter", () => {
     expect(calls.lock).toBe(0);
     vi.advanceTimersByTime(1);
     expect(calls.lock).toBe(1);
-    expect(buzz).toHaveBeenCalledWith(LOCK_BUZZ_MS);
+    expect(buzz).toHaveBeenNthCalledWith(1, "start");
+    expect(buzz).toHaveBeenLastCalledWith("lock");
     // Letting go afterwards, and the click that follows, enter nothing more and say nothing.
     hold.release();
     hold.click();
@@ -62,7 +64,7 @@ describe("hold to enter", () => {
     vi.advanceTimersByTime(5000);
     expect(calls.lock).toBe(0);
     expect(calls.tap).toBe(1);
-    expect(buzz).not.toHaveBeenCalled();
+    expect(buzz).not.toHaveBeenCalledWith("lock");
   });
 
   it("cancels, silently, when the finger slides off or the page scrolls", () => {
@@ -117,14 +119,33 @@ describe("hold to enter", () => {
     expect(calls.lock).toBe(0);
   });
 
-  it("buzzes through navigator.vibrate where the webview has it, and does without where it has not", () => {
-    holdTiming.vibrate = original;
+  it("is light when the press starts and firmer when it locks", () => {
+    const { hold } = make();
+    hold.start(false);
+    expect(buzz.mock.calls).toEqual([["start"]]);
+    vi.advanceTimersByTime(HOLD_MS);
+    expect(buzz.mock.calls).toEqual([["start"], ["lock"]]);
+  });
+
+  it("buzzes through navigator.vibrate in a browser that has it, and does without where it has not", () => {
+    const vibrate = vi.fn();
+    webBuzz("start", { vibrate });
+    webBuzz("lock", { vibrate });
+    expect(vibrate.mock.calls).toEqual([[WEB_BUZZ_MS.start], [WEB_BUZZ_MS.lock]]);
+    expect(() => webBuzz("lock", {})).not.toThrow();
+    expect(() => webBuzz("lock", undefined)).not.toThrow();
+    const refuses = () => {
+      throw new Error("no");
+    };
+    expect(() => webBuzz("lock", { vibrate: refuses })).not.toThrow();
+  });
+
+  it("goes through the browser outside the app", () => {
+    holdTiming.buzz = original;
     const vibrate = vi.fn();
     vi.stubGlobal("navigator", { vibrate });
-    holdTiming.vibrate(25);
-    expect(vibrate).toHaveBeenCalledWith(25);
-    vi.stubGlobal("navigator", {});
-    expect(() => holdTiming.vibrate(25)).not.toThrow();
+    holdTiming.buzz("lock");
+    expect(vibrate).toHaveBeenCalledWith(WEB_BUZZ_MS.lock);
     vi.unstubAllGlobals();
   });
 });
