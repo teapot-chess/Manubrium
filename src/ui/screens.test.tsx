@@ -1465,6 +1465,31 @@ describe("1.2: the default time, scanning and a player's card", () => {
     await waitFor(() => expect(document.querySelector(".notice.error")).not.toBeNull());
   });
 
+  it("on a relayed tournament opens a uid slip by uid (the laptop's tournament id too) and never an OP1 id", async () => {
+    const U1 = "aaaaaaaaaaaaaaaaaaaaaaaa";
+    const U2 = "bbbbbbbbbbbbbbbbbbbbbbbb";
+    const api = fakeApi(round([board(1, 1, { uid: U1 }), board(2, 2, { uid: U2 })]));
+    const t = { ...tournament("arbiter"), relay: { label: "laptop", since: null, last_seen_at: null, mirrored_at: null, hall: { urls: ["http://192.168.1.20:4748"], tournament_id: 3, seen_at: null, token: "oph1.x", expires_at: "2099-01-01T00:00:00Z" } } };
+    const scan = async (text: string) => {
+      cleanup();
+      render(<RoundScreen ctx={ctxWith(api)} t={t} reloadTournament={async () => undefined} />);
+      phone.scanned = text;
+      fireEvent.click(await el("#scan-slip"));
+    };
+    await scan(`OP2:B:3:1:${U2.toUpperCase()}`);
+    expect((await el("#result-white")).textContent).toBe("White 2");
+
+    // The laptop's print with ids: board 1 on the laptop is not board 1 here.
+    await scan("OP1:B:3:1:1");
+    await waitFor(() => expect(document.querySelector(".notice.error")?.textContent).toContain("older print"));
+    expect(document.querySelector("#result-white")).toBeNull();
+
+    // A uid this round does not have: gone, not guessed.
+    await scan("OP2:B:7:1:cccccccccccccccccccccccc");
+    await waitFor(() => expect(document.querySelector(".notice.error")?.textContent).toContain("no longer in the round"));
+    expect(document.querySelector("#result-white")).toBeNull();
+  });
+
   it("shows a player's card from the result sheet: score, colours, byes and games", async () => {
     const api = fakeApi(round([board(1, 1)]));
     api.playerCard.mockResolvedValue(card);

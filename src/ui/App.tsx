@@ -8,7 +8,7 @@ import { CommandBook } from "../relay";
 import { hallRoutes } from "../hall";
 import { labelFor, type SavedServer } from "../servers";
 import { pendingRevokes, serverList } from "../stores";
-import { onBackButton, onOpenLink, onResume, storage } from "../platform";
+import { onBackButton, onOpenLink, onResume, secureStorage, storage } from "../platform";
 import { currentChoice, loadLanguage, onLanguageChange, saveLanguage, t as tr } from "../i18n";
 import { LinkError, normaliseServer, parseConnectLink } from "../link";
 import { goBack, pushBack } from "../back";
@@ -40,6 +40,8 @@ export interface Ctx {
 
 const outbox = new Outbox(storage);
 const commands = new CommandBook(storage);
+/** The hall passes, kept in the vault beside the tokens: taken back once per run. */
+let hallKept: Promise<void> | null = null;
 
 export function App() {
   const [servers, setServers] = useState<SavedServer[] | null>(null);
@@ -56,6 +58,7 @@ export function App() {
     await loadLanguage(storage);
     await outbox.load();
     await commands.load();
+    await (hallKept ??= hallRoutes.attach(secureStorage).catch(() => undefined));
     // A stored address is checked again on every load: the rule may be
     // stricter than the version that saved it, and storage can be edited.
     const stored = await serverList.all();

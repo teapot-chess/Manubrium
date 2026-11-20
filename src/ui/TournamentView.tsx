@@ -11,6 +11,10 @@ import { TeamsScreen } from "./TeamsScreen";
 import { TeamStandingsScreen } from "./TeamStandings";
 import { RelayBanner, RelayCommands } from "./RelayCommands";
 import { writableWhenRelayed } from "../relay";
+import { hallRoutes } from "../hall";
+
+/** A relayed tournament is read again this often while open: the banner's "last heard" stays true, the pass fresh. */
+const RELAY_REFRESH_MS = 2 * 60_000;
 
 type Tab = "round" | "teams" | "standings" | "players" | "more";
 
@@ -19,14 +23,26 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
   const [t, setT] = useState<Tournament | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("round");
+  // Opened from what the cloud last said, because the cloud cannot be reached now.
+  const [kept, setKept] = useState(false);
 
   async function load() {
     try {
       // A relayed tournament is locked here but not on its laptop, which
       // takes every write the app makes (src/relay.ts).
       setT(writableWhenRelayed(await ctx.api.tournament(line.id)));
+      setKept(false);
       setError(null);
     } catch (e) {
+      // No cloud, but a relayed tournament whose laptop this phone may reach
+      // in the hall (src/hall.ts): open it as it was last shown, and let
+      // the round, standings and writes take the hall path.
+      const snapshot = e instanceof OfflineError ? (hallRoutes.snapshot(ctx.server.base, line.id) as Tournament | null) : null;
+      if (snapshot && !t) {
+        setT(writableWhenRelayed(snapshot));
+        setKept(true);
+        return;
+      }
       // Offline with a record already open is the round screen's business
       // (it says so, and the outbox carries on); anything else is shown.
       if (!(e instanceof OfflineError && t)) setError(describeError(e));
@@ -36,6 +52,13 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
   useEffect(() => {
     load();
   }, [line.id]);
+
+  const relayed = !!t?.relay;
+  useEffect(() => {
+    if (!relayed) return;
+    const timer = setInterval(() => void load(), RELAY_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [relayed, line.id]);
 
   const can = (c: string) => t?.can.includes(c as never) ?? false;
   const tabs: { id: Tab; label: string; show: boolean }[] = [
@@ -65,7 +88,12 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
             }}
           />
         )}
-        {t && <RelayBanner t={t} base={ctx.server.base} />}
+        {t && kept && (
+          <Notice kind="info">
+            <span id="tournament-kept">{tr("tournament.offline_snapshot")}</span>
+          </Notice>
+        )}
+        {t && <RelayBanner t={t} base={ctx.server.base} site={ctx.server.label} />}
         {t && <RelayCommands ctx={ctx} t={t} onAnswered={() => void load()} />}
         {t?.read_only && (
           <Notice kind="info">

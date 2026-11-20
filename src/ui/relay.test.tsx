@@ -46,6 +46,8 @@ const tournament = (): Tournament => ({
   ...(structuredClone(examples["tournament-response.json"]) as { tournament: Tournament }).tournament,
   relay: { label: "laptop Hall", since: null, last_seen_at: "2026-11-19T23:40:00Z", mirrored_at: null },
 });
+/** Five minutes after the laptop's last poll: not quiet yet. */
+const soon = () => Date.parse("2026-11-19T23:45:00Z");
 const pending = (): RelayCommand => (structuredClone(examples["command-response.pending.json"]) as { command: RelayCommand }).command;
 
 afterEach(cleanup);
@@ -61,7 +63,7 @@ async function setup(api: Partial<Client>, command: RelayCommand) {
 
 describe("a relayed tournament", () => {
   it("says at the top that the laptop runs it, through the cloud until the laptop has answered here", () => {
-    render(<RelayBanner t={tournament()} base={server.base} routes={new HallRoutes()} />);
+    render(<RelayBanner t={tournament()} base={server.base} routes={new HallRoutes()} now={soon} />);
     const banner = document.querySelector("#relay-banner")!;
     expect(banner.textContent).toContain("Run from the laptop (laptop Hall).");
     expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud.");
@@ -72,13 +74,47 @@ describe("a relayed tournament", () => {
     const routes = new HallRoutes();
     const t = tournament();
     routes.set(server.base, t.id, { urls: ["http://192.168.1.20:4748"], tournament_id: 2, seen_at: null, token: "oph1.x", expires_at: "2099-01-01T00:00:00Z" });
-    render(<RelayBanner t={t} base={server.base} routes={routes} />);
+    render(<RelayBanner t={t} base={server.base} routes={routes} now={soon} />);
     expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud.");
     act(() => routes.reached(server.base, t.id, "http://192.168.1.20:4748"));
     await waitFor(() => expect(document.querySelector("#relay-path")!.textContent).toBe("Connected to the laptop in the hall."));
     expect(document.querySelector("#relay-banner")!.getAttribute("data-path")).toBe("hall");
     act(() => routes.cloud(server.base, t.id));
     await waitFor(() => expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud."));
+  });
+
+  it("says when the laptop has gone quiet for ten minutes, and that the owner can take it back on the website", () => {
+    const late = () => Date.parse("2026-11-19T23:50:00Z");
+    const { unmount } = render(<RelayBanner t={{ ...tournament(), role: "owner" }} base={server.base} routes={new HallRoutes(late)} site="pairings.cloud" now={late} />);
+    const banner = document.querySelector("#relay-banner")!;
+    expect(banner.classList.contains("relay-silent")).toBe(true);
+    expect(document.querySelector("#relay-silent")!.textContent).toContain("The laptop hasn't answered since");
+    expect(document.querySelector("#relay-silent")!.textContent).toContain("Results wait in the outbox.");
+    expect(document.querySelector("#relay-take-back")!.textContent).toBe("You can take the tournament back without the laptop on pairings.cloud, from the tournament's banner.");
+    unmount();
+
+    // Somebody else's tournament: the organiser can, not this phone's holder.
+    render(<RelayBanner t={{ ...tournament(), role: "arbiter" }} base={server.base} routes={new HallRoutes(late)} site="pairings.cloud" now={late} />);
+    expect(document.querySelector("#relay-take-back")!.textContent).toBe("The organiser can take it back without the laptop on the website.");
+  });
+
+  it("is not quiet while the laptop answers this phone in the hall, whatever the cloud last heard", async () => {
+    const late = Date.parse("2026-11-19T23:50:00Z");
+    const routes = new HallRoutes(() => late);
+    const t = tournament();
+    routes.set(server.base, t.id, { urls: ["http://192.168.1.20:4748"], tournament_id: 2, seen_at: null, token: "oph1.x", expires_at: "2099-01-01T00:00:00Z" });
+    routes.reached(server.base, t.id, "http://192.168.1.20:4748");
+    render(<RelayBanner t={t} base={server.base} routes={routes} now={() => late} />);
+    expect(document.querySelector("#relay-silent")).toBeNull();
+    expect(document.querySelector("#relay-path")!.textContent).toBe("Connected to the laptop in the hall.");
+  });
+
+  it("counts the laptop's word about its hall address as hearing from it", () => {
+    const late = () => Date.parse("2026-11-19T23:50:00Z");
+    const t = tournament();
+    const relay = { ...t.relay!, hall: { urls: ["http://192.168.1.20:4748"], tournament_id: 2, seen_at: "2026-11-19T23:48:00Z", token: "oph1.x", expires_at: "2099-01-01T00:00:00Z" } };
+    render(<RelayBanner t={{ ...t, relay }} base={server.base} routes={new HallRoutes(late)} now={late} />);
+    expect(document.querySelector("#relay-silent")).toBeNull();
   });
 
   it("says nothing for a tournament that is not relayed", () => {

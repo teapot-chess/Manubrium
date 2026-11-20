@@ -335,7 +335,7 @@ export type TeamRoundStatus = "plays" | "absent" | "half_bye";
 
 export interface TeamStandingRow {
   rank: number;
-  team: { id: number; name: string; short_name: string | null; series: string | null };
+  team: { id: number; uid?: string; name: string; short_name: string | null; series: string | null };
   mp: number;
   gp: number;
   played: number;
@@ -432,7 +432,7 @@ export type SettingsChange = Partial<{
 
 export interface StandingRow {
   rank: string | number | null;
-  player: { id: number; name: string; title: string | null; rating: number | null } | null;
+  player: { id: number; uid?: string; name: string; title: string | null; rating: number | null } | null;
   points: number | null;
   tiebreaks: Record<string, number | null>;
 }
@@ -1062,13 +1062,16 @@ async function call<T>(
   if (key) keys.answered(base, request);
 
   const { status, data } = answer;
+  // The cloud no longer knows this phone (only the cloud answers 401 here:
+  // the laptop's 401 is about the pass, and goes round). Its passes go too.
+  if (status === 401 && token !== null) routes.forgetServer(base);
   if (status === 204) return undefined as T;
 
   // The tournament says where its laptop answers in the hall, or that it does not.
   const read = tournamentRead(method, path);
   if (read !== null && token !== null && status === 200) {
     const relay = (data.tournament as { relay?: { hall?: unknown } | null } | undefined)?.relay;
-    routes.set(base, read, readHall(relay?.hall));
+    routes.set(base, read, readHall(relay?.hall), data.tournament);
   }
 
   // A relayed tournament: the write went to the laptop. 202 while it decides;

@@ -1,11 +1,29 @@
 import { useEffect, useState } from "preact/hooks";
-import { ApiError, type TournamentLine } from "../api";
+import { ApiError, OfflineError, type Tournament, type TournamentLine } from "../api";
+import { hallRoutes } from "../hall";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, TopBar, TryAgain } from "./common";
 import { t as tr } from "../i18n";
 
 const roleName = (role: string): string =>
   role === "owner" ? tr("tournaments.role.owner") : role === "editor" ? tr("tournaments.role.editor") : role === "arbiter" ? tr("tournaments.role.arbiter") : role;
+
+/** A kept tournament as a line of the list. */
+function lineOf(t: Tournament): TournamentLine {
+  const s = (t.settings ?? {}) as Record<string, unknown>;
+  const text = (v: unknown) => (typeof v === "string" ? v : null);
+  return {
+    id: t.id,
+    name: t.name,
+    role: t.role,
+    status: t.status,
+    start_date: text(s.start_date),
+    end_date: text(s.end_date),
+    city: text(s.city),
+    rounds_count: t.rounds_count,
+    paired_rounds: t.paired_rounds,
+  };
+}
 
 export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () => void; onOpen: (t: TournamentLine) => void }) {
   const { ctx } = props;
@@ -20,6 +38,14 @@ export function Tournaments(props: { ctx: Ctx; onServers: () => void; onNew: () 
       setSignedOut(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setSignedOut(true);
+      // No cloud: the relayed tournaments whose laptop this phone holds a
+      // pass for are still worth opening (src/hall.ts).
+      const kept = e instanceof OfflineError ? (hallRoutes.keptTournaments(ctx.server.base) as Tournament[]) : [];
+      if (kept.length) {
+        setList(kept.map(lineOf));
+        setError(tr("tournaments.offline_kept"));
+        return;
+      }
       setError(describeError(e));
     }
   }

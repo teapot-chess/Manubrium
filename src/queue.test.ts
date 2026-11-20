@@ -207,6 +207,13 @@ describe("refusalText", () => {
     expect(refusalText(refused("Board 2: not saved - the board now says 0-1."))).toBe("Board 2: not saved - the board now says 0-1.");
   });
 
+  it("shows the server's own sentence for a reason this app has never heard of (a desk taken back by force, say)", () => {
+    expect(refusalText(refused("Board 2: kept for the arbiter to review after the laptop was taken back.", { reason: "some_new_reason" }))).toBe(
+      "Board 2: kept for the arbiter to review after the laptop was taken back.",
+    );
+    expect(refusalText({ ...refused("x", { reason: "some_new_reason" }), message: null })).toBe("Not accepted by the server.");
+  });
+
   it("names the board the server could not, from the label the round showed", () => {
     expect(refusalText(refused("Board ?: not saved.", { label: "2a" }))).toBe("Board 2a: not saved.");
     expect(refusalText(refused("Board ?: not saved."))).toBe("Board 2: not saved.");

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import type { Standings, Tournament } from "../api";
+import { refOf, type Ref, type Standings, type Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, ShareButton, TryAgain } from "./common";
 import { PlayerSheet } from "./PlayerSheet";
@@ -22,7 +22,7 @@ export function tiebreakNote(s: Standings): string | null {
 export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   const [s, setS] = useState<Standings | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [player, setPlayer] = useState<number | null>(null);
+  const [player, setPlayer] = useState<Ref | null>(null);
   const [loads, setLoads] = useState(0);
 
   async function load() {
@@ -71,7 +71,7 @@ export function StandingsScreen(props: { ctx: Ctx; t: Tournament }) {
                   <td>{r.rank ?? ""}</td>
                   <td class="player">
                     {r.player ? (
-                      <button type="button" class="link" id={`standings-player-${r.player.id}`} onClick={() => setPlayer(r.player!.id)}>
+                      <button type="button" class="link" id={`standings-player-${r.player.id}`} onClick={() => setPlayer(refOf(r.player!))}>
                         {r.player.title && <em>{r.player.title} </em>}
                         {r.player.name}
                       </button>

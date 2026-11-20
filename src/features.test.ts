@@ -22,7 +22,7 @@ import {
   started,
   waitingBoards,
 } from "./defaultTime";
-import { boardOf, parseScan } from "./scan";
+import { boardIn, boardOf, parseScan, slipTarget } from "./scan";
 import { colourHistory } from "./ui/PlayerSheet";
 import { loadPhoneSettings, PHONE_DEFAULTS, savePhoneSettings } from "./phoneSettings";
 
@@ -258,8 +258,66 @@ describe("scan codes", () => {
     expect(parseScan(" op1:p:7:55 ")).toEqual({ kind: "player", tournament: 7, player: 55 });
   });
 
+  it("reads the uid slips of a relayed tournament, the uid in lower case whatever the scanner made of it", () => {
+    expect(parseScan("OP2:B:7:3:9f1c2a3b4c5d6e7f8a9b0c1d")).toEqual({ kind: "board", tournament: 7, round: 3, pairing: "9f1c2a3b4c5d6e7f8a9b0c1d" });
+    expect(parseScan(" OP2:B:7:3:9F1C2A3B4C5D6E7F8A9B0C1D ")).toEqual({ kind: "board", tournament: 7, round: 3, pairing: "9f1c2a3b4c5d6e7f8a9b0c1d" });
+    expect(parseScan("op2:p:7:aaaaaaaaaaaaaaaaaaaaaaaa")).toEqual({ kind: "player", tournament: 7, player: "aaaaaaaaaaaaaaaaaaaaaaaa" });
+  });
+
   it("refuses anything else", () => {
-    for (const text of [null, "", "https://pairings.example", "OP1:B:7:3", "OP2:B:7:3:1", "OP1:X:7:1", "manubrium://connect?x=1"]) expect(parseScan(text)).toBeNull();
+    for (const text of [null, "", "https://pairings.example", "OP1:B:7:3", "OP2:B:7:3:1", "OP2:B:7:3:9f1c2a3b4c5d6e7f8a9b0c1", "OP2:P:7:zzzzzzzzzzzzzzzzzzzzzzzz", "OP2:B:7:3:9f1c2a3b4c5d6e7f8a9b0c1d0", "OP1:X:7:1", "manubrium://connect?x=1"])
+      expect(parseScan(text)).toBeNull();
+  });
+
+  describe("whose slip it is", () => {
+    const UID = "9f1c2a3b4c5d6e7f8a9b0c1d";
+    const hosted = { id: 7, relay: null };
+    // The cloud's id 7; the laptop calls the same tournament 2.
+    const relayed = { id: 7, relay: { hall: { tournament_id: 2 } } };
+
+    it("opens an OP1 slip by id on a tournament that is not relayed, and refuses another tournament's", () => {
+      expect(slipTarget(parseScan("OP1:B:7:3:1042"), hosted)).toEqual({ kind: "board", round: 3, pairing: 1042 });
+      expect(slipTarget(parseScan("OP1:P:7:55"), hosted)).toEqual({ kind: "player", player: 55 });
+      expect(slipTarget(parseScan("OP1:B:8:3:1042"), hosted)).toEqual({ kind: "refused", reason: "other_tournament" });
+      expect(slipTarget(parseScan("nonsense"), hosted)).toEqual({ kind: "refused", reason: "not_a_slip" });
+    });
+
+    it("opens an OP2 slip by uid whether it names the cloud's id or the laptop's", () => {
+      expect(slipTarget(parseScan(`OP2:B:7:3:${UID}`), relayed)).toEqual({ kind: "board", round: 3, pairing: UID });
+      expect(slipTarget(parseScan(`OP2:B:2:3:${UID}`), relayed)).toEqual({ kind: "board", round: 3, pairing: UID });
+      expect(slipTarget(parseScan(`OP2:P:2:${UID}`), relayed)).toEqual({ kind: "player", player: UID });
+      expect(slipTarget(parseScan(`OP2:B:9:3:${UID}`), relayed)).toEqual({ kind: "refused", reason: "other_tournament" });
+      // Not relayed, a uid slip still names its tournament by the one id there is.
+      expect(slipTarget(parseScan(`OP2:B:7:3:${UID}`), hosted)).toEqual({ kind: "board", round: 3, pairing: UID });
+      expect(slipTarget(parseScan(`OP2:B:2:3:${UID}`), hosted)).toEqual({ kind: "refused", reason: "other_tournament" });
+    });
+
+    it("never looks an OP1 id up on a relayed tournament: the laptop's print or the cloud's, it is an older print", () => {
+      // The laptop's id for the tournament, the laptop's id for the board: not the cloud's board 1042.
+      expect(slipTarget(parseScan("OP1:B:2:3:1042"), relayed)).toEqual({ kind: "refused", reason: "old_print" });
+      expect(slipTarget(parseScan("OP1:P:2:55"), relayed)).toEqual({ kind: "refused", reason: "old_print" });
+      // The cloud's ids, but the round on screen may be the laptop's.
+      expect(slipTarget(parseScan("OP1:B:7:3:1042"), relayed)).toEqual({ kind: "refused", reason: "old_print" });
+      // The laptop's id and the cloud's the same number: still not safe.
+      expect(slipTarget(parseScan("OP1:B:2:3:1042"), { id: 2, relay: { hall: { tournament_id: 2 } } })).toEqual({ kind: "refused", reason: "old_print" });
+      // Relayed with no hall path known: the same.
+      expect(slipTarget(parseScan("OP1:B:7:3:1042"), { id: 7, relay: { hall: null } })).toEqual({ kind: "refused", reason: "old_print" });
+    });
+
+    it("takes a uid slip on a relayed tournament whose laptop id is not known now: a uid opens this round's board or none", () => {
+      expect(slipTarget(parseScan(`OP2:B:2:3:${UID}`), { id: 7, relay: { hall: null } })).toEqual({ kind: "board", round: 3, pairing: UID });
+    });
+
+    it("finds the board and the player by uid, and nothing for a uid not in the round", () => {
+      const r = round([board(1, { uid: UID }), board(2, { uid: "bbbbbbbbbbbbbbbbbbbbbbbb", white: { ...p(21), uid: "cccccccccccccccccccccccc" } })]);
+      expect(boardIn(r, UID)?.id).toBe(1);
+      expect(boardIn(r, 1)?.id).toBe(1);
+      expect(boardIn(r, "dddddddddddddddddddddddd")).toBeNull();
+      // A uid that happens to be all digits is still a uid, never an id.
+      expect(boardIn(r, "000000000000000000000001")).toBeNull();
+      expect(boardOf(r, "cccccccccccccccccccccccc")?.id).toBe(2);
+      expect(boardOf(r, "dddddddddddddddddddddddd")).toBeNull();
+    });
   });
 
   it("finds a player's board, not their bye", () => {

@@ -24,6 +24,7 @@ export const en = {
   "tournaments.waiting": "{n} waiting",
   "tournaments.new": "New tournament",
   "tournaments.refresh": "Refresh",
+  "tournaments.offline_kept": "No connection to the server. The tournaments run from a laptop in this hall are still here.",
   "servers.title": "Servers",
   "servers.subtitle": "Each with its own sign-in",
   "servers.desktop": "Desktop",
@@ -53,6 +54,7 @@ export const en = {
   "tournament.archived": "This tournament is archived.",
   "tournament.read_only_tail": "Everything here can be read; nothing can be changed.",
   "tournament.nav_aria": "Tournament",
+  "tournament.offline_snapshot": "No connection to the server: this is the tournament as it last showed it. The laptop in the hall answers what it can.",
   "tabs.round": "Round",
   "tabs.standings": "Standings",
   "tabs.players": "Players",
@@ -470,6 +472,7 @@ export const en = {
   "scan.other_tournament": "That slip belongs to another tournament.",
   "scan.round_not_paired": "Round {n} is not paired.",
   "scan.board_gone": "That board is no longer in the round: the pairings changed after the slip was printed.",
+  "scan.old_print": "That slip is from an older print: it names its board by a number only one copy of this tournament understands. Reprint the slips on the laptop, or pick the board by hand.",
   "player.title": "Player",
   "player.withdrawn": "Withdrawn from the tournament.",
   "player.expelled": "Expelled from the tournament.",
@@ -995,6 +998,9 @@ export const en = {
   "more.waiting_for_desk": "Sent, waiting for the desk",
   "round.waiting_desk": "Sent",
   "relay.board_code": "The board's code: {code}",
+  "relay.laptop_silent": "The laptop hasn't answered since {time}. Results wait in the outbox.",
+  "relay.take_back_owner": "You can take the tournament back without the laptop on {site}, from the tournament's banner.",
+  "relay.take_back_other": "The organiser can take it back without the laptop on the website.",
 };
 
 export type Key = keyof typeof en;
