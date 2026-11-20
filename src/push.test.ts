@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PUSH_EVENTS, type Client, type PushStatus, type Round } from "./api";
-import { activityKey, LiveActivities, plan, progress, type RoundActivityPlugin } from "./liveActivity";
+import { activityKey, LiveActivities, parseKey, plan, progress, stateOf, type Phase, type RoundActivityPlugin } from "./liveActivity";
 import { ASKED_KEY, lockScreenOn, PushManager, serverCanPush, shouldOffer, tapTarget, TOKEN_KEY, withEvent, type PushBackend } from "./push";
 import type { KeyValue } from "./queue";
 import type { SavedServer } from "./servers";
@@ -185,74 +185,145 @@ describe("the round's progress", () => {
     expect(progress(r)).toEqual({ done: 2, total: 3 });
   });
 
-  it("starts, updates and ends the activity as results come in", () => {
-    expect(plan(round(5, ["", ""]), undefined)).toBe("start");
-    expect(plan(round(5, ["1-0", ""]), { round: 5, done: 0, total: 2 })).toBe("update");
-    expect(plan(round(5, ["1-0", ""]), { round: 5, done: 1, total: 2 })).toBe("none");
-    expect(plan(round(5, ["1-0", "0-1"]), { round: 5, done: 1, total: 2 })).toBe("end");
-    expect(plan(round(5, ["1-0", "0-1"]), undefined)).toBe("none");
-    expect(plan(round(6, ["", ""]), { round: 5, done: 1, total: 2 })).toBe("start");
-    expect(plan(round(4, ["", ""], { latest: false }), undefined)).toBe("none");
+  it("follows the tournament: a complete round stays, the next one moves it on, the end ends it", () => {
+    const at = (round: number, done: number, total: number, phase: Phase = done === 0 ? "paired" : done >= total ? "complete" : "playing") => ({ round, done, total, phase });
+    expect(plan(round(5, ["", ""]), undefined, false)).toBe("start");
+    expect(plan(round(5, ["1-0", ""]), at(5, 0, 2), false)).toBe("update");
+    expect(plan(round(5, ["1-0", ""]), at(5, 1, 2), false)).toBe("none");
+    expect(plan(round(5, ["1-0", "0-1"]), at(5, 1, 2), false)).toBe("update");
+    expect(plan(round(5, ["1-0", "0-1"]), at(5, 2, 2), false)).toBe("none");
+    expect(plan(round(5, ["1-0", "0-1"]), undefined, false)).toBe("start");
+    expect(plan(round(6, ["", ""]), at(5, 2, 2), false)).toBe("update");
+    expect(plan(round(5, ["", ""]), at(6, 0, 2), false)).toBe("none");
+    expect(plan(round(4, ["", ""], { latest: false }), undefined, false)).toBe("none");
+    expect(plan(round(7, ["1-0", "0-1"]), at(7, 2, 2), true)).toBe("end");
+    expect(plan(round(7, ["1-0", "0-1"]), undefined, true)).toBe("none");
+  });
+
+  it("names the phase, and reads a key back", () => {
+    expect(stateOf(round(3, ["", ""]), false)).toEqual({ round: 3, done: 0, total: 2, phase: "paired" });
+    expect(stateOf(round(3, ["1-0", ""]), false).phase).toBe("playing");
+    expect(stateOf(round(3, ["1-0", "½-½"]), false).phase).toBe("complete");
+    expect(stateOf(round(3, ["1-0", "½-½"]), true).phase).toBe("finished");
+    expect(parseKey(activityKey("https://pairings.cloud", 7))).toEqual({ base: "https://pairings.cloud", tournament: 7 });
+    expect(parseKey("nonsense")).toBeNull();
   });
 });
 
 describe("LiveActivities", () => {
+  const STRINGS = { title: "Round {n}", format: "{done} of {total} results", complete: "All results in" };
+  const BASE = "https://pairings.cloud";
+
   function fakePlugin(supported = true) {
     const calls: [string, unknown][] = [];
-    let tokenHandler: ((e: { key: string; token: string }) => void) | null = null;
-    const plugin: RoundActivityPlugin = {
-      info: async () => ({ supported, enabled: true, environment: "production" }),
-      start: async (o) => void calls.push(["start", o]),
-      update: async (o) => void calls.push(["update", o]),
-      end: async (o) => void calls.push(["end", o]),
-      addListener: async (_e, h) => {
-        tokenHandler = h;
+    const handlers: Record<string, (e: never) => void> = {};
+    const plugin = {
+      info: async () => ({ supported, enabled: true, pushToStart: true, environment: "production" as const }),
+      start: async (o: unknown) => void calls.push(["start", o]),
+      update: async (o: unknown) => void calls.push(["update", o]),
+      end: async (o: unknown) => void calls.push(["end", o]),
+      addListener: async (e: string, h: (e: never) => void) => {
+        handlers[e] = h;
         return { remove: async () => undefined };
       },
+    } as unknown as RoundActivityPlugin;
+    return {
+      plugin,
+      calls,
+      token: (key: string, token: string, round?: number) => handlers.pushToken?.({ key, token, round } as never),
+      startToken: (token: string) => handlers.startToken?.({ token } as never),
     };
-    return { plugin, calls, token: (key: string, token: string) => tokenHandler?.({ key, token }) };
   }
 
-  const api = () => {
+  const api = (over: Partial<PushStatus> = {}) => {
     const sent: unknown[] = [];
     const deleted: number[] = [];
+    const starts: unknown[] = [];
     return {
       sent,
       deleted,
+      starts,
       api: {
         putLiveActivity: async (id: number, a: unknown) => void sent.push([id, a]),
         deleteLiveActivity: async (id: number) => void deleted.push(id),
+        pushStatus: async () => status(over),
+        putLiveActivityStart: async (s: unknown) => void starts.push(s),
+        deleteLiveActivityStart: async () => void starts.push("deleted"),
       } as unknown as Client,
     };
   };
 
-  const sync = (l: LiveActivities, a: Client, r: Round, on = true) =>
-    l.sync({ base: "https://pairings.cloud", api: a, tournament: 7, name: "Hall Open", round: r, title: `Round ${r.number}`, format: "{done} of {total} results", on });
+  const sync = (l: LiveActivities, a: Client, r: Round, on = true, finished = false) =>
+    l.sync({ base: BASE, api: a, tournament: 7, name: "Hall Open", round: r, finished, strings: STRINGS, on });
 
-  it("starts with the round, hands the token to the server, and ends with the last result", async () => {
+  it("starts once, keeps it across rounds, hands the token over, and ends with the tournament", async () => {
     const { plugin, calls, token } = fakePlugin();
     const { api: a, sent, deleted } = api();
     const l = new LiveActivities(plugin);
     await sync(l, a, round(5, ["", "1-0"]));
-    expect(calls[0]).toEqual(["start", { key: activityKey("https://pairings.cloud", 7), tournament: "Hall Open", round: 5, title: "Round 5", format: "{done} of {total} results", done: 1, total: 2 }]);
-    await token("https://pairings.cloud#7", "80f1a2b3c4d5e6f7");
-    await vi.waitFor(() => expect(sent).toEqual([[7, { round: 5, token: "80f1a2b3c4d5e6f7", environment: "production" }]]));
+    expect(calls[0]).toEqual([
+      "start",
+      { key: activityKey(BASE, 7), tournament: "Hall Open", round: 5, done: 1, total: 2, phase: "playing", title: "Round 5", format: "{done} of {total} results", roundTitle: "Round {n}", complete: "All results in" },
+    ]);
+    await token(`${BASE}#7`, "80f1a2b3c4d5e6f7", 5);
+    await vi.waitFor(() => expect(sent).toEqual([[7, { round: 5, token: "80f1a2b3c4d5e6f7", environment: "production", follows: "tournament" }]]));
     await sync(l, a, round(5, ["1-0", "1-0"]));
-    expect(calls[1]).toEqual(["end", { key: "https://pairings.cloud#7", done: 2, total: 2 }]);
+    expect(calls[1]).toEqual(["update", { key: `${BASE}#7`, round: 5, done: 2, total: 2, phase: "complete" }]);
+    await sync(l, a, round(6, ["", ""]));
+    expect(calls[2]).toEqual(["update", { key: `${BASE}#7`, round: 6, done: 0, total: 2, phase: "paired" }]);
+    expect(deleted).toEqual([]);
+    await sync(l, a, round(6, ["1-0", "0-1"]), true, true);
+    expect(calls[3]).toEqual(["end", { key: `${BASE}#7`, round: 6, done: 2, total: 2, phase: "finished" }]);
     expect(deleted).toEqual([7]);
   });
 
   it("ends the activity when switched off, and does nothing where unsupported", async () => {
     const one = fakePlugin();
-    const { api: a } = api();
+    const { api: a, deleted } = api();
     const l = new LiveActivities(one.plugin);
     await sync(l, a, round(5, ["", ""]));
     await sync(l, a, round(5, ["", ""]), false);
     expect(one.calls.map(([k]) => k)).toEqual(["start", "end"]);
+    expect(deleted).toEqual([7]);
+
+    // Off from the start: whatever is left from before goes, once.
+    const fresh = fakePlugin();
+    const l2 = new LiveActivities(fresh.plugin);
+    await sync(l2, a, round(5, ["", ""]), false);
+    await sync(l2, a, round(5, ["", ""]), false);
+    expect(fresh.calls.map(([k]) => k)).toEqual(["end"]);
 
     const none = fakePlugin(false);
     await sync(new LiveActivities(none.plugin), a, round(5, ["", ""]));
     expect(none.calls).toEqual([]);
+  });
+
+  it("sends the token of one the server started to the server it names", async () => {
+    const { plugin, token } = fakePlugin();
+    const { api: a, sent } = api();
+    const l = new LiveActivities(plugin);
+    const server = { base: BASE, token: "mnb_x", label: "Cloud" } as unknown as SavedServer;
+    await l.connect({ servers: [server], api: () => a, on: true, strings: STRINGS });
+    await token(`${BASE}#9`, "aa11bb22cc33dd44", 3);
+    await token("https://elsewhere.example#9", "ee55ff66aa77bb88", 3);
+    await vi.waitFor(() => expect(sent).toEqual([[9, { round: 3, token: "aa11bb22cc33dd44", environment: "production", follows: "tournament" }]]));
+  });
+
+  it("gives the push-to-start token to servers that can push, and takes it back when switched off", async () => {
+    const { plugin, startToken } = fakePlugin();
+    const pushing = api();
+    const silent = api({ available: false });
+    const l = new LiveActivities(plugin);
+    const servers = [{ base: BASE }, { base: "https://club.example" }] as unknown as SavedServer[];
+    const apiFor = (s: SavedServer) => (s.base === BASE ? pushing.api : silent.api);
+    await l.connect({ servers, api: apiFor, on: true, strings: STRINGS });
+    await startToken("5a5a5a5a5a5a5a5a");
+    await vi.waitFor(() => expect(pushing.starts).toEqual([{ token: "5a5a5a5a5a5a5a5a", environment: "production", tag: BASE, ...STRINGS }]));
+    expect(silent.starts).toEqual([]);
+
+    await l.connect({ servers, api: apiFor, on: false, strings: STRINGS });
+    expect(pushing.starts.at(-1)).toBe("deleted");
+    expect(silent.starts).toEqual(["deleted"]);
   });
 });
 

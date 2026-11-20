@@ -566,6 +566,7 @@ export const en = {
   "push.reminder_cancel": "Cancel",
   "live.title": "Round {n}",
   "live.format": "{done} of {total} results",
+  "live.complete": "All results in",
   // --- live board control (src/ui/LiveBoards.tsx) ---
   "live.open": "Live boards",
   "live.screen_title": "Live boards",

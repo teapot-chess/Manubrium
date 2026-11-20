@@ -146,6 +146,8 @@ const ROUTES: Route[] = [
   { method: "GET", path: /^\/push$/, contract: "GET /push", response: "push-response" },
   { method: "PUT", path: /^\/push$/, contract: "PUT /push", request: "push-register-request", response: "push-response" },
   { method: "DELETE", path: /^\/push$/, contract: "DELETE /push", response: "push-unregister-response" },
+  { method: "PUT", path: /^\/push\/live-activity-start$/, contract: "PUT /push/live-activity-start", request: "live-activity-start-request", response: "live-activity-start-response" },
+  { method: "DELETE", path: /^\/push\/live-activity-start$/, contract: "DELETE /push/live-activity-start", response: "live-activity-start-response" },
   { method: "PUT", path: /^\/tournaments\/\d+\/live-activity$/, contract: "PUT /tournaments/:id/live-activity", request: "live-activity-request", response: "live-activity-response" },
   { method: "DELETE", path: /^\/tournaments\/\d+\/live-activity$/, contract: "DELETE /tournaments/:id/live-activity", response: "live-activity-response" },
   { method: "PUT", path: /^\/tournaments\/\d+\/default-time$/, contract: "PUT /tournaments/:id/default-time", request: "default-time-request", response: "default-time-response" },
@@ -356,8 +358,10 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   pushStatus: (c) => c.pushStatus(),
   registerPush: (c) => c.registerPush({ platform: "apns", token: "a1b2c3d4e5f60718", environment: "sandbox", events: ["round_paired", "incident"], tag: BASE }),
   unregisterPush: (c) => c.unregisterPush(),
-  putLiveActivity: (c) => c.putLiveActivity(2, { round: 1, token: "80f1a2b3c4d5e6f7", environment: "production" }),
+  putLiveActivity: (c) => c.putLiveActivity(2, { round: 1, token: "80f1a2b3c4d5e6f7", environment: "production", follows: "tournament" }),
   deleteLiveActivity: (c) => c.deleteLiveActivity(2),
+  putLiveActivityStart: (c) => c.putLiveActivityStart({ token: "80f2b4d6e8a0c1e3", environment: "production", tag: BASE, title: "Round {n}", format: "{done} of {total} results", complete: "All results in" }),
+  deleteLiveActivityStart: (c) => c.deleteLiveActivityStart(),
   setDefaultTime: (c) => c.setDefaultTime(2, 1, "2026-11-08T14:30:00Z"),
   cancelDefaultTime: (c) => c.cancelDefaultTime(2, 1),
   liveBoards: (c) => c.liveBoards(2),
@@ -453,6 +457,7 @@ describe("every answer in the contract, through the app's client", () => {
     ["push-response", (c) => c.pushStatus(), (e) => e.push],
     ["push-unregister-response", (c) => c.unregisterPush(), () => undefined],
     ["live-activity-response", (c) => c.deleteLiveActivity(2), () => undefined],
+    ["live-activity-start-response", (c) => c.deleteLiveActivityStart(), () => undefined],
     ["default-time-response", (c) => c.cancelDefaultTime(2, 1), () => undefined],
   ];
 

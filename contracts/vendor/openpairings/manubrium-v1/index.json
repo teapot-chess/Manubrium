@@ -1,7 +1,7 @@
 {
   "contract": "manubrium",
   "version": 1,
-  "revision": 9,
+  "revision": 10,
   "files": [
     "arrivals-response.schema.json",
     "board-history-response.schema.json",
@@ -75,6 +75,8 @@
     "examples/lineups-request.out.json",
     "examples/live-activity-request.json",
     "examples/live-activity-response.json",
+    "examples/live-activity-start-request.json",
+    "examples/live-activity-start-response.json",
     "examples/live-board-command-request.accept-result.json",
     "examples/live-board-command-request.json",
     "examples/live-board-command-response.accept-result.json",
@@ -162,6 +164,8 @@
     "lineups-request.schema.json",
     "live-activity-request.schema.json",
     "live-activity-response.schema.json",
+    "live-activity-start-request.schema.json",
+    "live-activity-start-response.schema.json",
     "live-board-command-request.schema.json",
     "live-board-command-response.schema.json",
     "live-board-game-response.schema.json",

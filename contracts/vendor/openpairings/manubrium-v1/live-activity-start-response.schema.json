@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-activity-start-response.schema.json",
+  "title": "PUT or DELETE /push/live-activity-start response",
+  "description": "Revision 10. The push-to-start token kept (PUT) or forgotten (DELETE): 204 No Content, empty body. Described here as {status, body} because there is no JSON to describe. Refusals (error.schema.json): 400 bad_request, 422 bad_token, bad_environment. An older server answers 404: it cannot start an activity, and the phone carries on without.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "body"
+  ],
+  "properties": {
+    "status": {
+      "const": 204
+    },
+    "body": {
+      "const": "",
+      "description": "Nothing: do not parse it as JSON."
+    }
+  }
+}

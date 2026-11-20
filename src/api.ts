@@ -692,6 +692,8 @@ export interface PushStatus {
 }
 
 export interface PushRegister { platform: PushPlatform; token: string; environment?: PushEnvironment; events?: PushEvent[]; tag?: string }
+/** PUT /push/live-activity-start: the token, and the strings the server draws a started activity with. */
+export interface LiveActivityStart { token: string; environment?: PushEnvironment; tag?: string; title?: string; format?: string; complete?: string }
 
 // --- Live board control (the hall's boards, through OpenPairings) ---------
 // What the boxes (Alnasl) report about every physical board, and the
@@ -1152,8 +1154,12 @@ export interface Client {
   pushStatus(): Promise<PushStatus>;
   registerPush(push: PushRegister): Promise<PushStatus>;
   unregisterPush(): Promise<void>;
-  putLiveActivity(id: number, activity: { round: number; token: string; environment?: PushEnvironment }): Promise<void>;
+  /** `follows` (contract revision 10): "tournament" keeps one activity across rounds; an older server ignores it. */
+  putLiveActivity(id: number, activity: { round: number; token: string; environment?: PushEnvironment; follows?: "round" | "tournament" }): Promise<void>;
   deleteLiveActivity(id: number): Promise<void>;
+  /** The push-to-start token (iOS 17.2+, revision 10): the server may start the activity again once iOS ended it. */
+  putLiveActivityStart(start: LiveActivityStart): Promise<void>;
+  deleteLiveActivityStart(): Promise<void>;
   setDefaultTime(id: number, round: number, at: string): Promise<void>;
   cancelDefaultTime(id: number, round: number): Promise<void>;
 
@@ -1294,6 +1300,12 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     },
     deleteLiveActivity: async (id) => {
       await req("DELETE", `${t(id)}/live-activity`);
+    },
+    putLiveActivityStart: async (start) => {
+      await req("PUT", "/push/live-activity-start", { start });
+    },
+    deleteLiveActivityStart: async () => {
+      await req("DELETE", "/push/live-activity-start");
     },
     setDefaultTime: async (id, round, at) => {
       await req("PUT", `${t(id)}/default-time`, { reminder: { round, at } });
