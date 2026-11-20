@@ -1,6 +1,6 @@
 {
   "name": "manubrium",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "description": "Manubrium - run a chess tournament from the playing hall, against OpenPairings servers.",
