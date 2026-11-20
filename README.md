@@ -201,7 +201,13 @@ keeps a locked mirror and an inbox for the phones (OpenPairings'
 
 - says so at the top: "Run from the laptop (its name).", then which road it
   uses: "Connected to the laptop in the hall." or "Through the cloud.", with
-  when the laptop last asked for results;
+  when the laptop last asked for results. When nothing has been heard from
+  the laptop for ten minutes by any road (its last poll, its last word about
+  its hall address, this phone's last answer from it), the banner says so
+  and that results wait in the outbox, and adds that the tournament can be
+  taken back on the website without the laptop (to the owner: on this
+  server, from the tournament's banner). The tournament is read again every
+  two minutes while it is open, so "last heard" stays honest;
 - keeps every button the role allows. The hosted copy calls itself read-only
   and blocks pairing as `read_only`, but every write goes to the laptop,
   which runs it through its own copy of the API with this phone's role, so
@@ -239,9 +245,12 @@ The client (`src/api.ts`, `call`) then:
   once, which goes through the same `RelayedWrite` as the cloud's answer;
 - sends the outbox's sync there too, whose results come back saved or
   refused, never pending;
-- reads the round, the players, check-in, incidents, a card, a match and a
-  board's history there first, and the cloud first for 30 seconds after the
-  laptop did not answer (the laptop again if the cloud cannot be reached);
+- reads the round, the players, check-in, incidents, a card, a match, a
+  board's history, the standings, the team standings, the teams and the
+  board prizes there first, and the cloud first for 30 seconds after the
+  laptop did not answer (the laptop again if the cloud cannot be reached).
+  A player opened from a table is opened by uid, since the table may be the
+  laptop's;
 - goes through the cloud, with the same key and body, when the laptop does
   not answer in time, answers 401 (the pass is dropped and the tournament
   read again for a new one), `409 cloud_only`, a 5xx or something that is
@@ -252,7 +261,21 @@ The client (`src/api.ts`, `call`) then:
 - sends the pass only to a private address over http (`isLocalHost`, as for
   a server added by hand) or to https, which the existing local-network
   rules cover: `NSAllowsLocalNetworking` and the local-network prompt on
-  iOS, the app-enforced cleartext rule on Android.
+  iOS, the app-enforced cleartext rule on Android;
+- keeps the pass, the laptop's addresses and id, and the tournament as the
+  cloud last showed it in the vault (`manubrium.hall.v1`, the Keychain or
+  the Keystore, like the device tokens), per server and tournament. An app
+  started in a hall with no internet lists and opens those tournaments
+  from there and reaches the laptop. The pass goes when it runs out, when
+  the cloud's tournament has no `relay.hall` any more, when the laptop
+  answers 401 to it, when the cloud answers 401 to the device, and with
+  the server.
+
+Slips: on a relayed tournament OpenPairings prints `OP2:B:<tournament>:<round>:<pairing uid>`
+and `OP2:P:<tournament>:<player uid>`, the tournament being the cloud's id or
+the laptop's. They open by uid. An `OP1` slip (ids) opens nothing on a
+relayed tournament, since the ids could be either copy's: the app asks for a
+reprint or the board by hand.
 
 ## Develop in a browser
 
@@ -457,23 +480,17 @@ the privacy policy and the screenshot list are in `store/`.
   job.
 - **The Belgian list is the only national one offered**, because it is the
   only one the server has. The toggle shows whatever `player_sources` says.
-- **The hall path still starts in the cloud.** The tournament itself is
-  read from the cloud only, because that read is where the laptop's address
-  and the phone's pass come from, and the pass is kept in memory, not on
-  disk. So a phone that opens the app in a hall whose internet is already
-  down has no hall path until the cloud answers once; a phone that had the
-  tournament open when the internet went keeps it for the pass's twelve
-  hours.
-- **Not every read takes the hall path.** The round, the players, check-in,
-  incidents, a player's card, a match and a board's history do (their rows
-  are named by uid in whatever the app sends next); standings, teams,
-  prizes, settings, board codes and the live boards are read from the
-  cloud's copy, a moment behind the laptop. Board codes and live-board
-  commands, which name the laptop's own ids, go through the cloud as
-  before, and so does a result queued by a version that named boards by id.
-- **A scanned result slip names the desk's pairing id**, which is the
-  laptop's on a relayed tournament; it opens the right board when the round
-  came from the laptop and may not when it came from the cloud.
+- **The hall path needs the cloud once.** The pass comes from the cloud's
+  `GET /tournaments/:id`, and is kept for its twelve hours. A phone that
+  never opened the tournament while the cloud answered has no way to the
+  laptop, and a tournament opened from the kept copy shows the tournament
+  as the cloud last did (its rounds and tables come from the laptop).
+- **Not every read takes the hall path.** The prize list (its players have
+  ids and no uid), the settings, board codes and the live boards are read
+  from the cloud's copy, a moment behind the laptop. Board codes and
+  live-board commands, which name the laptop's own ids, go through the
+  cloud as before, and so does a result queued by a version that named
+  boards by id.
 - **In a browser the hall path needs the laptop to allow CORS**; where it
   does not, the request goes through the cloud, as it would without a hall
   path. The phones do not use CORS.

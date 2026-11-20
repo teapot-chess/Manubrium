@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, type Tournament } from "../api";
 import { onResume } from "../platform";
-import { hallRoutes, type HallRoutes } from "../hall";
+import { hallRoutes, laptopSilentSince, type HallRoutes } from "../hall";
 import { acknowledgedRequest, actionLabel, commandQuestion, RelayedWrite, type KeptCommand } from "../relay";
 import { dateLocale, t as tr } from "../i18n";
 import type { Ctx } from "./App";
@@ -21,21 +21,45 @@ const DONE_MS = 6000;
  * phone's requests go: straight to the laptop on the hall's network, or
  * through the cloud (src/hall.ts). The road changes by itself; the banner
  * follows the last request.
+ *
+ * A laptop not heard from for ten minutes (by the cloud, or by this phone
+ * directly) is said to be quiet, with what still works: results wait on
+ * the phone, and the organiser can take the tournament back on the website
+ * without it. `site` is where (the server's name); `now` is for the tests.
  */
-export function RelayBanner(props: { t: Tournament; base: string; routes?: HallRoutes }) {
+export function RelayBanner(props: { t: Tournament; base: string; routes?: HallRoutes; site?: string; now?: () => number }) {
   const routes = props.routes ?? hallRoutes;
+  const now = props.now ?? Date.now;
   const [, redraw] = useState(0);
   useEffect(() => routes.subscribe(() => redraw((n) => n + 1)), [routes]);
+  // Silence is a matter of time passing, not of anything arriving.
+  useEffect(() => {
+    const timer = setInterval(() => redraw((n) => n + 1), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   const relay = props.t.relay;
   if (!relay) return null;
   const hall = routes.pathOf(props.base, props.t.id) === "hall";
   const seen = relay.last_seen_at ? new Date(relay.last_seen_at) : null;
+  const silent = laptopSilentSince(relay, routes.lastReached(props.base, props.t.id), now());
+  const time = (d: Date) => d.toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" });
   return (
-    <div class={["notice info relay-banner", hall ? "relay-hall" : "relay-cloud"].join(" ")} id="relay-banner" role="status" data-path={hall ? "hall" : "cloud"}>
+    <div
+      class={["notice info relay-banner", silent ? "relay-silent" : "", hall ? "relay-hall" : "relay-cloud"].filter(Boolean).join(" ")}
+      id="relay-banner"
+      role="status"
+      data-path={hall ? "hall" : "cloud"}
+    >
       <span>
         {tr("relay.banner", { label: relay.label })} <strong id="relay-path">{tr(hall ? "relay.path_hall" : "relay.path_cloud")}</strong>
-        {!hall && seen && !Number.isNaN(seen.getTime()) && (
-          <> {tr("relay.banner_seen", { time: seen.toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" }) })}</>
+        {!silent && !hall && seen && !Number.isNaN(seen.getTime()) && <> {tr("relay.banner_seen", { time: time(seen) })}</>}
+        {silent && (
+          <span class="relay-silence" id="relay-silent">
+            {tr("relay.laptop_silent", { time: time(silent) })}{" "}
+            <span id="relay-take-back">
+              {props.t.role === "owner" && props.site ? tr("relay.take_back_owner", { site: props.site }) : tr("relay.take_back_other")}
+            </span>
+          </span>
         )}
       </span>
     </div>

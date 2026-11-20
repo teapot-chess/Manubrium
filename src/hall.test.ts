@@ -4,13 +4,15 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, client, editRefs, OfflineError, refOf, sameRow, type FetchLike, type Round, type Tournament } from "./api";
-import { HALL_QUIET_MS, HALL_TIMEOUT_MS, hallCapable, hallPath, HallRoutes, readHall, usableHallUrl, type RelayHall } from "./hall";
+import { HALL_QUIET_MS, HALL_STORE_KEY, HALL_TIMEOUT_MS, hallCapable, hallPath, HallRoutes, laptopSilentSince, readHall, usableHallUrl, type RelayHall } from "./hall";
 import { KeyMemory, RelayedWrite, type RelayCommand } from "./relay";
 import { examples, problems } from "./contract.testkit";
 
 const CLOUD = "https://pairings.example";
 const LAPTOP = "http://192.168.1.20:4748";
 const ex = <T>(name: string): T => structuredClone(examples[name]) as T;
+/** The contract's pass was minted at 01:28 and runs out at 13:28: the clock these tests keep. */
+const atTheContractsHour = () => Date.parse("2026-11-20T02:00:00Z");
 
 /** The contract's relayed tournament with a hall path: id 1 here, 2 on the laptop. */
 const relayHall = () => ex<{ tournament: Tournament & { relay: { hall: RelayHall } } }>("tournament-response.relay-hall.json");
@@ -59,7 +61,7 @@ const cloudAnswers = (s: Seen): Reply => {
 };
 
 async function setup(laptop: (s: Seen) => Reply, cloud: (s: Seen) => Reply = cloudAnswers) {
-  const routes = new HallRoutes();
+  const routes = new HallRoutes(atTheContractsHour);
   const { fetch, seen } = servers(cloud, laptop);
   const onCommand = vi.fn();
   const api = client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory(), onCommand });
@@ -156,7 +158,7 @@ describe("which requests may take the hall path", () => {
     expect(hallCapable("POST", "/tournaments", {})).toBe(false);
   });
 
-  it("reads from the laptop only the round and what is read beside it; the tournament itself never", () => {
+  it("reads from the laptop the round, what is read beside it and the desk's tables; the tournament itself never", () => {
     expect(hallCapable("GET", "/tournaments/1")).toBe(false);
     expect(hallCapable("GET", "/tournaments/1/rounds/2")).toBe(true);
     expect(hallCapable("GET", `/tournaments/1/rounds/2/matches/${UID}`)).toBe(true);
@@ -167,7 +169,18 @@ describe("which requests may take the hall path", () => {
     expect(hallCapable("GET", `/tournaments/1/players/${UID}/card`)).toBe(true);
     expect(hallCapable("GET", "/tournaments/1/players/6/card")).toBe(false);
     expect(hallCapable("GET", "/tournaments/1/commands/38cebf5f-fe01-40de-b795-a60689ed9d16")).toBe(true);
-    expect(hallCapable("GET", "/tournaments/1/standings")).toBe(false);
+    expect(hallCapable("GET", `/tournaments/1/standings`)).toBe(true);
+    expect(hallCapable("GET", `/tournaments/1/team-standings`)).toBe(true);
+    expect(hallCapable("GET", `/tournaments/1/teams`)).toBe(true);
+    expect(hallCapable("GET", `/tournaments/1/teams/${UID}`)).toBe(true);
+    expect(hallCapable("GET", `/tournaments/1/board-prizes`)).toBe(true);
+    expect(hallCapable("GET", `/tournaments/1/board-prizes?min_games=3`)).toBe(true);
+    expect(hallCapable("GET", "/tournaments/1/teams/6")).toBe(false);
+    expect(hallCapable("GET", "/tournaments/1/prizes")).toBe(false);
+    expect(hallCapable("GET", "/tournaments/1/hall")).toBe(false);
+    expect(hallCapable("GET", "/tournaments/1/player-search?q=x&source=fide")).toBe(false);
+    expect(hallCapable("GET", "/tournaments/1/board-links")).toBe(false);
+    expect(hallCapable("GET", "/tournaments/1/live-boards")).toBe(false);
     expect(hallCapable("GET", "/tournaments/1/notes")).toBe(false);
   });
 });
@@ -286,7 +299,7 @@ describe("a write on a relayed tournament with a hall path", () => {
 
   it("tries the laptop's other addresses within the same short wait, and the one that answered first next time", async () => {
     const other = "http://10.0.0.20:4748";
-    const routes = new HallRoutes();
+    const routes = new HallRoutes(atTheContractsHour);
     const hall = readHall({ ...relayHall().tournament.relay.hall, urls: [LAPTOP, other] })!;
     routes.set(CLOUD, 1, hall);
     const seen: string[] = [];
@@ -370,7 +383,7 @@ describe("a read on a relayed tournament with a hall path", () => {
 describe("without a hall path", () => {
   it("is the cloud alone: a tournament that is not relayed, or whose laptop is not listening", async () => {
     const plain = { ...relayHall(), tournament: { ...relayHall().tournament, relay: { ...relayHall().tournament.relay, hall: null } } };
-    const routes = new HallRoutes();
+    const routes = new HallRoutes(atTheContractsHour);
     const { fetch, seen } = servers((s) => (s.method === "GET" && s.path === "/tournaments/1" ? { status: 200, body: plain } : { status: 202, body: ex("command-response.pending.json") }), () => ({ status: 200, body: accepted() }));
     const api = client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() });
     await api.tournament(1);
@@ -381,7 +394,7 @@ describe("without a hall path", () => {
 
   it("drops a path the tournament no longer has", async () => {
     let hall = true;
-    const routes = new HallRoutes();
+    const routes = new HallRoutes(atTheContractsHour);
     const { fetch } = servers((s) => {
       const body = relayHall();
       if (!hall) (body.tournament.relay as { hall: RelayHall | null }).hall = null;
@@ -413,5 +426,167 @@ describe("rows by uid", () => {
     expect(edit).toEqual({ kind: "swap", a: b.white!.uid, b: b.black!.uid });
     expect(editRefs({ kind: "delete", pairing: b.id }, round)).toEqual({ kind: "delete", pairing: b.uid });
     expect(problems("edit-request.schema.json", { edit, acknowledged: [] })).toEqual([]);
+  });
+});
+
+describe("the desk's tables on the hall path", () => {
+  const tables: [string, (api: ReturnType<typeof client>) => Promise<unknown>, string, string][] = [
+    ["standings", (api) => api.standings(1), "/tournaments/2/standings", "standings-response.json"],
+    ["team standings", (api) => api.teamStandings(1), "/tournaments/2/team-standings", "team-standings-response.json"],
+    ["teams", (api) => api.teams(1), "/tournaments/2/teams", "teams-response.json"],
+    ["board prizes", (api) => api.boardPrizes(1, 3), "/tournaments/2/board-prizes?min_games=3", "board-prizes-response.json"],
+  ];
+
+  for (const [name, read, path, example] of tables) {
+    it(`reads the ${name} from the laptop, and from the cloud when the laptop does not answer`, async () => {
+      const { api, seen } = await setup(() => ({ status: 200, body: ex(example) }));
+      expect(await read(api)).toBeTruthy();
+      expect(seen.map((s) => `${s.where} ${s.path}`)).toEqual([`laptop ${path}`]);
+      expect(seen[0].auth).toBe(`Bearer ${relayHall().tournament.relay.hall.token}`);
+
+      const quiet = await setup(() => "offline", (s) => (s.path === "/tournaments/1" ? cloudAnswers(s) : { status: 200, body: ex(example) }));
+      expect(await read(quiet.api)).toBeTruthy();
+      expect(quiet.seen.map((s) => s.where)).toEqual(["laptop", "cloud"]);
+    });
+  }
+
+  it("still has them when the hall has no internet: the laptop answers, the cloud is not there", async () => {
+    let internet = true;
+    const { api, seen, routes } = await setup(
+      () => ({ status: 200, body: ex("standings-response.json") }),
+      (s) => (internet ? cloudAnswers(s) : "offline"),
+    );
+    internet = false;
+    const standings = await api.standings(1);
+    expect(standings.rows.length).toBeGreaterThan(0);
+    expect(seen.map((s) => s.where)).toEqual(["laptop"]);
+    expect(routes.pathOf(CLOUD, 1)).toBe("hall");
+  });
+
+  it("keeps the prize list on the cloud: its players have ids and no uid", async () => {
+    const { api, seen } = await setup(
+      () => ({ status: 200, body: accepted() }),
+      (s) => (s.path === "/tournaments/1/prizes" ? { status: 200, body: ex("prizes-response.json") } : cloudAnswers(s)),
+    );
+    await api.prizes(1);
+    expect(seen.map((s) => s.where)).toEqual(["cloud"]);
+  });
+});
+
+describe("the hall pass across restarts", () => {
+  class Vault {
+    data = new Map<string, string>();
+    async get(k: string) {
+      return this.data.get(k) ?? null;
+    }
+    async set(k: string, v: string) {
+      this.data.set(k, v);
+    }
+  }
+  const kept = (vault: Vault) =>
+    JSON.parse(vault.data.get(HALL_STORE_KEY) ?? "[]") as { base: string; tournament: number; hall: RelayHall; snapshot?: { id: number } }[];
+
+  /** A phone that read the tournament from the cloud once, with the vault attached. */
+  async function first(vault = new Vault()) {
+    const routes = new HallRoutes(atTheContractsHour);
+    await routes.attach(vault);
+    const { fetch } = servers(cloudAnswers);
+    await client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() }).tournament(1);
+    await routes.saved();
+    return { routes, vault };
+  }
+
+  it("keeps the pass, the laptop's addresses and id, and the tournament, per server and tournament", async () => {
+    const { vault } = await first();
+    const [k] = kept(vault);
+    expect(k).toMatchObject({ base: CLOUD, tournament: 1, hall: { tournament_id: 2, urls: [LAPTOP], token: relayHall().tournament.relay.hall.token } });
+    expect(k.snapshot?.id).toBe(1);
+  });
+
+  it("starts in a hall with no internet and still reaches the laptop: rounds and standings, with the kept tournament to open", async () => {
+    const { vault } = await first();
+    // A new run of the app: nothing in memory, the vault as it was, the cloud unreachable.
+    const routes = new HallRoutes(atTheContractsHour);
+    await routes.attach(vault);
+    const { fetch, seen } = servers(
+      () => "offline",
+      (s) => ({ status: 200, body: ex(s.path.includes("standings") ? "standings-response.json" : "round-response.json") }),
+    );
+    const api = client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() });
+    await expect(api.tournament(1)).rejects.toBeInstanceOf(OfflineError);
+    expect((routes.snapshot(CLOUD, 1) as Tournament).name).toBe(relayHall().tournament.name);
+    expect(routes.keptTournaments(CLOUD)).toHaveLength(1);
+    expect((await api.round(1, 1)).boards.length).toBeGreaterThan(0);
+    expect((await api.standings(1)).rows.length).toBeGreaterThan(0);
+    expect(seen.filter((s) => s.where === "laptop").map((s) => s.path)).toEqual(["/tournaments/2/rounds/1", "/tournaments/2/standings"]);
+  });
+
+  it("drops a pass that has run out by the next start", async () => {
+    const { vault } = await first();
+    const routes = new HallRoutes(() => Date.parse("2026-11-20T13:30:00Z"));
+    await routes.attach(vault);
+    expect(routes.get(CLOUD, 1)).toBeNull();
+    expect(routes.snapshot(CLOUD, 1)).toBeNull();
+    await routes.saved();
+    expect(kept(vault)).toEqual([]);
+  });
+
+  it("drops it when the cloud says the tournament has no hall path any more, or is not relayed", async () => {
+    for (const relay of [null, { ...relayHall().tournament.relay, hall: null }]) {
+      const { routes, vault } = await first();
+      const body = relayHall();
+      (body.tournament as { relay: unknown }).relay = relay;
+      const { fetch } = servers(() => ({ status: 200, body }));
+      await client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() }).tournament(1);
+      await routes.saved();
+      expect(kept(vault)).toEqual([]);
+    }
+  });
+
+  it("drops it when the laptop refuses it (401)", async () => {
+    const { routes, vault } = await first();
+    const { fetch } = servers(cloudAnswers, () => ({ status: 401, body: { error: "unauthorized", message: "no" } }));
+    await client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() }).round(1, 1);
+    await routes.saved();
+    expect(kept(vault)).toEqual([]);
+    expect(routes.get(CLOUD, 1)).toBeNull();
+  });
+
+  it("drops every pass of a server that no longer knows this phone, or that is removed from the app", async () => {
+    const { routes, vault } = await first();
+    const { fetch } = servers(() => ({ status: 401, body: { error: "unauthorized", message: "Sign in again." } }));
+    await expect(client(CLOUD, "mnb_device", fetch, { routes, keys: new KeyMemory() }).tournaments()).rejects.toBeInstanceOf(ApiError);
+    await routes.saved();
+    expect(kept(vault)).toEqual([]);
+    expect(routes.known(CLOUD, 1)).toBe(false);
+
+    const again = await first();
+    again.routes.forgetServer(CLOUD);
+    await again.routes.saved();
+    expect(kept(again.vault)).toEqual([]);
+  });
+
+  it("does not let an old kept path overwrite one learnt since, and survives a vault that holds rubbish", async () => {
+    const vault = new Vault();
+    vault.data.set(HALL_STORE_KEY, "{not json");
+    const routes = new HallRoutes(atTheContractsHour);
+    await routes.attach(vault);
+    expect(routes.known(CLOUD, 1)).toBe(false);
+    vault.data.set(HALL_STORE_KEY, JSON.stringify([{ base: CLOUD, tournament: 1, hall: { ...relayHall().tournament.relay.hall, token: "oph1.old" } }]));
+    const fresh = new HallRoutes(atTheContractsHour);
+    fresh.set(CLOUD, 1, readHall(relayHall().tournament.relay.hall));
+    await fresh.attach(vault);
+    expect(fresh.get(CLOUD, 1)!.token).toBe(relayHall().tournament.relay.hall.token);
+  });
+});
+
+describe("the laptop gone quiet", () => {
+  const at = (iso: string) => Date.parse(iso);
+  it("is quiet after ten minutes without a word by any road, and not before", () => {
+    const relay = { last_seen_at: "2026-11-20T10:00:00Z", hall: { seen_at: "2026-11-20T10:02:00Z" } };
+    expect(laptopSilentSince(relay, null, at("2026-11-20T10:11:59Z"))).toBeNull();
+    expect(laptopSilentSince(relay, null, at("2026-11-20T10:12:00Z"))?.toISOString()).toBe("2026-11-20T10:02:00.000Z");
+    expect(laptopSilentSince(relay, at("2026-11-20T10:05:00Z"), at("2026-11-20T10:12:00Z"))).toBeNull();
+    expect(laptopSilentSince({ last_seen_at: null }, null, at("2026-11-20T10:12:00Z"))).toBeNull();
   });
 });

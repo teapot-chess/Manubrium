@@ -17,6 +17,7 @@
 
 import type { KeyValue } from "./queue";
 import type { Tournament } from "./api";
+import type { RelayHall } from "./hall";
 import { t } from "./i18n";
 
 export type CommandState = "pending" | "accepted" | "refused";
@@ -47,6 +48,8 @@ export interface Relay {
   since: string | null;
   last_seen_at: string | null;
   mirrored_at: string | null;
+  /** Where the laptop answers on the hall's network (revision 8); see src/hall.ts. */
+  hall?: RelayHall | null;
 }
 
 /**

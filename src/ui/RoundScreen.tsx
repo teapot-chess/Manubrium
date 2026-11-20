@@ -16,7 +16,7 @@ import { refusalText } from "../queue";
 import { pollDelay } from "../relay";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 import { currentRound } from "../currentRound";
-import { boardOf, parseScan } from "../scan";
+import { boardIn, boardOf, parseScan, slipTarget } from "../scan";
 import { DefaultTimeCard } from "./DefaultTime";
 import { PlayerSheet } from "./PlayerSheet";
 import { RoundPush } from "./Notifications";
@@ -82,7 +82,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [history, setHistory] = useState<Board | null>(null);
   // By uid where the round gave one: the round may have come from the laptop.
   const [player, setPlayerRef] = useState<Ref | null>(null);
-  const setPlayer = (id: number | null) => setPlayerRef(id === null ? null : playerRefIn(round, id));
+  const setPlayer = (id: Ref | null) => setPlayerRef(id === null ? null : typeof id === "number" ? playerRefIn(round, id) : id);
   // A team's line-up, open: by match and side, so a refreshed round is what the sheet shows.
   const [lineupOf, setLineupOf] = useState<{ match: number; side: MatchSide } | null>(null);
   // A team match open in full, by id, so a refreshed round is what the sheet draws behind it.
@@ -90,7 +90,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // Only the boards still without a result: the last half hour of a round.
   const [openOnly, setOpenOnly] = useState(false);
   // A scanned slip for a round not on screen: opened once that round is.
-  const [scanned, setScanned] = useState<{ round: number; pairing: number } | null>(null);
+  const [scanned, setScanned] = useState<{ round: number; pairing: Ref } | null>(null);
   const deskRole = t.can.includes("pair");
 
   const base = ctx.server.base;
@@ -188,7 +188,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   useEffect(() => {
     if (!scanned || !round || round.number !== scanned.round) return;
     setScanned(null);
-    const b = round.boards.find((x) => x.id === scanned.pairing);
+    const b = boardIn(round, scanned.pairing);
     if (b && !b.bye && !b.vacant && !b.empty) setBoard(b);
     else setError(tr("scan.board_gone"));
   }, [scanned, round]);
@@ -196,9 +196,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // A result slip opens its board; a place card opens the player's board in
   // the round on screen, or the player when they have none in it.
   async function scan() {
-    const code = parseScan(await scanQr());
-    if (!code) return setError(tr("scan.not_a_slip"));
-    if (code.tournament !== t.id) return setError(tr("scan.other_tournament"));
+    const code = slipTarget(parseScan(await scanQr()), t);
+    if (code.kind === "refused") return setError(tr(`scan.${code.reason}`));
     setError(null);
     if (code.kind === "player") {
       const b = round ? boardOf(round, code.player) : null;

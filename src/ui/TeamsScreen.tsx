@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
   ApiError,
   refOf,
+  sameRow,
   needsAcknowledgement,
   type EventTeam,
   type Player,
@@ -470,9 +471,10 @@ function ReservePicker(props: {
     void load();
   }, []);
 
-  const onTeam = new Set(props.team.roster.map((p) => p.id));
+  // By uid where there is one: the roster and the player list may come from different copies of a relayed tournament.
+  const onTeam = (p: Player) => props.team.roster.some((r) => sameRow(refOf(p), r));
   const query = q.trim().toLowerCase();
-  const matches = (players ?? []).filter((p) => !onTeam.has(p.id) && p.status === "active" && (!query || p.name.toLowerCase().includes(query))).slice(0, 25);
+  const matches = (players ?? []).filter((p) => !onTeam(p) && p.status === "active" && (!query || p.name.toLowerCase().includes(query))).slice(0, 25);
 
   return (
     <div id="team-reserve">

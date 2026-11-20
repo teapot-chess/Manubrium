@@ -593,6 +593,8 @@ td small.tag { margin-left: 6px; }
 
 /* ---------- the cloud relay: a tournament run from a laptop ---------- */
 .relay-banner { border-left: 3px solid var(--accent); }
+.relay-banner.relay-silent { background: var(--warn-soft); color: var(--warn); border-left-color: var(--warn); }
+.relay-silence { display: block; margin-top: 6px; }
 .relay-pending > span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; animation: relay-beat 1.4s ease-in-out infinite; }
 @keyframes relay-beat { 50% { opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .relay-pending > span::before { animation: none; } }

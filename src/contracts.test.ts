@@ -890,7 +890,7 @@ describe("the app's types against the contract's shapes", () => {
       }),
       "tournament",
     ],
-    ["Relay", shape<Relay>()({ label: "required", since: "required nullable", last_seen_at: "required nullable", mirrored_at: "required nullable" }), "relay"],
+    ["Relay", shape<Relay>()({ label: "required", since: "required nullable", last_seen_at: "required nullable", mirrored_at: "required nullable", hall: "optional nullable" }), "relay"],
     [
       "RelayCommand",
       shape<RelayCommand>()({

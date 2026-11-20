@@ -76,10 +76,15 @@ const ROW_SEGMENT = /\/(boards|players|teams|matches|incidents|history|board-lin
 
 // The reads that take the hall path: the round (what the arbiter looks at
 // after every write, and what the laptop has before the cloud's copy does),
-// and what is read beside it. Their rows are all named by uid in what the
-// app sends next, so it does not matter which copy they came from. Every
-// other read stays with the cloud, whose ids the app then uses.
-const HALL_READS = /^\/tournaments\/\d+\/(rounds\/\d+(\/[^?]*)?|arrivals|incidents|players|players\/[^/?]+\/card|commands\/[^/?]+)(\?.*)?$/;
+// what is read beside it, and the tables the desk computes (standings, team
+// standings, teams, board prizes), which a hall without internet still
+// wants. Their rows are all named by uid in what the app sends next, so it
+// does not matter which copy they came from. Every other read stays with
+// the cloud, whose ids the app then uses: the tournament itself, player
+// search, board links, live boards, the hall's devices, and the prize list,
+// whose players come with an id and no uid.
+const HALL_READS =
+  /^\/tournaments\/\d+\/(rounds\/\d+(\/[^?]*)?|arrivals|incidents|players|players\/[^/?]+\/card|commands\/[^/?]+|standings|team-standings|teams|teams\/[^/?]+|board-prizes)(\?.*)?$/;
 
 const plainId = (v: unknown) => typeof v === "number" || (typeof v === "string" && /^\d+$/.test(v));
 
@@ -135,18 +140,42 @@ interface Route {
   preferred: number;
 }
 
+/** What is kept across restarts, per cloud server and the cloud's tournament id. */
+interface KeptPath {
+  base: string;
+  tournament: number;
+  hall: RelayHall;
+  /** The tournament as the cloud last showed it: what the app opens when the cloud cannot be reached. */
+  snapshot?: unknown;
+}
+
+/** In the vault (src/secure.ts), beside the device tokens: the pass is a credential. */
+export const HALL_STORE_KEY = "manubrium.hall.v1";
+
+interface Store {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<void>;
+}
+
 /**
  * The hall paths this phone knows, by cloud server and the cloud's id for
  * the tournament, and which way each tournament's last request went (for
- * the banner). Kept in memory: the pass is a credential, and the next read
- * of the tournament brings a fresh one anyway.
+ * the banner). Kept in the vault once `attach`ed, so an app started in a
+ * hall whose internet is down still knows where the laptop is and holds a
+ * pass it takes (twelve hours; the laptop could not ask the cloud anyway).
+ * Dropped when it runs out, when the cloud stops handing one out, when the
+ * laptop refuses it, and with the server.
  */
 export class HallRoutes {
   private routes = new Map<string, Route>();
+  private snapshots = new Map<string, unknown>();
   private used = new Map<string, HallPathName>();
   private quietUntil = new Map<string, number>();
   private refreshedAt = new Map<string, number>();
+  private reachedAt = new Map<string, number>();
   private listeners = new Set<() => void>();
+  private store: Store | null = null;
+  private saving: Promise<void> = Promise.resolve();
 
   constructor(private readonly now: () => number = () => Date.now()) {}
 
@@ -154,28 +183,109 @@ export class HallRoutes {
     return `${base} ${tournament}`;
   }
 
-  /** What the cloud said in `GET /tournaments/:id`: a path, or none (the laptop is not listening). */
-  set(base: string, tournament: number, hall: RelayHall | null): void {
+  private static split(key: string): { base: string; tournament: number } {
+    const cut = key.lastIndexOf(" ");
+    return { base: key.slice(0, cut), tournament: Number(key.slice(cut + 1)) };
+  }
+
+  /** A pass no longer worth sending (or keeping). */
+  private spent(hall: RelayHall): boolean {
+    const ends = Date.parse(hall.expires_at);
+    return Number.isFinite(ends) && ends - EXPIRY_MARGIN_MS <= this.now();
+  }
+
+  /**
+   * Keeps the paths in `store` from now on, and takes back what it kept
+   * last time (what is still good; a path learnt since wins).
+   */
+  async attach(store: Store): Promise<void> {
+    this.store = store;
+    let kept: unknown = [];
+    try {
+      kept = JSON.parse((await store.get(HALL_STORE_KEY)) ?? "[]");
+    } catch {
+      kept = [];
+    }
+    for (const k of Array.isArray(kept) ? (kept as Partial<KeptPath>[]) : []) {
+      if (!k || typeof k.base !== "string" || typeof k.tournament !== "number") continue;
+      const hall = readHall(k.hall);
+      if (!hall || this.spent(hall)) continue;
+      const key = HallRoutes.key(k.base, k.tournament);
+      if (this.routes.has(key)) continue;
+      this.routes.set(key, { hall, preferred: 0 });
+      if (k.snapshot && typeof k.snapshot === "object") this.snapshots.set(key, k.snapshot);
+    }
+    this.persist();
+    this.notify();
+  }
+
+  /** Resolves once every change so far is in the store. */
+  saved(): Promise<void> {
+    return this.saving;
+  }
+
+  private persist(): void {
+    const store = this.store;
+    if (!store) return;
+    const kept: KeptPath[] = [];
+    for (const [key, route] of this.routes) {
+      if (this.spent(route.hall)) continue;
+      const snapshot = this.snapshots.get(key);
+      kept.push({ ...HallRoutes.split(key), hall: route.hall, ...(snapshot ? { snapshot } : {}) });
+    }
+    const text = JSON.stringify(kept);
+    // In order: the last change is the one that stays.
+    this.saving = this.saving.then(() => store.set(HALL_STORE_KEY, text)).catch(() => undefined);
+  }
+
+  /**
+   * What the cloud said in `GET /tournaments/:id`: a path, or none (not
+   * relayed, or the laptop is not listening). `snapshot` is that answer's
+   * tournament, kept with the path for a start without the cloud.
+   */
+  set(base: string, tournament: number, hall: RelayHall | null, snapshot?: unknown): void {
     const key = HallRoutes.key(base, tournament);
     if (!hall) {
       const had = this.routes.delete(key) || this.used.has(key);
+      this.snapshots.delete(key);
       this.used.delete(key);
-      if (had) this.notify();
+      if (had) {
+        this.persist();
+        this.notify();
+      }
       return;
     }
     const before = this.routes.get(key);
     const preferred = before ? hall.urls.indexOf(before.hall.urls[before.preferred]) : -1;
     this.routes.set(key, { hall, preferred: preferred >= 0 ? preferred : 0 });
+    if (snapshot && typeof snapshot === "object") this.snapshots.set(key, snapshot);
     this.refreshedAt.delete(key);
+    this.persist();
   }
 
   /** The path to try, while its pass is good; null otherwise. */
   get(base: string, tournament: number): RelayHall | null {
     const route = this.routes.get(HallRoutes.key(base, tournament));
-    if (!route) return null;
-    const ends = Date.parse(route.hall.expires_at);
-    if (Number.isFinite(ends) && ends - EXPIRY_MARGIN_MS <= this.now()) return null;
+    if (!route || this.spent(route.hall)) return null;
     return route.hall;
+  }
+
+  /**
+   * The tournament as the cloud last showed it, while its pass is good:
+   * what to open when the cloud cannot be reached and the laptop may be.
+   */
+  snapshot(base: string, tournament: number): unknown {
+    return this.get(base, tournament) ? (this.snapshots.get(HallRoutes.key(base, tournament)) ?? null) : null;
+  }
+
+  /** Every kept tournament of a server whose pass is good: the list when the cloud cannot be reached. */
+  keptTournaments(base: string): unknown[] {
+    const out: unknown[] = [];
+    for (const [key, snap] of this.snapshots) {
+      const k = HallRoutes.split(key);
+      if (k.base === base && this.get(base, k.tournament)) out.push(snap);
+    }
+    return out;
   }
 
   /** Whether there is a path at all, good pass or not (a stale pass wants a fresh read). */
@@ -200,7 +310,13 @@ export class HallRoutes {
       if (i >= 0) route.preferred = i;
     }
     this.quietUntil.delete(key);
+    this.reachedAt.set(key, this.now());
     this.mark(key, "hall");
+  }
+
+  /** When this phone last had an answer from the laptop itself (ms since the epoch), or null. */
+  lastReached(base: string, tournament: number): number | null {
+    return this.reachedAt.get(HallRoutes.key(base, tournament)) ?? null;
   }
 
   /** The laptop did not answer (or not usefully): the cloud carries this one. */
@@ -208,12 +324,13 @@ export class HallRoutes {
     this.quietUntil.set(HallRoutes.key(base, tournament), this.now() + HALL_QUIET_MS);
   }
 
-  /** The laptop refused the pass: forget it until the cloud hands out a new one. */
+  /** The laptop refused the pass: forget it, here and in the store, until the cloud hands out a new one. */
   refused(base: string, tournament: number): void {
     const key = HallRoutes.key(base, tournament);
     const route = this.routes.get(key);
     if (route) this.routes.set(key, { ...route, hall: { ...route.hall, expires_at: new Date(0).toISOString() } });
     this.missed(base, tournament);
+    this.persist();
   }
 
   /** The laptop did not answer a moment ago: reads ask the cloud first for now. */
@@ -247,9 +364,11 @@ export class HallRoutes {
     return () => this.listeners.delete(listener);
   }
 
+  /** The server is gone from the app, or no longer knows this phone: every pass for it goes. */
   forgetServer(base: string): void {
-    for (const key of [...this.routes.keys()]) if (key.startsWith(`${base} `)) this.routes.delete(key);
-    for (const key of [...this.used.keys()]) if (key.startsWith(`${base} `)) this.used.delete(key);
+    const maps: Map<string, unknown>[] = [this.routes, this.snapshots, this.used, this.quietUntil, this.refreshedAt, this.reachedAt];
+    for (const map of maps) for (const key of [...map.keys()]) if (HallRoutes.split(key).base === base) map.delete(key);
+    this.persist();
     this.notify();
   }
 
@@ -266,3 +385,30 @@ export class HallRoutes {
 
 /** One for the whole app, like the key memory: every screen's requests share what is known. */
 export const hallRoutes = new HallRoutes();
+
+// ---------------------------------------------------------------------------
+// The laptop gone quiet.
+
+/** The laptop not heard from for this long: the banner says so. */
+export const LAPTOP_SILENT_MS = 10 * 60_000;
+
+/**
+ * When the laptop was last heard from, if that is LAPTOP_SILENT_MS or more
+ * ago; null while it is not, or when nobody knows. Heard from: its last
+ * poll of the cloud (`relay.last_seen_at`), its last word about its hall
+ * address (`relay.hall.seen_at`), or this phone's last answer from it
+ * directly - the hall's network can outlive the laptop's internet.
+ */
+export function laptopSilentSince(
+  relay: { last_seen_at: string | null; hall?: { seen_at: string | null } | null },
+  lastReached: number | null,
+  now: number,
+): Date | null {
+  const times = [relay.last_seen_at, relay.hall?.seen_at ?? null]
+    .map((s) => (s ? Date.parse(s) : NaN))
+    .concat(lastReached ?? NaN)
+    .filter((n) => Number.isFinite(n));
+  if (!times.length) return null;
+  const last = Math.max(...times);
+  return now - last >= LAPTOP_SILENT_MS ? new Date(last) : null;
+}

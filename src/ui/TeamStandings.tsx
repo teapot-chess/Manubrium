@@ -5,7 +5,7 @@
 // desk roles, like the individual standings, and shared the same way.
 
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { BoardPrizes, TeamStandings, Tournament } from "../api";
+import { refOf, type BoardPrizes, type Ref, type TeamStandings, type Tournament } from "../api";
 import { points } from "../matches";
 import { formatNumber as format, teamStandingsText } from "../share";
 import type { Ctx } from "./App";
@@ -22,7 +22,8 @@ export function TeamStandingsScreen(props: { ctx: Ctx; t: Tournament }) {
   const [s, setS] = useState<TeamStandings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("teams");
-  const [player, setPlayer] = useState<number | null>(null);
+  // By uid: the table may have come from the laptop, whose ids are its own.
+  const [player, setPlayer] = useState<Ref | null>(null);
 
   async function load() {
     setError(null);
@@ -150,7 +151,7 @@ function TeamTable(props: { s: TeamStandings }) {
   );
 }
 
-function PlayerTable(props: { s: TeamStandings; onPlayer: (id: number) => void }) {
+function PlayerTable(props: { s: TeamStandings; onPlayer: (player: Ref) => void }) {
   const { s } = props;
   if (s.players.length === 0) return <Empty>{tr("tstand.no_players")}</Empty>;
   return (
@@ -177,7 +178,7 @@ function PlayerTable(props: { s: TeamStandings; onPlayer: (id: number) => void }
             <tr key={r.player.id}>
               <td>{r.rank}</td>
               <td class="player">
-                <button type="button" class="link" id={`tstand-player-${r.player.id}`} onClick={() => props.onPlayer(r.player.id)}>
+                <button type="button" class="link" id={`tstand-player-${r.player.id}`} onClick={() => props.onPlayer(refOf(r.player))}>
                   {r.player.title && <em>{r.player.title} </em>}
                   {r.player.name}
                 </button>
@@ -200,7 +201,7 @@ function PlayerTable(props: { s: TeamStandings; onPlayer: (id: number) => void }
  * left out of that board; the minimum starts at the desk's default (half the
  * rounds paired) and the arbiter can move it.
  */
-export function BoardPrizesPanel(props: { ctx: Ctx; t: Tournament; onPlayer: (id: number) => void }) {
+export function BoardPrizesPanel(props: { ctx: Ctx; t: Tournament; onPlayer: (player: Ref) => void }) {
   const { ctx, t } = props;
   const [prizes, setPrizes] = useState<BoardPrizes | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -266,7 +267,7 @@ export function BoardPrizesPanel(props: { ctx: Ctx; t: Tournament; onPlayer: (id
                       <span class="game-round">{r.rank}</span>
                       <span class="row-main static">
                         <span class="row-title">
-                          <button type="button" class="link" onClick={() => props.onPlayer(r.player.id)}>
+                          <button type="button" class="link" onClick={() => props.onPlayer(refOf(r.player))}>
                             {r.player.title ? `${r.player.title} ` : ""}
                             {r.player.name}
                           </button>
