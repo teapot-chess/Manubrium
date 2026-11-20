@@ -20,6 +20,7 @@
     "paired_rounds": 1,
     "pairing_system": "swiss",
     "read_only": false,
+    "relay": null,
     "role": "arbiter",
     "rounds": [
       {

@@ -1,0 +1,10 @@
+{
+  "results": [
+    {
+      "cid": "6f1c2a7e-0b9d-4e55-9a3c-2d8f1e0a4b11",
+      "message": "Board 1: sent, waiting for the desk to confirm it.",
+      "reason": "pending",
+      "status": "pending"
+    }
+  ]
+}

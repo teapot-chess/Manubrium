@@ -76,6 +76,7 @@ import { byeRows, byesToSend } from "./byes";
 import { layoutOf, lineup, matchScore, matchView, pointValues, seats } from "./matches";
 import { futureRounds, lineupBody, otherScore, outFromSeats, roundStatus, scoreChoices, seatsFromOut, sortFindings, withdrawRounds } from "./teamEvents";
 import { Outbox, type KeyValue } from "./queue";
+import type { Relay, RelayCommand } from "./relay";
 import { hitDetails, sourceOf } from "./search";
 import { pairingsText, standingsText } from "./share";
 import { definition, enumOf, examples, files, index, problems, prose, schemaFor, schemas, shape, shapeMismatches } from "./contract.testkit";
@@ -184,6 +185,8 @@ const ROUTES: Route[] = [
   { method: "GET", path: /^\/tournaments\/\d+\/live-boards\/games\/[^/]+$/, contract: "GET /tournaments/:id/live-boards/games/:game", response: "live-board-game-response" },
   { method: "POST", path: /^\/tournaments\/\d+\/live-boards\/commands$/, contract: "POST /tournaments/:id/live-boards/commands", request: "live-board-command-request", response: "live-board-command-response" },
   { method: "GET", path: /^\/tournaments\/\d+\/live-boards\/commands\/\d+$/, contract: "GET /tournaments/:id/live-boards/commands/:command_id", response: "live-board-command-response" },
+  // A relayed tournament's write, where it stands (contract revision 7).
+  { method: "GET", path: /^\/tournaments\/\d+\/commands\/[^/]+$/, contract: "GET /tournaments/:id/commands/:cid", response: "command-response" },
 ];
 
 // Routes the server has and the app uses, that the contract does not (yet)
@@ -361,6 +364,8 @@ const CALLS: Record<keyof Client, (c: Client) => Promise<unknown>> = {
   liveGame: (c) => c.liveGame(2, "9b1d6c0e4f7a4a1e8d2c5b6a7f809112"),
   sendBoardCommand: (c) => c.sendBoardCommand(2, { kind: "flip", link_id: 4, board: 12, game: "9b1d6c0e4f7a4a1e8d2c5b6a7f809112", args: { flipped: true } }),
   boardCommand: (c) => c.boardCommand(2, 41),
+  relayCommand: (c) => c.relayCommand(2, "38cebf5f-fe01-40de-b795-a60689ed9d16"),
+  resend: (c) => c.resend({ method: "PATCH", path: "/tournaments/2/players/6", body: { player: { present: false }, acknowledged: ["rated"] } }),
   team: (c) => c.team(2, 1),
   notes: (c) => c.notes(2),
   createNote: (c) => c.createNote(2, { body: "Board 7: clock dispute, waiting for the chief arbiter.", round: 1, pinned: true }),
@@ -431,6 +436,7 @@ describe("every answer in the contract, through the app's client", () => {
     ["live-boards-response", (c) => c.liveBoards(2), (e) => e],
     ["live-board-game-response", (c) => c.liveGame(2, "9b1d6c0e4f7a4a1e8d2c5b6a7f809112"), (e) => e],
     ["live-board-command-response", (c) => c.boardCommand(2, 41), (e) => e.command],
+    ["command-response", (c) => c.relayCommand(2, "38cebf5f-fe01-40de-b795-a60689ed9d16"), (e) => e.command],
     ["team-response", (c) => c.team(2, 1), (e) => e.team],
     ["match-response", (c) => c.match(2, 1, 1), (e) => e.match],
     ["match-change-response", (c) => c.swapHome(2, 1, 1), (e) => e],
@@ -580,7 +586,7 @@ describe("what the answers mean to the app", () => {
     same({ setup: true, running: true, finished: true } satisfies Record<TournamentStatus, true>, enumOf(definition("tournament_status")));
     same({ active: true, withdrawn: true, expelled: true } satisfies Record<Player["status"], true>, enumOf(definition("player").properties!.status));
     same(
-      { saved: true, refused: true, retry: true } satisfies Record<EntryAnswer["status"], true>,
+      { saved: true, refused: true, retry: true, pending: true } satisfies Record<EntryAnswer["status"], true>,
       enumOf(definition("sync-response.schema.json#/properties/results/items").properties!.status),
     );
     same(
@@ -880,8 +886,25 @@ describe("the app's types against the contract's shapes", () => {
         bye_kinds: "optional",
         openresults_url: "optional nullable",
         team_board_layout: "optional",
+        relay: "optional nullable",
       }),
       "tournament",
+    ],
+    ["Relay", shape<Relay>()({ label: "required", since: "required nullable", last_seen_at: "required nullable", mirrored_at: "required nullable" }), "relay"],
+    [
+      "RelayCommand",
+      shape<RelayCommand>()({
+        cid: "required",
+        action: "required nullable",
+        state: "required",
+        status: "required nullable",
+        error: "required nullable",
+        message: "required nullable",
+        response: "required nullable",
+        submitted_at: "required nullable",
+        answered_at: "required nullable",
+      }),
+      "command-response.schema.json#/properties/command",
     ],
     ["Warning", shape<Warning>()({ id: "required", confirm: "required", message: "required" }), "warning"],
     ["BoardPlayer", shape<BoardPlayer>()({ id: "required", name: "required", title: "required nullable", rating: "required nullable", score: "required" }), "board_player"],

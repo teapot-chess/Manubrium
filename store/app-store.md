@@ -70,6 +70,12 @@ Team events from the phone: a match in full with both line-ups, editing and conf
 Teamcompetities vanaf de telefoon: een match volledig, met beide opstellingen, ze aanpassen en bevestigen, forfaits en een match beslist op de score; een tab Teams voor terugtrekkingen, byes en late reserves; de teamstand, de individuele rangschikking en de bordprijzen, en de teamstand deel je zoals de individuele stand. Een team-Zwitsers paar je vanaf de telefoon. Elke uitslag voer je nu in door de knop een seconde ingedrukt te houden, zodat een toevallige aanraking niets invoert, en de telefoon tikt terug terwijl je houdt. Teamcompetities vragen OpenPairings 0.150 of nieuwer.
 
 
+**What's new** (next version, draft):
+Tournaments run from the arbiter's laptop through the cloud: the app says so at the top, and everything still works from the phone. Each change goes to the laptop, shows as "sent, waiting for the desk" until the laptop answers, then as done or refused in the desk's own words; when the desk asks a question first, the phone asks it. Results and incidents wait in the outbox the same way.
+
+**Wat is er nieuw** (volgende versie, ontwerp, NL):
+Toernooien die vanaf de laptop van de arbiter via de cloud lopen: de app zegt het bovenaan, en alles werkt nog vanaf de telefoon. Elke wijziging gaat naar de laptop, staat als "verstuurd, wacht op de tafel" tot de laptop antwoordt, en daarna als gedaan of geweigerd, in de woorden van de tafel; stelt de tafel eerst een vraag, dan stelt de telefoon ze. Uitslagen en incidenten wachten op dezelfde manier in de wachtrij.
+
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
 **Privacy policy URL:** https://pairings.cloud/help/manubrium-privacy

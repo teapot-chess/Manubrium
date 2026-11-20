@@ -1,0 +1,13 @@
+{
+  "command": {
+    "action": "tournament.publish",
+    "answered_at": "2026-11-19T23:45:13Z",
+    "cid": "6d0cecd9-bf5a-4c44-9ec6-5b98ef5cf7e9",
+    "error": "bad_request",
+    "message": "The level is 0, 1, 2 or 3.",
+    "response": null,
+    "state": "refused",
+    "status": 400,
+    "submitted_at": "2026-11-19T23:45:13Z"
+  }
+}

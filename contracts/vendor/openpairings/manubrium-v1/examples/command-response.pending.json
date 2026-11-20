@@ -1,0 +1,13 @@
+{
+  "command": {
+    "action": "player.update",
+    "answered_at": null,
+    "cid": "38cebf5f-fe01-40de-b795-a60689ed9d16",
+    "error": null,
+    "message": null,
+    "response": null,
+    "state": "pending",
+    "status": null,
+    "submitted_at": "2026-11-19T23:45:13Z"
+  }
+}

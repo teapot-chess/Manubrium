@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/sync-response.schema.json",
   "title": "POST /tournaments/:id/sync response",
-  "description": "One answer per entry, in order. `saved` and `refused` are final; `retry` means ask again later (the entry stays queued). A refused `conflict` also carries `current`, what the board holds now, for \"keep theirs / use mine\".",
+  "description": "One answer per entry, in order. `saved` and `refused` are final; `retry` means ask again later (the entry stays queued). `pending` (contract revision 6, only while the tournament is run from a laptop through the cloud relay, docs/design-cloud-relay.md): the result reached the server and waits for the laptop to decide (from revision 7 an incident does too: it is logged once the laptop has logged it, photo and all); keep the entry and ask again, as for retry, and the answer turns saved or refused once the laptop has spoken. A refused `conflict` also carries `current`, what the board holds now, for \"keep theirs / use mine\".",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -32,7 +32,8 @@
             "enum": [
               "saved",
               "refused",
-              "retry"
+              "retry",
+              "pending"
             ]
           },
           "reason": {

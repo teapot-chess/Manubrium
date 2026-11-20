@@ -4,6 +4,7 @@
 // every command it sends, against a fake API. The box is never involved:
 // the phone talks to OpenPairings only.
 
+import { CommandBook } from "../relay";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type BoardCommand, type Client, type LiveBoards, type LiveTable, type Round, type Tournament } from "../api";
@@ -170,7 +171,7 @@ function tournament(extra: Partial<Tournament> = {}): Tournament {
   };
 }
 
-const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox: new Outbox({ get: async () => null, set: async () => undefined }), bump: () => undefined });
+const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox: new Outbox({ get: async () => null, set: async () => undefined }), commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => undefined });
 
 /** A foreground the test drives; `listening` says whether the screen still watches it. */
 function foreground() {

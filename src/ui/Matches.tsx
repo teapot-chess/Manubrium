@@ -167,7 +167,7 @@ export function MatchList(props: {
                         <SeatCell seat={left} side="left" team={tag(left)} />
                         <span class="result">
                           {shown ? resultLabel(resultBetween(shown, left.colour === "w")) : "–"}
-                          {q && <span class="state">{tr("round.waiting")}</span>}
+                          {q && <span class="state">{tr(q.state === "pending" ? "round.waiting_desk" : "round.waiting")}</span>}
                           {!q && b.phone?.state === "unconfirmed" && <span class="state phone">{tr("round.phone")}</span>}
                           {!q && b.phone?.state === "confirmed" && <span class="state">{tr("round.checked")}</span>}
                         </span>

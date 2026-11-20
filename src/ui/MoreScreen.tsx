@@ -153,7 +153,13 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
                           kind: incidentKind(q.entry.type).toLowerCase(),
                         })}
                   </span>
-                  <span class="row-sub">{q.state === "waiting" ? tr("more.waiting_to_send") : tr("more.not_accepted", { reason: refusalText(q) })}</span>
+                  <span class="row-sub">
+                    {q.state === "waiting"
+                      ? tr("more.waiting_to_send")
+                      : q.state === "pending"
+                        ? tr("more.waiting_for_desk")
+                        : tr("more.not_accepted", { reason: refusalText(q) })}
+                  </span>
                 </span>
                 <button
                   type="button"

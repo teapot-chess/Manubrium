@@ -12,6 +12,11 @@
 // Only results and incidents queue. Pairing, publishing and players need the
 // server's answer before anything else makes sense, so they are online-only
 // and say so.
+//
+// A tournament run from a laptop through the cloud relay answers `pending`:
+// the server has the entry, the laptop has not decided. The entry stays,
+// as "sent, waiting for the desk", and goes again with the same cid on the
+// next flush; that answer turns saved or refused once the laptop has spoken.
 
 import { ApiError, OfflineError, type Entry, type EntryAnswer, type ResultEntry } from "./api";
 import { t } from "./i18n";
@@ -25,7 +30,8 @@ export interface Queued {
   server: string;
   tournament: number;
   entry: Entry;
-  state: "waiting" | "refused";
+  /** `pending`: the server has it, the laptop of a relayed tournament has not decided yet. */
+  state: "waiting" | "pending" | "refused";
   message?: string | null;
   reason?: string | null;
   /** A refused conflict: what the board held when the server refused (null: it did not say). */
@@ -37,9 +43,15 @@ export interface Queued {
 export interface FlushOutcome {
   saved: number;
   refused: number;
+  /** Still on the phone: not sent yet, or sent and waiting for the desk. */
   waiting: number;
+  /** Of those, the ones the server has and the laptop has not decided. */
+  pending: number;
   offline: boolean;
 }
+
+/** Not answered for good yet: to be sent, or sent again for the laptop's word. */
+const open = (q: Queued) => q.state === "waiting" || q.state === "pending";
 
 const KEY = "manubrium.outbox.v1";
 const BATCH = 25; // the server's Mobile.Sync.max_batch
@@ -99,8 +111,14 @@ export class Outbox {
     return this.items.filter((q) => q.server === server && q.tournament === tournament);
   }
 
+  /** Entries still on the phone (not sent, or sent and waiting for the desk). */
   count(server: string, tournament?: number): number {
-    return this.items.filter((q) => q.server === server && q.state === "waiting" && (tournament === undefined || q.tournament === tournament)).length;
+    return this.items.filter((q) => q.server === server && open(q) && (tournament === undefined || q.tournament === tournament)).length;
+  }
+
+  /** Entries the server has and the laptop of a relayed tournament has not decided. */
+  pendingCount(server: string, tournament?: number): number {
+    return this.items.filter((q) => q.server === server && q.state === "pending" && (tournament === undefined || q.tournament === tournament)).length;
   }
 
   /**
@@ -122,7 +140,7 @@ export class Outbox {
         (q) =>
           q.server === server &&
           q.tournament === tournament &&
-          q.state === "waiting" &&
+          open(q) &&
           q.entry.kind === "result" &&
           q.entry.pairing === fields.pairing,
       );
@@ -219,9 +237,10 @@ export class Outbox {
     send: (entries: Entry[]) => Promise<EntryAnswer[]>,
   ): Promise<FlushOutcome> {
     await this.load();
-    const outcome: FlushOutcome = { saved: 0, refused: 0, waiting: 0, offline: false };
+    const outcome: FlushOutcome = { saved: 0, refused: 0, waiting: 0, pending: 0, offline: false };
 
-    const waiting = this.list(server, tournament).filter((q) => q.state === "waiting");
+    // Pending entries go again too, same cid: that is how the laptop's word is asked for.
+    const waiting = this.list(server, tournament).filter(open);
     for (const batch of batches(waiting)) {
       let answers: EntryAnswer[];
       try {
@@ -259,6 +278,10 @@ export class Outbox {
         } else if (answer.status === "saved") {
           this.items = this.items.filter((item) => item !== q);
           outcome.saved += 1;
+        } else if (answer.status === "pending") {
+          // The server has it; the laptop decides. Not a reason to hold the
+          // rest back: they go to the same laptop, in the same order.
+          q.state = "pending";
         } else {
           q.state = "refused";
           q.message = answer.message;
@@ -274,6 +297,7 @@ export class Outbox {
     }
 
     outcome.waiting = this.count(server, tournament);
+    outcome.pending = this.pendingCount(server, tournament);
     return outcome;
   }
 }

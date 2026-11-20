@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
+import { CommandBook } from "../relay";
 import { labelFor, type SavedServer } from "../servers";
 import { pendingRevokes, serverList } from "../stores";
 import { onBackButton, onOpenLink, onResume, storage } from "../platform";
@@ -30,11 +31,14 @@ export interface Ctx {
   server: SavedServer;
   api: Client;
   outbox: Outbox;
+  /** The writes a relayed tournament passed to its laptop, until their answers are read. */
+  commands: CommandBook;
   /** Something changed that the outbox badge or a list should show. */
   bump: () => void;
 }
 
 const outbox = new Outbox(storage);
+const commands = new CommandBook(storage);
 
 export function App() {
   const [servers, setServers] = useState<SavedServer[] | null>(null);
@@ -50,6 +54,7 @@ export function App() {
   const reload = useCallback(async () => {
     await loadLanguage(storage);
     await outbox.load();
+    await commands.load();
     // A stored address is checked again on every load: the rule may be
     // stricter than the version that saved it, and storage can be edited.
     const stored = await serverList.all();
@@ -128,7 +133,22 @@ export function App() {
 
   const server = servers?.find((s) => s.base === current) ?? null;
   const ctx = useMemo<Ctx | null>(
-    () => (server ? { server, api: client(server.base, server.token), outbox, bump } : null),
+    () =>
+      server
+        ? {
+            server,
+            // A write a relayed tournament passes to its laptop is kept, and asked about until answered.
+            api: client(server.base, server.token, fetch, {
+              onCommand: async (tournament, command, request) => {
+                await commands.add(server.base, tournament, command, request);
+                bump();
+              },
+            }),
+            outbox,
+            commands,
+            bump,
+          }
+        : null,
     [server, bump],
   );
 
@@ -213,6 +233,7 @@ export function App() {
             if (waiting) setNotice(tr("servers.signout_failed", { label: s.label }));
           }
           await outbox.forgetServer(s.base);
+          await commands.forgetServer(s.base);
           await serverList.remove(s.base);
           await reload();
         }}

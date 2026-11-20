@@ -238,8 +238,26 @@
           }
         },
         "openresults_url": { "$ref": "#/definitions/text_or_null" },
-        "team_board_layout": { "$ref": "#/definitions/team_board_layout" }
+        "team_board_layout": { "$ref": "#/definitions/team_board_layout" },
+        "relay": { "$ref": "#/definitions/relay" }
       }
+    },
+    "relay": {
+      "description": "Contract revision 6 (absent from older servers: read absent as null). Not null while the tournament is run from a laptop through the cloud relay (docs/design-cloud-relay.md): this server holds a mirror, results entered here wait for the laptop (sync answers pending), and standings are the laptop's. From revision 7 every other write on the tournament is sent to the laptop as well and answered 202 with a command (command-response.schema.json). Show a banner saying so.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "since", "last_seen_at", "mirrored_at"],
+          "properties": {
+            "label": { "type": "string", "description": "What the laptop calls itself, e.g. laptop Hall." },
+            "since": { "$ref": "#/definitions/text_or_null", "description": "When the relay started (ISO 8601)." },
+            "last_seen_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last asked for results (ISO 8601)." },
+            "mirrored_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last sent its state (ISO 8601)." }
+          }
+        }
+      ]
     },
     "team_board_layout": {
       "description": "A team tournament only (absent from every other tournament, and from servers older than contract revision 4: read absent as `teams`). How the boards of a team match are laid out, on screen, on the phone and in print alike. `teams`: each team keeps its side on every board, the first-named team on the left, so the colours in a column alternate. `white_left`: White on the left on every board, so the teams change sides from board to board. Either way every player carries a colour mark.",

@@ -6,6 +6,7 @@
 
 import { normaliseServer } from "./link";
 import { t as tr } from "./i18n";
+import { KeyMemory, RelayedWrite, relayCommandOf, type Relay, type RelayCommand, type WriteRequest } from "./relay";
 
 export type Role = "owner" | "editor" | "arbiter";
 export type Capability = "results" | "incidents" | "pair" | "publish" | "players" | "standings" | "settings";
@@ -51,6 +52,8 @@ export interface Tournament extends Omit<TournamentLine, "start_date" | "end_dat
   openresults_url?: string | null;
   /** A team tournament's board layout (newer servers only; absent means "teams"). */
   team_board_layout?: TeamBoardLayout;
+  /** Run from a laptop through the cloud relay (contract revision 6); null or absent when not. */
+  relay?: Relay | null;
 }
 
 /**
@@ -533,7 +536,8 @@ export type Entry = ResultEntry | IncidentEntry;
 
 export interface EntryAnswer {
   cid: string | null;
-  status: "saved" | "refused" | "retry";
+  /** `pending`: a relayed tournament; the laptop has not decided yet. Keep it and ask again. */
+  status: "saved" | "refused" | "retry" | "pending";
   reason: string | null;
   message: string | null;
   /** A refused conflict only: what the board holds now ("" for no result); null when the server no longer knows. */
@@ -815,6 +819,23 @@ export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
 const PREFIX = "/api/manubrium/v1";
 
+/** What a client does with the relay's answers; see src/relay.ts. */
+export interface ClientOptions {
+  /** The Idempotency-Key of each write, kept while its answer is missing. */
+  keys?: KeyMemory;
+  /** A write went to the laptop instead (a relayed tournament): keep it, and ask about it. */
+  onCommand?: (tournament: number, command: RelayCommand, request: WriteRequest) => void | Promise<void>;
+}
+
+const isWrite = (method: string) => method !== "GET" && method !== "HEAD";
+const tournamentOf = (path: string): number | null => {
+  const m = /^\/tournaments\/(\d+)(?:\/|$)/.exec(path);
+  return m ? Number(m[1]) : null;
+};
+
+/** One key memory for the whole app: a lost answer on any screen is the same write again. */
+export const writeKeys = new KeyMemory();
+
 async function call<T>(
   fetchImpl: FetchLike,
   base: string,
@@ -822,10 +843,17 @@ async function call<T>(
   method: string,
   path: string,
   body?: unknown,
+  options: ClientOptions & { key?: string } = {},
 ): Promise<T> {
   const headers: Record<string, string> = { accept: "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
   if (body !== undefined) headers["content-type"] = "application/json";
+
+  // Every write carries a key, so the same write sent twice is one command.
+  const request: WriteRequest = body === undefined ? { method, path } : { method, path, body };
+  const keys = options.keys ?? writeKeys;
+  const write = isWrite(method) && token !== null;
+  if (write) headers["idempotency-key"] = options.key ?? keys.keyFor(base, request);
 
   let response: Response;
   try {
@@ -837,6 +865,7 @@ async function call<T>(
   } catch (error) {
     throw new OfflineError(error instanceof Error && error.message ? tr("api.no_connection_detail", { detail: error.message }) : undefined);
   }
+  if (write) keys.answered(base, request);
 
   if (response.status === 204) return undefined as T;
 
@@ -850,6 +879,15 @@ async function call<T>(
       if (!response.ok) throw new ApiError(response.status, "not_api", tr("api.not_openpairings", { status: response.status }));
       throw new ApiError(response.status, "not_api", tr("api.not_json"));
     }
+  }
+
+  // A relayed tournament: the write went to the laptop. 202 while it decides;
+  // 200 when a resend finds it already answered.
+  const tournament = write ? tournamentOf(path) : null;
+  const command = tournament !== null && (response.status === 202 || response.status === 200) ? relayCommandOf(data) : null;
+  if (command && tournament !== null) {
+    await options.onCommand?.(tournament, command, request);
+    throw new RelayedWrite(tournament, command, request);
   }
 
   if (!response.ok) {
@@ -979,10 +1017,15 @@ export interface Client {
   liveGame(id: number, game: string): Promise<LiveGame>;
   sendBoardCommand(id: number, command: BoardCommandRequest): Promise<BoardCommand>;
   boardCommand(id: number, commandId: number): Promise<BoardCommand>;
+
+  /** Where a relayed write stands (contract revision 7): 202 pending, 200 answered. */
+  relayCommand(id: number, cid: string): Promise<RelayCommand>;
+  /** A relayed write again, as it was or with the desk's question answered, under a new key. */
+  resend(request: WriteRequest): Promise<unknown>;
 }
 
-export function client(base: string, token: string, fetchImpl: FetchLike = fetch): Client {
-  const req = <T>(method: string, path: string, body?: unknown) => call<T>(fetchImpl, base, token, method, path, body);
+export function client(base: string, token: string, fetchImpl: FetchLike = fetch, options: ClientOptions = {}): Client {
+  const req = <T>(method: string, path: string, body?: unknown) => call<T>(fetchImpl, base, token, method, path, body, options);
   const t = (id: number) => `/tournaments/${id}`;
 
   return {
@@ -1107,6 +1150,16 @@ export function client(base: string, token: string, fetchImpl: FetchLike = fetch
     liveGame: (id, game) => req("GET", `${t(id)}/live-boards/games/${encodeURIComponent(game)}`),
     sendBoardCommand: async (id, command) => (await req<{ command: BoardCommand }>("POST", `${t(id)}/live-boards/commands`, command)).command,
     boardCommand: async (id, commandId) => (await req<{ command: BoardCommand }>("GET", `${t(id)}/live-boards/commands/${commandId}`)).command,
+    relayCommand: async (id, cid) => {
+      const answer = await req<unknown>("GET", `${t(id)}/commands/${encodeURIComponent(cid)}`);
+      const command = relayCommandOf(answer);
+      if (!command) throw new ApiError(200, "not_api", tr("api.not_json"));
+      return command;
+    },
+    resend: (request) => {
+      if (tournamentOf(request.path) === null || !isWrite(request.method)) throw new Error(`not a tournament's write: ${request.method} ${request.path}`);
+      return call(fetchImpl, base, token, request.method, request.path, request.body, { ...options, key: crypto.randomUUID() });
+    },
     photo: async (id, incident) => {
       // Not JSON: the JPEG itself, so not through `call`.
       let response: Response;
