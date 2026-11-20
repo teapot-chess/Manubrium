@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, type Tournament } from "../api";
 import { onResume } from "../platform";
+import { hallRoutes, type HallRoutes } from "../hall";
 import { acknowledgedRequest, actionLabel, commandQuestion, RelayedWrite, type KeptCommand } from "../relay";
 import { dateLocale, t as tr } from "../i18n";
 import type { Ctx } from "./App";
@@ -15,16 +16,25 @@ import { describeError, Notice } from "./common";
 /** How long a plain "done" stays on screen before it goes by itself. */
 const DONE_MS = 6000;
 
-/** The banner a relayed tournament carries at the top. */
-export function RelayBanner(props: { t: Tournament }) {
+/**
+ * The banner a relayed tournament carries at the top, and which way this
+ * phone's requests go: straight to the laptop on the hall's network, or
+ * through the cloud (src/hall.ts). The road changes by itself; the banner
+ * follows the last request.
+ */
+export function RelayBanner(props: { t: Tournament; base: string; routes?: HallRoutes }) {
+  const routes = props.routes ?? hallRoutes;
+  const [, redraw] = useState(0);
+  useEffect(() => routes.subscribe(() => redraw((n) => n + 1)), [routes]);
   const relay = props.t.relay;
   if (!relay) return null;
+  const hall = routes.pathOf(props.base, props.t.id) === "hall";
   const seen = relay.last_seen_at ? new Date(relay.last_seen_at) : null;
   return (
-    <div class="notice info relay-banner" id="relay-banner" role="status">
+    <div class={["notice info relay-banner", hall ? "relay-hall" : "relay-cloud"].join(" ")} id="relay-banner" role="status" data-path={hall ? "hall" : "cloud"}>
       <span>
-        {tr("relay.banner", { label: relay.label })}
-        {seen && !Number.isNaN(seen.getTime()) && (
+        {tr("relay.banner", { label: relay.label })} <strong id="relay-path">{tr(hall ? "relay.path_hall" : "relay.path_cloud")}</strong>
+        {!hall && seen && !Number.isNaN(seen.getTime()) && (
           <> {tr("relay.banner_seen", { time: seen.toLocaleTimeString(dateLocale(), { hour: "2-digit", minute: "2-digit" }) })}</>
         )}
       </span>

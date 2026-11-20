@@ -1,7 +1,7 @@
 {
   "contract": "manubrium",
   "version": 1,
-  "revision": 7,
+  "revision": 8,
   "files": [
     "arrivals-response.schema.json",
     "board-history-response.schema.json",
@@ -31,6 +31,7 @@
     "examples/board-verdict-response.confirmed.json",
     "examples/board-verdict-response.json",
     "examples/byes-request.json",
+    "examples/command-response.hall-path.json",
     "examples/command-response.json",
     "examples/command-response.pending.json",
     "examples/command-response.refused.json",
@@ -136,6 +137,7 @@
     "examples/tournament-options-response.json",
     "examples/tournament-response.arbiter.json",
     "examples/tournament-response.json",
+    "examples/tournament-response.relay-hall.json",
     "examples/tournament-response.team.json",
     "examples/tournaments-response.json",
     "examples/undo-response.json",

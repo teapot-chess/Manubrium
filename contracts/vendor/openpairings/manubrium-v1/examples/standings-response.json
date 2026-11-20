@@ -7,7 +7,8 @@
           "id": 4,
           "name": "Player 4",
           "rating": 2000,
-          "title": null
+          "title": null,
+          "uid": "c2e3ae52b6e032e08207fbb4"
         },
         "points": 1.0,
         "rank": "1",
@@ -25,7 +26,8 @@
           "id": 5,
           "name": "Player 5",
           "rating": 1950,
-          "title": null
+          "title": null,
+          "uid": "bf40755cbd6fae881c645be7"
         },
         "points": 1.0,
         "rank": "2",
@@ -43,7 +45,8 @@
           "id": 1,
           "name": "Player 1",
           "rating": 2150,
-          "title": null
+          "title": null,
+          "uid": "8b0cd9fe7021ffe9395c48c8"
         },
         "points": 0.0,
         "rank": "3",
@@ -61,7 +64,8 @@
           "id": 2,
           "name": "Player 2",
           "rating": 2100,
-          "title": null
+          "title": null,
+          "uid": "ba23ba398b3063640783ea83"
         },
         "points": 0.0,
         "rank": "4",
@@ -79,7 +83,8 @@
           "id": 3,
           "name": "Player 3",
           "rating": 2050,
-          "title": null
+          "title": null,
+          "uid": "281830bf16a1de5612cc005f"
         },
         "points": 0.0,
         "rank": "5",

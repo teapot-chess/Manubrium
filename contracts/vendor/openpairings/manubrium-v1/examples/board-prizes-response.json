@@ -13,14 +13,16 @@
               "id": 9,
               "name": "Delta 1",
               "rating": 1900,
-              "title": null
+              "title": null,
+              "uid": "4553f23342c1d1a2391c2bd6"
             },
             "points": 1.0,
             "rank": 1,
             "team": {
               "id": 4,
               "name": "Delta",
-              "short_name": null
+              "short_name": null,
+              "uid": "c8890c0205fc45e11d0310af"
             }
           },
           {
@@ -32,14 +34,16 @@
               "id": 1,
               "name": "Alpha 1",
               "rating": 2300,
-              "title": null
+              "title": null,
+              "uid": "422c287d2fefd0b24ff9a94d"
             },
             "points": 1.0,
             "rank": 2,
             "team": {
               "id": 1,
               "name": "Alpha",
-              "short_name": null
+              "short_name": null,
+              "uid": "080af425052cc158c1e00b6b"
             }
           },
           {
@@ -51,14 +55,16 @@
               "id": 7,
               "name": "Charlie 1",
               "rating": 2000,
-              "title": null
+              "title": null,
+              "uid": "23b840bf6615121a9d1fe925"
             },
             "points": 0.0,
             "rank": 3,
             "team": {
               "id": 3,
               "name": "Charlie",
-              "short_name": null
+              "short_name": null,
+              "uid": "5b3cfb20017c0cb7ba8463ab"
             }
           },
           {
@@ -70,14 +76,16 @@
               "id": 4,
               "name": "Bravo 1",
               "rating": 2150,
-              "title": null
+              "title": null,
+              "uid": "0273955cba7022d7b8b4b2a0"
             },
             "points": 0.0,
             "rank": 4,
             "team": {
               "id": 2,
               "name": "Bravo",
-              "short_name": null
+              "short_name": null,
+              "uid": "757a3907ac14b717670a35bd"
             }
           }
         ]
@@ -94,14 +102,16 @@
               "id": 10,
               "name": "Delta 2",
               "rating": 1850,
-              "title": null
+              "title": null,
+              "uid": "d644bacd97792e66210be44d"
             },
             "points": 1.0,
             "rank": 1,
             "team": {
               "id": 4,
               "name": "Delta",
-              "short_name": null
+              "short_name": null,
+              "uid": "c8890c0205fc45e11d0310af"
             }
           },
           {
@@ -113,14 +123,16 @@
               "id": 2,
               "name": "Alpha 2",
               "rating": 2250,
-              "title": null
+              "title": null,
+              "uid": "950cb1ef3c20ff6a50dee3dc"
             },
             "points": 1.0,
             "rank": 2,
             "team": {
               "id": 1,
               "name": "Alpha",
-              "short_name": null
+              "short_name": null,
+              "uid": "080af425052cc158c1e00b6b"
             }
           },
           {
@@ -132,14 +144,16 @@
               "id": 8,
               "name": "Charlie 2",
               "rating": 1950,
-              "title": null
+              "title": null,
+              "uid": "b2b2f22d4fd70585b3c3eeac"
             },
             "points": 0.0,
             "rank": 3,
             "team": {
               "id": 3,
               "name": "Charlie",
-              "short_name": null
+              "short_name": null,
+              "uid": "5b3cfb20017c0cb7ba8463ab"
             }
           },
           {
@@ -151,14 +165,16 @@
               "id": 5,
               "name": "Bravo 2",
               "rating": 2100,
-              "title": null
+              "title": null,
+              "uid": "62664171786924f45e0728e9"
             },
             "points": 0.0,
             "rank": 4,
             "team": {
               "id": 2,
               "name": "Bravo",
-              "short_name": null
+              "short_name": null,
+              "uid": "757a3907ac14b717670a35bd"
             }
           }
         ]

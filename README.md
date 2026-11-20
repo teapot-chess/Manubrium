@@ -142,6 +142,7 @@ src/
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
   relay.ts       a tournament run from a laptop: commands, their Idempotency-Key, asking again
+  hall.ts        the hall path: the laptop first on the hall network, the cloud as the way round
   share.ts       the round, the standings and a team table as text, and the browser's share
   byes.ts        a player's byes: which rounds may still change, the next round
   matches.ts     a team round as matches: seats, colours, the layout, the score
@@ -195,11 +196,12 @@ asks it and the app shows it; nothing is answered on the arbiter's behalf.
 
 OpenPairings can run an event on the arbiter's laptop while pairings.cloud
 keeps a locked mirror and an inbox for the phones (OpenPairings'
-`docs/design-cloud-relay.md`; contract revisions 6 and 7). The tournament's
+`docs/design-cloud-relay.md`; contract revisions 6 to 8). The tournament's
 `relay` is then not null, and the app:
 
-- says so at the top: "Run from the laptop (its name). Results go through the
-  cloud.", with when the laptop last asked for results;
+- says so at the top: "Run from the laptop (its name).", then which road it
+  uses: "Connected to the laptop in the hall." or "Through the cloud.", with
+  when the laptop last asked for results;
 - keeps every button the role allows. The hosted copy calls itself read-only
   and blocks pairing as `read_only`, but every write goes to the laptop,
   which runs it through its own copy of the API with this phone's role, so
@@ -222,6 +224,35 @@ keeps a locked mirror and an inbox for the phones (OpenPairings'
 
 The server's own refusals before anything reaches the laptop (404
 `not_found`, 409 `desk_only`, 400 `bad_request`) are ordinary errors.
+
+### The hall path (contract revision 8, `src/hall.ts`)
+
+When the laptop listens on the hall's network, `GET /tournaments/:id`
+carries `relay.hall`: its addresses, its own id for the tournament, and a
+pass (`oph1.`...) the cloud signed for this phone, good for twelve hours.
+The client (`src/api.ts`, `call`) then:
+
+- sends every write of the tournament to the laptop first
+  (`urls[0]/api/manubrium/v1/tournaments/<tournament_id>/...`, `Authorization:
+  Bearer <pass>`, the same `Idempotency-Key`), all addresses within 2.5
+  seconds; the laptop answers `200 {"command": ...}` accepted or refused at
+  once, which goes through the same `RelayedWrite` as the cloud's answer;
+- sends the outbox's sync there too, whose results come back saved or
+  refused, never pending;
+- reads the round, the players, check-in, incidents, a card, a match and a
+  board's history there first, and the cloud first for 30 seconds after the
+  laptop did not answer (the laptop again if the cloud cannot be reached);
+- goes through the cloud, with the same key and body, when the laptop does
+  not answer in time, answers 401 (the pass is dropped and the tournament
+  read again for a new one), `409 cloud_only`, a 5xx or something that is
+  not the API. Any other answer, refusals included, is the desk's;
+- never sends presence, handover notes, Live Activities or the account's
+  routes there, nor a request that names a row by a plain id: rows go out by
+  `uid` (`refOf`, `editRefs`, `lineupRefs`), which both copies share;
+- sends the pass only to a private address over http (`isLocalHost`, as for
+  a server added by hand) or to https, which the existing local-network
+  rules cover: `NSAllowsLocalNetworking` and the local-network prompt on
+  iOS, the app-enforced cleartext rule on Android.
 
 ## Develop in a browser
 
@@ -426,19 +457,26 @@ the privacy policy and the screenshot list are in `store/`.
   job.
 - **The Belgian list is the only national one offered**, because it is the
   only one the server has. The toggle shows whatever `player_sources` says.
-- **Both paths (step 5 of the relay design) is not built**: the phone talks
-  to pairings.cloud only, not to the laptop first when it is on the hall
-  network. The API gives the app nothing to do it with: the `relay` block
-  has no address for the laptop; the laptop's tournament and its rows have
-  ids of their own, which the cloud's answers never name, so a write built
-  from the cloud's view cannot be sent to the laptop; and the laptop's own
-  API does not read `Idempotency-Key`, so a write tried there and then in
-  the cloud could be made twice. A phone can still be connected to the
-  laptop directly as a second server (its hall listener), as before.
-- **Browser development against a dev server**: OpenPairings' dev CORS
-  plug allows only `authorization` and `content-type`, so a browser's
-  preflight for a write with `Idempotency-Key` fails until it allows that
-  header too. The phones do not use CORS.
+- **The hall path still starts in the cloud.** The tournament itself is
+  read from the cloud only, because that read is where the laptop's address
+  and the phone's pass come from, and the pass is kept in memory, not on
+  disk. So a phone that opens the app in a hall whose internet is already
+  down has no hall path until the cloud answers once; a phone that had the
+  tournament open when the internet went keeps it for the pass's twelve
+  hours.
+- **Not every read takes the hall path.** The round, the players, check-in,
+  incidents, a player's card, a match and a board's history do (their rows
+  are named by uid in whatever the app sends next); standings, teams,
+  prizes, settings, board codes and the live boards are read from the
+  cloud's copy, a moment behind the laptop. Board codes and live-board
+  commands, which name the laptop's own ids, go through the cloud as
+  before, and so does a result queued by a version that named boards by id.
+- **A scanned result slip names the desk's pairing id**, which is the
+  laptop's on a relayed tournament; it opens the right board when the round
+  came from the laptop and may not when it came from the cloud.
+- **In a browser the hall path needs the laptop to allow CORS**; where it
+  does not, the request goes through the cloud, as it would without a hall
+  path. The phones do not use CORS.
 - **A new tournament is not queued offline.** It needs a connection, on
   purpose.
 - `npm audit` reports moderate advisories in `@capacitor/cli`'s `xcode`

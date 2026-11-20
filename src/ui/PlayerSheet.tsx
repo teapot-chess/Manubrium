@@ -9,7 +9,7 @@
 // all, is the server's to say.
 
 import { useEffect, useState } from "preact/hooks";
-import { ApiError, type PlayerCard, type Tournament } from "../api";
+import { ApiError, refOf, type Ref, type PlayerCard, type Tournament } from "../api";
 import { byeLabel, byesToSend, canSitOut, nextRound, setBye } from "../byes";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, Sheet, TryAgain } from "./common";
@@ -29,7 +29,7 @@ export function colourHistory(card: PlayerCard): string {
 
 const points = (n: number) => String(n).replace(/\.5$/, "½").replace(/^0½$/, "½").replace(/\.0$/, "");
 
-export function PlayerSheet(props: { ctx: Ctx; t: Tournament; playerId: number; waiting?: boolean; onClose: () => void }) {
+export function PlayerSheet(props: { ctx: Ctx; t: Tournament; playerId: Ref; waiting?: boolean; onClose: () => void }) {
   const { ctx, t, playerId } = props;
   const [card, setCard] = useState<PlayerCard | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -159,13 +159,13 @@ function SitOut(props: { ctx: Ctx; t: Tournament; card: PlayerCard; onCard: (car
     setError(null);
     setSaid(null);
     try {
-      const fresh = await ctx.api.playerCard(t.id, player.id);
+      const fresh = await ctx.api.playerCard(t.id, refOf(player));
       const byes = setBye(fresh.player.byes ?? [], round, kind, t.paired_rounds);
       const list = byesToSend(byes, t.paired_rounds);
-      await (acknowledged.length ? ctx.api.setByes(t.id, player.id, list, acknowledged) : ctx.api.setByes(t.id, player.id, list));
+      await (acknowledged.length ? ctx.api.setByes(t.id, refOf(player), list, acknowledged) : ctx.api.setByes(t.id, refOf(player), list));
       // The card as the server now has it, before anything is said: the
       // sentence and the button under it must not disagree, even for a second.
-      const now = await ctx.api.playerCard(t.id, player.id).catch(() => ({ ...fresh, player: { ...fresh.player, byes } }));
+      const now = await ctx.api.playerCard(t.id, refOf(player)).catch(() => ({ ...fresh, player: { ...fresh.player, byes } }));
       props.onCard(now);
       setAsk(null);
       setPicking(false);

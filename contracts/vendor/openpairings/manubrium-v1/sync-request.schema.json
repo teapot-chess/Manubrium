@@ -39,7 +39,7 @@
                 "minimum": 1
               },
               "pairing": {
-                "$ref": "common.schema.json#/definitions/id"
+                "$ref": "common.schema.json#/definitions/ref"
               },
               "board": {
                 "type": [
@@ -50,12 +50,14 @@
               "white": {
                 "type": [
                   "integer",
+                  "string",
                   "null"
                 ]
               },
               "black": {
                 "type": [
                   "integer",
+                  "string",
                   "null"
                 ]
               },
@@ -92,7 +94,7 @@
                 "minimum": 1
               },
               "pairing": {
-                "$ref": "common.schema.json#/definitions/id"
+                "$ref": "common.schema.json#/definitions/ref"
               },
               "board": {
                 "type": [

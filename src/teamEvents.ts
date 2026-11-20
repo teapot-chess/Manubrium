@@ -5,7 +5,7 @@
 // choice will do before it is sent, and the server's own answer replaces
 // the preview.
 
-import type { EventTeam, LineupFinding, LineupRosterPlayer, LineupsBody, MatchLineup, Seats, Tournament } from "./api";
+import type { EventTeam, LineupFinding, LineupRosterPlayer, LineupsBody, MatchLineup, Ref, Seats, Tournament } from "./api";
 
 /**
  * The line-up that follows from who sits out: the roster in board order,
@@ -30,6 +30,19 @@ export function outFromSeats(roster: LineupRosterPlayer[], seated: Seats): Set<n
 /** The editor's two drafts as the body the server takes, for either mode. */
 export function lineupBody(mode: MatchLineup["mode"], draft: { a: Seats; b: Seats; outA: ReadonlySet<number>; outB: ReadonlySet<number> }): LineupsBody {
   return mode === "ticks" ? { out: { a: [...draft.outA], b: [...draft.outB] } } : { a: draft.a, b: draft.b };
+}
+
+/**
+ * A line-up body with its players named by uid, where the rosters give one:
+ * the same body then means the same players on the laptop and the cloud
+ * (contract revision 8). A player the rosters do not know keeps their id.
+ */
+export function lineupRefs(body: LineupsBody, lineup: Pick<MatchLineup, "roster_a" | "roster_b">): LineupsBody {
+  const uids = new Map<Ref, Ref>();
+  for (const p of [...lineup.roster_a, ...lineup.roster_b]) if (p.uid) uids.set(p.id, p.uid);
+  const one = (id: Ref) => uids.get(id) ?? id;
+  const seats = (s: (Ref | null)[]) => s.map((id) => (id === null ? null : one(id)));
+  return "out" in body ? { out: { a: body.out.a.map(one), b: body.out.b.map(one) } } : { a: seats(body.a), b: seats(body.b) };
 }
 
 /** Whether a draft differs from the saved line-up, in either mode. */

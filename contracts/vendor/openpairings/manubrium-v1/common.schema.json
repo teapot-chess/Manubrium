@@ -9,6 +9,15 @@
       "type": "integer",
       "minimum": 1
     },
+    "uid": {
+      "description": "Contract revision 8. A row's stable name: the same for that round, board (pairing), player, team, match or incident on every copy of the tournament, where its `id` belongs to one database. A relayed tournament's hosted copy and the laptop that runs it give one board two ids and one uid. Send it wherever a request takes that row's id (`ref`).",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,64}$"
+    },
+    "ref": {
+      "description": "Contract revision 8. A row named in a request, by this server's `id` or by its `uid` (any server). On the hall path of a relayed tournament (`relay.hall`) send uids: the laptop's ids are not the ones this server gave.",
+      "oneOf": [{ "$ref": "#/definitions/id" }, { "$ref": "#/definitions/uid" }]
+    },
     "timestamp": {
       "description": "ISO 8601 / RFC 3339, UTC, with its zone (`Z`): 2026-11-07T14:32:05Z. Never a naive time.",
       "type": "string",
@@ -254,7 +263,32 @@
             "label": { "type": "string", "description": "What the laptop calls itself, e.g. laptop Hall." },
             "since": { "$ref": "#/definitions/text_or_null", "description": "When the relay started (ISO 8601)." },
             "last_seen_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last asked for results (ISO 8601)." },
-            "mirrored_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last sent its state (ISO 8601)." }
+            "mirrored_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last sent its state (ISO 8601)." },
+            "hall": { "$ref": "#/definitions/relay_hall" }
+          }
+        }
+      ]
+    },
+    "relay_hall": {
+      "description": "Contract revision 8 (absent from older servers: read absent as null). The hall path (docs/design-cloud-relay.md, step 5): where this phone reaches the laptop directly on the hall's network, and the pass the laptop takes from it there. Null while the laptop reports no address on the hall's network, in every answer but GET /tournaments/:id, and for anything but an app's device. Try the laptop first and the cloud (this server) when the laptop does not answer: every request is the same request on both, with these differences. Send `Authorization: Bearer <token>` to the laptop, never the device token. Name the tournament by `tournament_id` (the laptop's id; this server's id is taken too) and every row by its `uid` (the laptop's ids differ from this server's; a board history's Undo names the row's `uid`). Every write is answered at once `200 {\"command\": ...}` (command-response.schema.json) with `state` accepted or refused - never pending - and `sync` as usual, never pending. Send the same `Idempotency-Key` (or sync `cid`) on both paths: a write the laptop already answered by either path is answered again the same way and never made twice, so a write sent to the laptop and then again through the cloud (or the other way round) is harmless. Presence, handover notes and live-activity settings are the cloud's: the laptop refuses them `409 cloud_only`; account routes (/me, push, sign-out) only ever go to the cloud. A refused token is `401 unauthorized`: get a new one from GET /tournaments/:id here. The laptop's answers are plain http on the hall's network.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["urls", "tournament_id", "seen_at", "token", "expires_at"],
+          "properties": {
+            "urls": {
+              "description": "The laptop's server address(es) on the hall's network, e.g. http://192.168.1.20:4748: the base the API's paths (/api/manubrium/v1/...) go under, as this server's is. Try them in order.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": { "type": "string" }
+            },
+            "tournament_id": { "$ref": "#/definitions/id", "description": "The tournament's id on the laptop." },
+            "seen_at": { "$ref": "#/definitions/text_or_null", "description": "When the laptop last said it answers there (ISO 8601): its last poll. It may be older than that and still answer: the hall's network can outlive the laptop's internet." },
+            "token": { "type": "string", "description": "The pass for the laptop (`oph1.`...): signed by this server for this tournament, this phone and its role there, and nothing else. Keep it with the tournament, not the account." },
+            "expires_at": { "$ref": "#/definitions/timestamp", "description": "When the laptop stops taking it (12 hours after it was made). Every GET /tournaments/:id here hands out a fresh one." }
           }
         }
       ]
@@ -267,9 +301,10 @@
     "board_player": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "title", "rating", "score"],
+      "required": ["id", "uid", "name", "title", "rating", "score"],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "name": { "type": "string" },
         "title": { "$ref": "#/definitions/text_or_null" },
         "rating": { "type": ["integer", "null"] },
@@ -324,9 +359,10 @@
     "board": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "board", "label", "white", "black", "bye", "vacant", "empty", "result", "clearable", "phone", "board_report"],
+      "required": ["id", "uid", "board", "label", "white", "black", "bye", "vacant", "empty", "result", "clearable", "phone", "board_report"],
       "properties": {
         "id": { "$ref": "#/definitions/id", "description": "The pairing id: what results, edits, clear/confirm/reject name." },
+        "uid": { "$ref": "#/definitions/uid" },
         "board": { "type": ["integer", "null"] },
         "label": { "type": "string", "description": "The table as printed: usually the board number, a fixed table otherwise." },
         "white": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/board_player" }] },
@@ -343,9 +379,10 @@
     "round": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["number", "latest", "publish_level", "boards", "byes", "pool", "hand_edits", "results"],
+      "required": ["uid", "number", "latest", "publish_level", "boards", "byes", "pool", "hand_edits", "results"],
       "properties": {
         "number": { "type": "integer", "minimum": 1 },
+        "uid": { "$ref": "#/definitions/uid" },
         "latest": { "type": "boolean" },
         "publish_level": { "$ref": "#/definitions/publish_level" },
         "boards": { "type": "array", "items": { "$ref": "#/definitions/board" } },
@@ -396,9 +433,10 @@
     "match_team": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "short_name"],
+      "required": ["id", "uid", "name", "short_name"],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "name": { "type": "string" },
         "short_name": { "$ref": "#/definitions/text_or_null", "description": "For narrow columns, when the team has one." }
       }
@@ -416,9 +454,10 @@
       "description": "One team match of a round: the first-named team (`team_a`) against `team_b`, played on the boards it names. The Pairings page's Matches table, by the same functions.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups"],
+      "required": ["id", "uid", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups"],
       "properties": {
         "id": { "$ref": "#/definitions/id", "description": "The match id: what POST /rounds/:n/matches/:match/lineups/confirm names." },
+        "uid": { "$ref": "#/definitions/uid" },
         "number": { "type": ["integer", "null"], "description": "The match number within the round." },
         "team_a": { "$ref": "#/definitions/match_team" },
         "team_b": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/match_team" }], "description": "Null for the round's bye." },
@@ -429,9 +468,10 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "number", "a_white"],
+            "required": ["id", "uid", "number", "a_white"],
             "properties": {
               "id": { "$ref": "#/definitions/id", "description": "The pairing id: the `id` of one of the round's `boards`." },
+              "uid": { "$ref": "#/definitions/uid" },
               "number": { "type": "integer", "minimum": 1, "description": "The board within the match, 1 to the tournament's boards per match. Not the round-wide board number, which is the board's own `label`." },
               "a_white": { "type": "boolean", "description": "Whether the first-named team has White on this board: the board's `white` is then team_a's player and its `black` team_b's, and the other way round when false." }
             }
@@ -475,9 +515,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "name", "title", "rating"],
+          "required": ["id", "uid", "name", "title", "rating"],
           "properties": {
             "id": { "$ref": "#/definitions/id" },
+            "uid": { "$ref": "#/definitions/uid" },
             "name": { "type": "string" },
             "title": { "$ref": "#/definitions/text_or_null" },
             "rating": { "type": ["integer", "null"] }
@@ -523,11 +564,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "title", "sex", "federation", "club", "birth_year", "fide_id", "fide_rating", "national_rating",
+        "id", "uid", "name", "title", "sex", "federation", "club", "birth_year", "fide_id", "fide_rating", "national_rating",
         "rating", "pairing_number", "start_round", "status", "absent", "present", "absent_rounds", "byes"
       ],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "name": { "type": "string" },
         "title": { "$ref": "#/definitions/text_or_null" },
         "sex": { "$ref": "#/definitions/text_or_null" },
@@ -551,9 +593,10 @@
       "description": "An incident as the desk's list shows it. The photo itself is GET /tournaments/:id/incidents/:iid/photo, image/jpeg, outside this contract.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "round", "board", "kind", "note", "white", "black", "occurred_at", "by", "has_photo"],
+      "required": ["id", "uid", "round", "board", "kind", "note", "white", "black", "occurred_at", "by", "has_photo"],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "round": { "type": "integer" },
         "board": { "type": ["integer", "null"] },
         "kind": { "type": "string", "enum": ["illegal_move", "clock", "device", "complaint", "time_added", "game_rewound", "arbiter_call", "other"] },
@@ -608,9 +651,10 @@
       "description": "A team of a team event, with its roster in board order (contract revision 5). `number` is its pairing number once the first round froze them, its seed before. `rounds` lists only the rounds the team sits out as a team - `absent` (no points) or `half_bye` (a requested half-point bye, a team Swiss only); it plays every other round. `captain_contact` is sent to the owner and editors only.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "short_name", "number", "captain", "club", "series", "rating", "withdrawn_from_round", "rounds", "roster"],
+      "required": ["id", "uid", "name", "short_name", "number", "captain", "club", "series", "rating", "withdrawn_from_round", "rounds", "roster"],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "name": { "type": "string" },
         "short_name": { "$ref": "#/definitions/text_or_null" },
         "number": { "type": ["integer", "null"] },
@@ -638,9 +682,10 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "name", "title", "rating", "federation", "order", "status", "plays_next"],
+            "required": ["id", "uid", "name", "title", "rating", "federation", "order", "status", "plays_next"],
             "properties": {
               "id": { "$ref": "#/definitions/id" },
+              "uid": { "$ref": "#/definitions/uid" },
               "name": { "type": "string" },
               "title": { "$ref": "#/definitions/text_or_null" },
               "rating": { "type": ["integer", "null"] },
@@ -690,9 +735,10 @@
     "lineup_roster_player": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "title", "rating", "order", "available"],
+      "required": ["id", "uid", "name", "title", "rating", "order", "available"],
       "properties": {
         "id": { "$ref": "#/definitions/id" },
+        "uid": { "$ref": "#/definitions/uid" },
         "name": { "type": "string" },
         "title": { "$ref": "#/definitions/text_or_null" },
         "rating": { "type": ["integer", "null"] },
@@ -701,17 +747,18 @@
       }
     },
     "seats": {
-      "description": "A line-up: a player id per board of the match, board 1 first, null for an empty seat.",
+      "description": "A line-up: a player id (or, from revision 8, uid) per board of the match, board 1 first, null for an empty seat.",
       "type": "array",
-      "items": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/id" }] }
+      "items": { "oneOf": [{ "type": "null" }, { "$ref": "#/definitions/ref" }] }
     },
     "match_detail": {
       "description": "One team match in full (contract revision 5): every field of the round's `match`, and what the match page knows besides. `lineup` is null for a bye. `lineup.mode` is the desk's editor: `ticks` (tick who sits out; the roster in board order fills the boards) or `selects` (a player per board: the board order is chosen per round, set by a plugin, or line-ups are optional). `home` is `a` where the event plays home and away (the first-named team is at home), null otherwise. `can` says what this account may do to the match now; an arbiter is told all false.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups", "round", "home", "match_score", "lineup", "can"],
+      "required": ["id", "uid", "number", "team_a", "team_b", "bye", "boards", "game_points", "match_points", "complete", "decision", "lineups", "round", "home", "match_score", "lineup", "can"],
       "properties": {
         "id": { "$ref": "#/definitions/match/properties/id" },
+        "uid": { "$ref": "#/definitions/match/properties/uid" },
         "number": { "$ref": "#/definitions/match/properties/number" },
         "team_a": { "$ref": "#/definitions/match/properties/team_a" },
         "team_b": { "$ref": "#/definitions/match/properties/team_b" },
@@ -793,9 +840,10 @@
               "team": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["id", "name", "short_name", "series"],
+                "required": ["id", "uid", "name", "short_name", "series"],
                 "properties": {
                   "id": { "$ref": "#/definitions/id" },
+                  "uid": { "$ref": "#/definitions/uid" },
                   "name": { "type": "string" },
                   "short_name": { "$ref": "#/definitions/text_or_null" },
                   "series": { "$ref": "#/definitions/text_or_null" }

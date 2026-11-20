@@ -18,9 +18,10 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "who", "at", "text", "undo"],
+            "required": ["id", "uid", "who", "at", "text", "undo"],
             "properties": {
               "id": { "$ref": "common.schema.json#/definitions/id" },
+              "uid": { "type": ["string", "null"], "description": "Contract revision 8. The row by the name both copies of a relayed tournament give it (`row-<n>`): what an Undo names in place of `id` on the hall path (relay.hall), and here too. Null on a relayed tournament's hosted copy for a change made before the laptop took over, which only the desk can undo." },
               "who": { "type": "string" },
               "at": { "$ref": "common.schema.json#/definitions/timestamp" },
               "text": { "type": "string", "description": "What happened, as the audit trail words it." },

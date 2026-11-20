@@ -7,7 +7,8 @@
           "name": "Player 3",
           "rating": 2050,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "281830bf16a1de5612cc005f"
         },
         "board": 1,
         "board_report": {
@@ -15,7 +16,7 @@
           "moves_count": 2,
           "result": null,
           "status": "live",
-          "updated_at": "2026-10-22T06:27:49Z"
+          "updated_at": "2026-11-20T01:19:56Z"
         },
         "bye": false,
         "clearable": false,
@@ -24,13 +25,15 @@
         "label": "1",
         "phone": null,
         "result": "",
+        "uid": "e983c71dfee0c67832b41196",
         "vacant": false,
         "white": {
           "id": 1,
           "name": "Player 1",
           "rating": 2150,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "8b0cd9fe7021ffe9395c48c8"
         }
       },
       {
@@ -39,7 +42,8 @@
           "name": "Player 2",
           "rating": 2100,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "ba23ba398b3063640783ea83"
         },
         "board": 2,
         "board_report": null,
@@ -49,18 +53,20 @@
         "id": 2,
         "label": "2",
         "phone": {
-          "at": "2026-10-22T06:27:49Z",
+          "at": "2026-11-20T01:19:56Z",
           "by": "Hall phone",
           "state": "unconfirmed"
         },
         "result": "1-0",
+        "uid": "38dbc992b3d5609c7a847bb2",
         "vacant": false,
         "white": {
           "id": 4,
           "name": "Player 4",
           "rating": 2000,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "c2e3ae52b6e032e08207fbb4"
         }
       },
       {
@@ -74,18 +80,21 @@
         "label": "3",
         "phone": null,
         "result": "bye",
+        "uid": "1d77fcc35ddc4f60e8cd5b54",
         "vacant": false,
         "white": {
           "id": 5,
           "name": "Player 5",
           "rating": 1950,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "bf40755cbd6fae881c645be7"
         }
       }
     ],
     "byes": [],
     "hand_edits": {
+      "discardable": false,
       "open": false,
       "pibe": null
     },
@@ -108,6 +117,7 @@
       "1/2-1/2U",
       "*W",
       "*B"
-    ]
+    ],
+    "uid": "e6fbec385d0920768979f58b"
   }
 }

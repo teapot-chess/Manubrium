@@ -4,12 +4,14 @@
       {
         "a_white": true,
         "id": 1,
-        "number": 1
+        "number": 1,
+        "uid": "d379198a90a49d15aeddea65"
       },
       {
         "a_white": false,
         "id": 2,
-        "number": 2
+        "number": 2,
+        "uid": "35f6b1685261610762f9da52"
       }
     ],
     "bye": false,
@@ -61,7 +63,8 @@
           "name": "Alpha 1",
           "order": 1,
           "rating": 2300,
-          "title": null
+          "title": null,
+          "uid": "f60a2ce758511fda92d28114"
         },
         {
           "available": true,
@@ -69,7 +72,8 @@
           "name": "Alpha 2",
           "order": 2,
           "rating": 2250,
-          "title": null
+          "title": null,
+          "uid": "34880720c506c104dd06b2f5"
         },
         {
           "available": true,
@@ -77,7 +81,8 @@
           "name": "Alpha 3",
           "order": 3,
           "rating": 2200,
-          "title": null
+          "title": null,
+          "uid": "314b755a540c49699f76b165"
         }
       ],
       "roster_b": [
@@ -87,7 +92,8 @@
           "name": "Charlie 1",
           "order": 1,
           "rating": 2000,
-          "title": null
+          "title": null,
+          "uid": "0afa053f7b1dd5b827ae01a4"
         },
         {
           "available": true,
@@ -95,7 +101,8 @@
           "name": "Charlie 2",
           "order": 2,
           "rating": 1950,
-          "title": null
+          "title": null,
+          "uid": "408527bafe323a4bae2b1ce5"
         }
       ]
     },
@@ -111,13 +118,16 @@
     "team_a": {
       "id": 1,
       "name": "Alpha",
-      "short_name": null
+      "short_name": null,
+      "uid": "ab973a0eac5adb3116037693"
     },
     "team_b": {
       "id": 3,
       "name": "Charlie",
-      "short_name": null
-    }
+      "short_name": null,
+      "uid": "5236dd6843697af01a25ddb8"
+    },
+    "uid": "ce563cca770fed419553a54f"
   },
   "round": {
     "boards": [
@@ -127,7 +137,8 @@
           "name": "Charlie 1",
           "rating": 2000,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "0afa053f7b1dd5b827ae01a4"
         },
         "board": 1,
         "board_report": null,
@@ -138,13 +149,15 @@
         "label": "1",
         "phone": null,
         "result": "",
+        "uid": "d379198a90a49d15aeddea65",
         "vacant": false,
         "white": {
           "id": 2,
           "name": "Alpha 2",
           "rating": 2250,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "34880720c506c104dd06b2f5"
         }
       },
       {
@@ -153,7 +166,8 @@
           "name": "Alpha 3",
           "rating": 2200,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "314b755a540c49699f76b165"
         },
         "board": 2,
         "board_report": null,
@@ -164,13 +178,15 @@
         "label": "2",
         "phone": null,
         "result": "",
+        "uid": "35f6b1685261610762f9da52",
         "vacant": false,
         "white": {
           "id": 8,
           "name": "Charlie 2",
           "rating": 1950,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "408527bafe323a4bae2b1ce5"
         }
       },
       {
@@ -179,7 +195,8 @@
           "name": "Bravo 1",
           "rating": 2150,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "1d8d3da334738c7b983b4ad6"
         },
         "board": 3,
         "board_report": null,
@@ -190,13 +207,15 @@
         "label": "3",
         "phone": null,
         "result": "",
+        "uid": "cf8732f724dd9bf839869b79",
         "vacant": false,
         "white": {
           "id": 9,
           "name": "Delta 1",
           "rating": 1900,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "8fadcede288b26dace4132c3"
         }
       },
       {
@@ -205,7 +224,8 @@
           "name": "Delta 2",
           "rating": 1850,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "d046891641f748892f0d021a"
         },
         "board": 4,
         "board_report": null,
@@ -216,13 +236,15 @@
         "label": "4",
         "phone": null,
         "result": "",
+        "uid": "d94ef9510b5a70db7bd0c4b8",
         "vacant": false,
         "white": {
           "id": 5,
           "name": "Bravo 2",
           "rating": 2100,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "10143d8bd9702598bf816508"
         }
       }
     ],
@@ -239,12 +261,14 @@
           {
             "a_white": true,
             "id": 1,
-            "number": 1
+            "number": 1,
+            "uid": "d379198a90a49d15aeddea65"
           },
           {
             "a_white": false,
             "id": 2,
-            "number": 2
+            "number": 2,
+            "uid": "35f6b1685261610762f9da52"
           }
         ],
         "bye": false,
@@ -265,25 +289,30 @@
         "team_a": {
           "id": 1,
           "name": "Alpha",
-          "short_name": null
+          "short_name": null,
+          "uid": "ab973a0eac5adb3116037693"
         },
         "team_b": {
           "id": 3,
           "name": "Charlie",
-          "short_name": null
-        }
+          "short_name": null,
+          "uid": "5236dd6843697af01a25ddb8"
+        },
+        "uid": "ce563cca770fed419553a54f"
       },
       {
         "boards": [
           {
             "a_white": true,
             "id": 3,
-            "number": 1
+            "number": 1,
+            "uid": "cf8732f724dd9bf839869b79"
           },
           {
             "a_white": false,
             "id": 4,
-            "number": 2
+            "number": 2,
+            "uid": "d94ef9510b5a70db7bd0c4b8"
           }
         ],
         "bye": false,
@@ -304,13 +333,16 @@
         "team_a": {
           "id": 4,
           "name": "Delta",
-          "short_name": null
+          "short_name": null,
+          "uid": "80db401b3ce528cf4f516154"
         },
         "team_b": {
           "id": 2,
           "name": "Bravo",
-          "short_name": null
-        }
+          "short_name": null,
+          "uid": "dab4ec8f0543780979d36446"
+        },
+        "uid": "d6b6052689bbf03b222a4695"
       },
       {
         "boards": [],
@@ -335,9 +367,11 @@
         "team_a": {
           "id": 5,
           "name": "Echo",
-          "short_name": null
+          "short_name": null,
+          "uid": "5214a854a8603e9e941d32dc"
         },
-        "team_b": null
+        "team_b": null,
+        "uid": "62971e3bb94445cf54167fe9"
       }
     ],
     "number": 1,
@@ -349,7 +383,8 @@
           "name": "Alpha 1",
           "rating": 2300,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "f60a2ce758511fda92d28114"
         },
         "type": null
       },
@@ -360,7 +395,8 @@
           "name": "Bravo 3",
           "rating": 2050,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "f37bb4c19cfbdafed0071b69"
         },
         "type": null
       },
@@ -371,7 +407,8 @@
           "name": "Echo 1",
           "rating": 1800,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "9c0b7a2992a7addd002e420f"
         },
         "type": null
       },
@@ -382,7 +419,8 @@
           "name": "Echo 2",
           "rating": 1750,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "c5638a6c3e23f57afaef32d2"
         },
         "type": null
       }
@@ -403,6 +441,7 @@
       "1/2-1/2U",
       "*W",
       "*B"
-    ]
+    ],
+    "uid": "fe2ec49578a8c6159aad0583"
   }
 }

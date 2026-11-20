@@ -3,7 +3,7 @@
 // outbox for this tournament.
 
 import { useEffect, useState } from "preact/hooks";
-import type { Incident, Tournament } from "../api";
+import { refOf, type Incident, type Tournament } from "../api";
 import { takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, Sheet, TryAgain } from "./common";
@@ -97,7 +97,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
     setBusy(i.id);
     setError(null);
     try {
-      await ctx.api.attachPhoto(t.id, i.id, photo);
+      await ctx.api.attachPhoto(t.id, refOf(i), photo);
       setInfo(tr("more.photo_added"));
       await loadIncidents();
     } catch (e) {
@@ -119,7 +119,7 @@ export function MoreScreen(props: { ctx: Ctx; t: Tournament; reloadTournament?: 
     setBusy(i.id);
     setError(null);
     try {
-      const blob = await ctx.api.photo(t.id, i.id);
+      const blob = await ctx.api.photo(t.id, refOf(i));
       setViewing({ incident: i, url: URL.createObjectURL(blob) });
     } catch (e) {
       setError(describeError(e));
@@ -359,7 +359,7 @@ function IncidentEditor(props: { ctx: Ctx; t: Tournament; incident: Incident; on
             class="btn danger block"
             id="incident-delete-confirm"
             disabled={busy}
-            onClick={() => run(() => ctx.api.deleteIncident(t.id, incident.id), tr("more.incident_deleted"))}
+            onClick={() => run(() => ctx.api.deleteIncident(t.id, refOf(incident)), tr("more.incident_deleted"))}
           >
             {tr("more.incident_delete_yes")}
           </button>
@@ -379,7 +379,7 @@ function IncidentEditor(props: { ctx: Ctx; t: Tournament; incident: Incident; on
         id="incident-edit-form"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => ctx.api.updateIncident(t.id, incident.id, { kind, note: note.trim() }), tr("more.incident_saved"));
+          run(() => ctx.api.updateIncident(t.id, refOf(incident), { kind, note: note.trim() }), tr("more.incident_saved"));
         }}
       >
         <label for="incident-edit-type">{tr("round.what")}</label>

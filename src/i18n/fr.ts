@@ -966,7 +966,9 @@ export const fr: Record<Key, string> = {
   "tstand.games_played": "{n} parties",
   "tstand.perf": "performance {n}",
   // --- the cloud relay: a tournament run from a laptop ---
-  "relay.banner": "Géré depuis l'ordinateur portable ({label}). Les résultats passent par le cloud.",
+  "relay.banner": "Géré depuis l'ordinateur portable ({label}).",
+  "relay.path_hall": "Connecté à l'ordinateur portable dans la salle.",
+  "relay.path_cloud": "Par le cloud.",
   "relay.banner_seen": "Dernier contact à {time}.",
   "relay.sent_waiting": "Envoyé au portable, en attente de la table de l'arbitre.",
   "relay.accepted": "Fait à la table de l'arbitre.",

@@ -7,7 +7,8 @@
           "id": 2,
           "name": "Player 2",
           "rating": 1980,
-          "title": null
+          "title": null,
+          "uid": "f09c582989c069f85653962c"
         },
         "result": "1",
         "round": 1
@@ -31,7 +32,8 @@
       "sex": null,
       "start_round": 1,
       "status": "active",
-      "title": null
+      "title": null,
+      "uid": "c838997569ebd43549e1e37c"
     },
     "rank": 1,
     "score": 1.0

@@ -8,7 +8,8 @@
           "name": "Player 3",
           "rating": 2050,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "51833ea66e1fa2ce906b6bf4"
         },
         "board": 1,
         "board_report": null,
@@ -19,13 +20,15 @@
         "label": "1",
         "phone": null,
         "result": "",
+        "uid": "27f7b3f4ad19cac64449a12c",
         "vacant": false,
         "white": {
           "id": 4,
           "name": "Player 4",
           "rating": 2000,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "f1f76996c9faa60e9e2bdd93"
         }
       },
       {
@@ -34,7 +37,8 @@
           "name": "Player 2",
           "rating": 2100,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "06c4efa79644c9d53dcd8088"
         },
         "board": 2,
         "board_report": null,
@@ -45,18 +49,21 @@
         "label": "2",
         "phone": null,
         "result": "",
+        "uid": "681c9b36efbd878e20702e53",
         "vacant": false,
         "white": {
           "id": 1,
           "name": "Player 1",
           "rating": 2150,
           "score": 0.0,
-          "title": null
+          "title": null,
+          "uid": "f067396665a82be2b89cfdcc"
         }
       }
     ],
     "byes": [],
     "hand_edits": {
+      "discardable": false,
       "open": false,
       "pibe": "MPA @ Round 1: 1-3 4-2 => 1-2 4-3"
     },
@@ -79,6 +86,7 @@
       "1/2-1/2U",
       "*W",
       "*B"
-    ]
+    ],
+    "uid": "71126fa5adb943d99222507f"
   }
 }

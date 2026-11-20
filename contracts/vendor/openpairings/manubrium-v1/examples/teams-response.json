@@ -17,7 +17,8 @@
           "plays_next": true,
           "rating": 2300,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "fb0e20efa55b744ef0f49cfc"
         },
         {
           "federation": null,
@@ -27,7 +28,8 @@
           "plays_next": true,
           "rating": 2250,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "55c4910f96faf9cfb78674e9"
         },
         {
           "federation": null,
@@ -37,12 +39,14 @@
           "plays_next": true,
           "rating": 2200,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "fe1bcb19cbce365e77a22519"
         }
       ],
       "rounds": [],
       "series": null,
       "short_name": null,
+      "uid": "459e66a30909ebafe077ac6c",
       "withdrawn_from_round": null
     },
     {
@@ -62,7 +66,8 @@
           "plays_next": true,
           "rating": 2150,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "2a71196b1422a9aa3a287c0e"
         },
         {
           "federation": null,
@@ -72,7 +77,8 @@
           "plays_next": true,
           "rating": 2100,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "b45d18d689721d008d25df67"
         },
         {
           "federation": null,
@@ -82,12 +88,14 @@
           "plays_next": true,
           "rating": 2050,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "15e06c918333c4ea2d9e5efe"
         }
       ],
       "rounds": [],
       "series": null,
       "short_name": null,
+      "uid": "404482f75c06fe60a1b90070",
       "withdrawn_from_round": null
     },
     {
@@ -107,7 +115,8 @@
           "plays_next": true,
           "rating": 2000,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "125c30148538163002a3d82e"
         },
         {
           "federation": null,
@@ -117,12 +126,14 @@
           "plays_next": true,
           "rating": 1950,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "fbedb3946d27919aed50e849"
         }
       ],
       "rounds": [],
       "series": null,
       "short_name": null,
+      "uid": "a551fef73673a11164e526ed",
       "withdrawn_from_round": null
     },
     {
@@ -142,7 +153,8 @@
           "plays_next": true,
           "rating": 1900,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "1bb5f8ab7809bb8f6990a019"
         },
         {
           "federation": null,
@@ -152,12 +164,14 @@
           "plays_next": true,
           "rating": 1850,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "356aa4096547e5e397c8e798"
         }
       ],
       "rounds": [],
       "series": null,
       "short_name": null,
+      "uid": "adeb73a76914705639d00083",
       "withdrawn_from_round": null
     },
     {
@@ -177,7 +191,8 @@
           "plays_next": true,
           "rating": 1800,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "c223c1236999d8315893b909"
         },
         {
           "federation": null,
@@ -187,12 +202,14 @@
           "plays_next": true,
           "rating": 1750,
           "status": "active",
-          "title": null
+          "title": null,
+          "uid": "1beb5e702017c33b0566995e"
         }
       ],
       "rounds": [],
       "series": null,
       "short_name": null,
+      "uid": "43feb2b03319d378587322c1",
       "withdrawn_from_round": null
     }
   ]

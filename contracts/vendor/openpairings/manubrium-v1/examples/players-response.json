@@ -18,7 +18,8 @@
       "sex": null,
       "start_round": 1,
       "status": "active",
-      "title": null
+      "title": null,
+      "uid": "911e30b347a5e42f3e670e54"
     },
     {
       "absent": false,
@@ -45,7 +46,8 @@
       "sex": "w",
       "start_round": 2,
       "status": "active",
-      "title": "WFM"
+      "title": "WFM",
+      "uid": "089eeda4495bd01269642326"
     },
     {
       "absent": false,
@@ -65,7 +67,8 @@
       "sex": null,
       "start_round": 1,
       "status": "active",
-      "title": null
+      "title": null,
+      "uid": "123a8f2f6825e6d2223cdfea"
     },
     {
       "absent": true,
@@ -85,7 +88,8 @@
       "sex": "F",
       "start_round": 2,
       "status": "active",
-      "title": "WFM"
+      "title": "WFM",
+      "uid": "97c0cca192d0e06f3a4da0b9"
     },
     {
       "absent": false,
@@ -105,7 +109,8 @@
       "sex": null,
       "start_round": 1,
       "status": "active",
-      "title": null
+      "title": null,
+      "uid": "7d8f0806854eb5e5d6e83706"
     },
     {
       "absent": false,
@@ -125,7 +130,8 @@
       "sex": null,
       "start_round": 1,
       "status": "active",
-      "title": null
+      "title": null,
+      "uid": "863978ef44e136f0cc5f7a7a"
     }
   ]
 }

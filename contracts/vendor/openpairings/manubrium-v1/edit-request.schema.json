@@ -24,10 +24,10 @@
               "const": "swap"
             },
             "a": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "b": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         },
@@ -43,7 +43,7 @@
               "const": "vacate"
             },
             "player": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "bye_type": {
               "type": [
@@ -65,7 +65,7 @@
               "const": "bye"
             },
             "pairing": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         },
@@ -82,10 +82,10 @@
               "const": "fill"
             },
             "pairing": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "player": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         },
@@ -102,10 +102,10 @@
               "const": "pool_pair"
             },
             "a": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "b": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "board": {
               "oneOf": [
@@ -113,7 +113,7 @@
                   "type": "null"
                 },
                 {
-                  "$ref": "common.schema.json#/definitions/id"
+                  "$ref": "common.schema.json#/definitions/ref"
                 }
               ]
             }
@@ -131,7 +131,7 @@
               "const": "pool_bye"
             },
             "player": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         },
@@ -148,10 +148,10 @@
               "const": "bye_pair"
             },
             "pairing": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             },
             "player": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         },
@@ -167,7 +167,7 @@
               "const": "delete"
             },
             "pairing": {
-              "$ref": "common.schema.json#/definitions/id"
+              "$ref": "common.schema.json#/definitions/ref"
             }
           }
         }

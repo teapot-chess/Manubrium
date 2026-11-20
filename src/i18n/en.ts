@@ -964,7 +964,9 @@ export const en = {
   "tstand.games_played": "{n} games",
   "tstand.perf": "performance {n}",
   // --- the cloud relay: a tournament run from a laptop ---
-  "relay.banner": "Run from the laptop ({label}). Results go through the cloud.",
+  "relay.banner": "Run from the laptop ({label}).",
+  "relay.path_hall": "Connected to the laptop in the hall.",
+  "relay.path_cloud": "Through the cloud.",
   "relay.banner_seen": "Last heard from it at {time}.",
   "relay.sent_waiting": "Sent to the laptop, waiting for the desk.",
   "relay.accepted": "Done at the desk.",

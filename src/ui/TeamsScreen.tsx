@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
   ApiError,
+  refOf,
   needsAcknowledgement,
   type EventTeam,
   type Player,
@@ -157,7 +158,7 @@ function TeamSheet(props: {
   async function load() {
     setLoadError(null);
     try {
-      const d = await ctx.api.teamDetail(t.id, props.team.id);
+      const d = await ctx.api.teamDetail(t.id, refOf(props.team));
       if (!gone.current) setDetail(d);
     } catch (e) {
       if (!gone.current) setLoadError(describeError(e));
@@ -217,7 +218,7 @@ function TeamSheet(props: {
   const fromRound = from ?? rounds[rounds.length - 1] ?? 1;
 
   if (ask?.kind === "withdraw") {
-    const send = (ack: string[]) => void run(() => ctx.api.withdrawTeam(t.id, team.id, fromRound, ack), tr("teams.withdraw_msg", { team: team.name, n: fromRound }));
+    const send = (ack: string[]) => void run(() => ctx.api.withdrawTeam(t.id, refOf(team), fromRound, ack), tr("teams.withdraw_msg", { team: team.name, n: fromRound }));
     return (
       <Sheet title={title} onClose={() => setAsk(null)}>
         <div class="ask" id="team-ask">
@@ -282,8 +283,8 @@ function TeamSheet(props: {
             disabled={busy}
             onClick={() =>
               removing
-                ? void run(() => ctx.api.removeTeamPlayer(t.id, team.id, ask.player.id), tr("teams.remove_msg", { name: ask.player.name }))
-                : void run(() => ctx.api.reinstateTeam(t.id, team.id), tr("teams.reinstate_msg", { team: team.name }))
+                ? void run(() => ctx.api.removeTeamPlayer(t.id, refOf(team), refOf(ask.player)), tr("teams.remove_msg", { name: ask.player.name }))
+                : void run(() => ctx.api.reinstateTeam(t.id, refOf(team)), tr("teams.reinstate_msg", { team: team.name }))
             }
           >
             {removing ? tr("teams.remove_yes") : tr("teams.reinstate_yes")}
@@ -305,7 +306,7 @@ function TeamSheet(props: {
           team={team}
           busy={busy}
           error={error}
-          onPick={(p) => void run(() => ctx.api.addTeamPlayer(t.id, team.id, p.id), tr("teams.add_msg", { name: p.name, team: team.name }))}
+          onPick={(p) => void run(() => ctx.api.addTeamPlayer(t.id, refOf(team), refOf(p)), tr("teams.add_msg", { name: p.name, team: team.name }))}
           onCancel={() => setAdding(false)}
         />
       </Sheet>
@@ -407,7 +408,7 @@ function TeamSheet(props: {
                         class={status === o ? "active" : ""}
                         aria-pressed={status === o}
                         disabled={busy}
-                        onClick={() => status !== o && void run(() => ctx.api.setTeamRound(t.id, team.id, n, o), tr("teams.round_msg", { team: team.name, n }))}
+                        onClick={() => status !== o && void run(() => ctx.api.setTeamRound(t.id, refOf(team), n, o), tr("teams.round_msg", { team: team.name, n }))}
                       >
                         {tr(`teams.round.${o}` as "teams.round.plays")}
                       </button>

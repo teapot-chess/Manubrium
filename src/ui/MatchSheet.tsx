@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import {
   ApiError,
   needsAcknowledgement,
+  refOf,
   type LineupFindings,
   type LineupRosterPlayer,
   type MatchChange,
@@ -27,7 +28,7 @@ import {
   type Tournament,
 } from "../api";
 import { points, resultBetween, seats as seatsOf, type MatchCard } from "../matches";
-import { lineupBody, lineupChanged, otherScore, outFromSeats, scoreChoices, seatsFromOut, sortFindings } from "../teamEvents";
+import { lineupBody, lineupChanged, lineupRefs, otherScore, outFromSeats, scoreChoices, seatsFromOut, sortFindings } from "../teamEvents";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, resultLabel, Sheet, TryAgain } from "./common";
 import { HoldButton } from "./HoldButton";
@@ -62,7 +63,8 @@ export function MatchSheet(props: {
   onRound: (round: Round) => void;
 }) {
   const { ctx, t, round, card } = props;
-  const matchId = card.match.id;
+  // By uid where the round gave one: the same match on the laptop and the cloud.
+  const matchId = refOf(card.match);
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -286,8 +288,8 @@ export function MatchSheet(props: {
           lineup={lineup}
           busy={busy}
           error={error}
-          onCheck={(body) => ctx.api.checkLineups(t.id, round.number, matchId, body)}
-          onSave={(body) => void run(() => ctx.api.setLineups(t.id, round.number, matchId, body), tr("tm.edit_msg"))}
+          onCheck={(body) => ctx.api.checkLineups(t.id, round.number, matchId, lineupRefs(body, lineup))}
+          onSave={(body) => void run(() => ctx.api.setLineups(t.id, round.number, matchId, lineupRefs(body, lineup)), tr("tm.edit_msg"))}
           onCancel={() => {
             setError(null);
             setEditing(false);
