@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.4.2 - 2026-11-21
+
 - [Fix] **The round stays off the lock screen where nobody can move it.** A server without push keys let the app put the round on the lock screen anyway, where it stayed at round 1, 0 of 1, through results, pairings and the next round, looking very sure of itself. The app updates it only while it is open; after that only the server can, by push. It now asks the server first, and a server that cannot push gets no Live Activity. One already showing is ended.
 
 ## 1.4.1 - 2026-11-20
