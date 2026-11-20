@@ -35,6 +35,17 @@ export function serverCanPush(status: PushStatus | null, platform: PushPlatform 
   return !!(status && platform && status.available && status.platforms[platform]);
 }
 
+/**
+ * Whether the round may sit on the lock screen: only where the server can push
+ * to it, or it freezes at whatever the round was when the app last looked and
+ * stays there, confidently wrong, until iOS takes it away. `null` while the
+ * server's answer is not in: decide nothing yet.
+ */
+export function lockScreenOn(on: boolean, status: PushStatus | null, platform: PushPlatform | null): boolean | null {
+  if (!status) return null;
+  return on && serverCanPush(status, platform);
+}
+
 /** Whether to offer notifications on the round screen: once, and only where they would work. */
 export function shouldOffer(o: { platform: PushPlatform | null; permission: Permission; asked: boolean; status: PushStatus | null }): boolean {
   return !o.asked && o.permission === "prompt" && serverCanPush(o.status, o.platform);

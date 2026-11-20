@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Fix] **The round stays off the lock screen where nobody can move it.** A server without push keys let the app put the round on the lock screen anyway, where it stayed at round 1, 0 of 1, through results, pairings and the next round, looking very sure of itself. The app updates it only while it is open; after that only the server can, by push. It now asks the server first, and a server that cannot push gets no Live Activity. One already showing is ended.
+
 ## 1.4.1 - 2026-11-20
 
 - [Change] **Requests stranded by a lost laptop say so.** When the laptop running a relayed tournament is taken back on the website without it, what was still waiting for it comes back refused as `laptop_lost`, and the server, having nothing useful to add, adds nothing. The app now says it in its own words: not done, the arbiter has it on a list, look again later. The vendored OpenPairings contract is at revision 9. English, Dutch, French.
