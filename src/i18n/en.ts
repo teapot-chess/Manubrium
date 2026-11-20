@@ -974,6 +974,7 @@ export const en = {
   "relay.sent_waiting": "Sent to the laptop, waiting for the desk.",
   "relay.accepted": "Done at the desk.",
   "relay.refused_default": "The desk did not accept it.",
+  "relay.laptop_lost": "Not done: the laptop running the tournament was taken back without it before it got to this. The arbiter has it on a list; check later.",
   "relay.title": "Sent to the laptop",
   "relay.row_waiting": "Waiting for the desk",
   "relay.row_done": "Done at the desk",

@@ -135,7 +135,11 @@ export function actionLabel(action: string | null): string {
 export function commandSentence(c: RelayCommand): string {
   if (c.state === "pending") return t("relay.sent_waiting");
   if (c.state === "accepted") return t("relay.accepted");
-  return c.message || t("relay.refused_default");
+  if (c.message) return c.message;
+  // The laptop was taken back by force before it got to this one: the
+  // server gives no message, the arbiter has it on a list (contract rev 9).
+  if (c.error === "laptop_lost") return t("relay.laptop_lost");
+  return t("relay.refused_default");
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 {
   "contract": "manubrium",
   "version": 1,
-  "revision": 8,
+  "revision": 9,
   "files": [
     "arrivals-response.schema.json",
     "board-history-response.schema.json",
@@ -123,6 +123,7 @@
     "examples/sync-request.json",
     "examples/sync-response.conflict.json",
     "examples/sync-response.json",
+    "examples/sync-response.laptop-lost.json",
     "examples/sync-response.pending.json",
     "examples/team-detail-response.json",
     "examples/team-request.json",

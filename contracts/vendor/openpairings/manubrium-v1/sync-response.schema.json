@@ -41,7 +41,7 @@
               "string",
               "null"
             ],
-            "description": "Why, as a code (e.g. conflict, no_board, revoked, rate_limited)."
+            "description": "Why, as a code (e.g. conflict, no_board, revoked, rate_limited). On a tournament run from a laptop through the cloud relay: relay_stopped (the laptop stopped relaying, or handed the tournament back, before it got to the entry: tell the arbiter) and, from contract revision 9, laptop_lost (the tournament was taken back on this server without the laptop, which never read the entry: it is kept here for the arbiter to enter or dismiss, so do not send it again; show the message and let the board say what became of it)."
           },
           "message": {
             "type": [

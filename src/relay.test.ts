@@ -7,6 +7,7 @@ import { ApiError, client, OfflineError, type FetchLike, type Tournament } from 
 import {
   acknowledgedRequest,
   CommandBook,
+  commandSentence,
   commandQuestion,
   KeyMemory,
   MAX_POLL_SECONDS,
@@ -231,5 +232,17 @@ describe("a relayed tournament on screen", () => {
     expect(writableWhenRelayed(archived).read_only).toBe(true);
     const otherBlocker = { ...relayed(), next_round: { number: 9, blocker: "all_rounds_paired", warnings: [] } };
     expect(writableWhenRelayed(otherBlocker).next_round?.blocker).toBe("all_rounds_paired");
+  });
+});
+
+describe("a command refused because the laptop was taken back (contract rev 9)", () => {
+  it("says so in the app's words, since the server sends no message", () => {
+    const c = relayCommandOf({ command: { cid: "c1", state: "refused", error: "laptop_lost", status: null, message: null } })!;
+    expect(commandSentence(c)).toMatch(/taken back/);
+  });
+
+  it("still prefers the server's message when there is one", () => {
+    const c = relayCommandOf({ command: { cid: "c2", state: "refused", error: "laptop_lost", message: "Ask the arbiter." } })!;
+    expect(commandSentence(c)).toBe("Ask the arbiter.");
   });
 });

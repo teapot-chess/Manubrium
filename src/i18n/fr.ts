@@ -976,6 +976,7 @@ export const fr: Record<Key, string> = {
   "relay.sent_waiting": "Envoyé au portable, en attente de la table de l'arbitre.",
   "relay.accepted": "Fait à la table de l'arbitre.",
   "relay.refused_default": "La table de l'arbitre ne l'a pas accepté.",
+  "relay.laptop_lost": "Pas fait : l'ordinateur qui gérait le tournoi a été repris sans lui avant d'en arriver là. L'arbitre l'a sur une liste ; vérifiez plus tard.",
   "relay.title": "Envoyé au portable",
   "relay.row_waiting": "En attente de la table de l'arbitre",
   "relay.row_done": "Fait à la table de l'arbitre",
