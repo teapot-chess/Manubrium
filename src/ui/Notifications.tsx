@@ -15,6 +15,19 @@ import { describeError, Sheet } from "./common";
 
 export const pushManager = new PushManager(nativePushBackend(), storage, (s) => client(s.base, s.token));
 
+/** The strings the lock screen is drawn with, in the app's language: also what a server starts one with. */
+export const activityStrings = () => ({ title: tr("live.title"), format: tr("live.format"), complete: tr("live.complete") });
+
+/**
+ * Tells the Live Activities which servers the phone has and whether the lock
+ * screen is wanted: where a token of an activity the server started goes,
+ * and who gets the push-to-start token. At start, and when either changes.
+ */
+export async function connectLiveActivities(servers: SavedServer[], manager: PushManager = pushManager): Promise<void> {
+  const on = await manager.liveActivities();
+  await liveActivities.connect({ servers, api: (s) => client(s.base, s.token), on, strings: activityStrings() });
+}
+
 const EVENT_LABEL: Record<PushEvent, Key> = {
   round_paired: "push.event.round_paired",
   round_published: "push.event.round_published",
@@ -138,6 +151,7 @@ export function NotificationSettings(props: { server: SavedServer; servers: Save
               const on = (ev.target as HTMLInputElement).checked;
               await manager.setLiveActivities(on);
               setLive(on);
+              void connectLiveActivities(props.servers, manager);
             }}
           />
           {tr("push.live")}
@@ -211,12 +225,12 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
         tournament: t.id,
         name: t.name,
         round,
-        title: tr("live.title", { n: round.number }),
-        format: tr("live.format"),
+        finished: t.status === "finished",
+        strings: activityStrings(),
         on,
       });
     });
-  }, [ctx.server.base, t.id, round.number, round.latest, done, total, status]);
+  }, [ctx.server.base, t.id, t.status, round.number, round.latest, done, total, status]);
 
   async function remind(when: Date) {
     const at = when.toISOString();

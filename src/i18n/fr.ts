@@ -568,6 +568,7 @@ export const fr: Record<Key, string> = {
   "push.reminder_cancel": "Annuler",
   "live.title": "Ronde {n}",
   "live.format": "{done} sur {total} résultats",
+  "live.complete": "Tous les résultats sont là",
   // --- échiquiers en direct (src/ui/LiveBoards.tsx) ---
   "live.open": "Échiquiers en direct",
   "live.screen_title": "Échiquiers en direct",

@@ -568,6 +568,7 @@ export const nl: Record<Key, string> = {
   "push.reminder_cancel": "Annuleren",
   "live.title": "Ronde {n}",
   "live.format": "{done} van {total} uitslagen",
+  "live.complete": "Alle uitslagen binnen",
   // --- live borden (src/ui/LiveBoards.tsx) ---
   "live.open": "Live borden",
   "live.screen_title": "Live borden",

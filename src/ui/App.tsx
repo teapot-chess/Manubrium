@@ -18,7 +18,7 @@ import { Mark, Sheet } from "./common";
 import { NewTournament } from "./NewTournament";
 import { Tournaments } from "./Tournaments";
 import { TournamentView } from "./TournamentView";
-import { pushManager } from "./Notifications";
+import { connectLiveActivities, pushManager } from "./Notifications";
 import { tapTarget } from "../push";
 
 export type Screen =
@@ -100,6 +100,10 @@ export function App() {
   const serverKeys = servers?.map((s) => s.base).join(" ") ?? "";
   useEffect(() => {
     if (servers?.length) void pushManager.refresh(servers);
+    // And the lock screen's: an activity the server started while the app
+    // was closed hands its token over now, and the push-to-start token goes
+    // to the servers that can use it.
+    if (servers) void connectLiveActivities(servers);
   }, [serverKeys]);
 
   // A tapped notification opens its tournament, on the server it came from.

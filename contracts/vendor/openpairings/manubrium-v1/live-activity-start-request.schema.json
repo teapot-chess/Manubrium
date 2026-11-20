@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-activity-start-request.schema.json",
+  "title": "PUT /push/live-activity-start request",
+  "description": "Revision 10. This phone's push-to-start token for the round's Live Activity (iOS 17.2+, ActivityKit's Activity<RoundActivityAttributes>.pushToStartTokenUpdates), one per phone, not per tournament; a later one replaces it, and the same token on another device of the server is dropped. With it the server starts a fresh activity on a tournament whose activity (follows \"tournament\", live-activity-request.schema.json) iOS has ended, the next time something changes there. The push is APNs push type liveactivity, event start, attributes-type RoundActivityAttributes, attributes {key: \"<tag>#<tournament id>\", tournament, round, title (title with {n} filled in), format, roundTitle (title as sent), complete}, content-state as for an update, and an alert (title: the tournament's name; body: loc-key push_round_paired with the round). The phone then sends the new activity's own token with PUT /tournaments/:id/live-activity, follows tournament, as for one it started itself. The strings are the app's, in its language, because the activity is drawn without asking the app; each at most 100 characters, absent or empty ones get the English defaults (\"Round {n}\", \"{done} of {total} results\", \"All results in\"). DELETE /push/live-activity-start forgets it (the person switched the lock screen off); DELETE /push forgets it too. Account route: send it to the cloud, never to a hall laptop.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "start"
+  ],
+  "properties": {
+    "start": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 4096,
+          "pattern": "^[A-Za-z0-9:_.-]+$"
+        },
+        "environment": {
+          "$ref": "push-response.schema.json#/definitions/environment"
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "The app's name for this server (its base, as PUT /push's tag): the first half of the activity's key."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "\"Round {n}\": the round's heading."
+        },
+        "format": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "\"{done} of {total} results\"."
+        },
+        "complete": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "What the activity says once every game of the round has a result."
+        }
+      }
+    }
+  }
+}

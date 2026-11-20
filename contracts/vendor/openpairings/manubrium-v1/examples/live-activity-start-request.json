@@ -1,0 +1,10 @@
+{
+  "start": {
+    "token": "80f2b4d6e8a0c1e3f5b7d9a2c4e6f8b0d1a3c5e7f9b2d4a6c8e0f1b3d5a7c9e2f4b6",
+    "environment": "production",
+    "tag": "https://pairings.cloud",
+    "title": "Round {n}",
+    "format": "{done} of {total} results",
+    "complete": "All results in"
+  }
+}

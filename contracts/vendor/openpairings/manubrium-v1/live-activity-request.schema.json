@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://raw.githubusercontent.com/teapot-chess/openpairings/main/priv/contracts/manubrium-v1/live-activity-request.schema.json",
   "title": "PUT /tournaments/:id/live-activity request",
-  "description": "An iOS Live Activity's own push token (ActivityKit's pushTokenUpdates), for round `round` of this tournament. One per phone and tournament: a later one replaces it. The server pushes the round's count as the activity's ContentState {done, total} (games with a result, games; byes are not games) when results come in - at most one update per twenty seconds - and ends the activity once every game has a result. DELETE /tournaments/:id/live-activity forgets it (the app ended it).",
+  "description": "An iOS Live Activity's own push token (ActivityKit's pushTokenUpdates) on this tournament; `round` is the round it shows now. One per phone and tournament: a later one replaces it. `follows` (revision 10; absent means \"round\", which is what older servers do whatever is sent) says what the activity is for. \"round\": the server pushes the round's count as the ContentState {done, total} (games with a result, games; byes are not games) when results come in - at most one update per twenty seconds - and ends the activity once every game has a result. \"tournament\": one activity for the whole event; the server pushes the current round as the ContentState {round, done, total, phase} - phase is paired (no result yet), playing, complete (every game has a result; it stays so until the next round is paired, which the server then pushes as round n+1, done 0), finished (sent with the end), closed (the tournament was archived or binned; sent with the end) - when results come in, a round is paired or unpaired, or the tournament ends; it ends the activity only when the tournament is finished, archived or binned. An activity iOS has ended (eight hours) is started again by push where the phone gave a push-to-start token (live-activity-start-request.schema.json); the phone then sends that activity's token here. DELETE /tournaments/:id/live-activity forgets it (the app ended it, or the person switched it off).",
   "type": "object",
   "additionalProperties": true,
   "required": [
@@ -29,6 +29,13 @@
         },
         "environment": {
           "$ref": "push-response.schema.json#/definitions/environment"
+        },
+        "follows": {
+          "enum": [
+            "round",
+            "tournament"
+          ],
+          "description": "Revision 10. Absent: round."
         }
       }
     }
