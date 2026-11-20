@@ -6,6 +6,7 @@
 // still playing - and, on a player's sheet, "will not play the next round"
 // with the server's questions and refusals. Each against a fake API.
 
+import { CommandBook } from "../relay";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { useState } from "preact/hooks";
@@ -155,11 +156,11 @@ let n = 0;
 
 function Harness(props: { api: FakeApi; t: Tournament }) {
   const [, again] = useState(0);
-  const ctx: Ctx = { server, api: props.api as unknown as Client, outbox, bump: () => again((x) => x + 1) };
+  const ctx: Ctx = { server, api: props.api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => again((x) => x + 1) };
   return <RoundScreen ctx={ctx} t={props.t} reloadTournament={async () => undefined} />;
 }
 const show = (api: FakeApi, t: Tournament = tournament()) => render(<Harness api={api} t={t} />);
-const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox, bump: () => undefined });
+const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => undefined });
 
 const el = (selector: string) =>
   waitFor(() => {

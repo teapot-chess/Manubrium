@@ -7,6 +7,7 @@
 // result is held, not tapped. Each against a fake API built on the contract's
 // own examples.
 
+import { CommandBook } from "../relay";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { useState } from "preact/hooks";
@@ -213,7 +214,7 @@ const withdrawn = (): TeamDetail => {
 let outbox: Outbox;
 let counter = 0;
 
-const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox, bump: () => undefined });
+const ctxWith = (api: FakeApi): Ctx => ({ server, api: api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => undefined });
 const el = (selector: string) =>
   waitFor(() => {
     const found = document.querySelector(selector);

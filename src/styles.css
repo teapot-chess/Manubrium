@@ -590,3 +590,12 @@ td small.tag { margin-left: 6px; }
 .min-games output { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; font-size: 17px; }
 .min-games .chip { min-height: 34px; min-width: 34px; justify-content: center; }
 .min-games .chip:disabled { opacity: 0.4; }
+
+/* ---------- the cloud relay: a tournament run from a laptop ---------- */
+.relay-banner { border-left: 3px solid var(--accent); }
+.relay-pending > span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; animation: relay-beat 1.4s ease-in-out infinite; }
+@keyframes relay-beat { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .relay-pending > span::before { animation: none; } }
+.relay-ask { margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); display: grid; gap: 8px; }
+.relay-ask p { margin: 0; }
+.relay-ask .warnings { margin: 0; padding-left: 18px; color: var(--warn); font-size: 14px; }

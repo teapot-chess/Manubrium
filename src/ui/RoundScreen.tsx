@@ -12,6 +12,7 @@ import { boardReportLabel } from "../alnasl";
 import { pairingsText } from "../share";
 import { byeLabel } from "../byes";
 import { refusalText } from "../queue";
+import { pollDelay } from "../relay";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 import { currentRound } from "../currentRound";
 import { boardOf, parseScan } from "../scan";
@@ -126,6 +127,12 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     setMatchOpen(null);
   }, [number, t.id]);
 
+  // A relayed tournament answers `pending` until its laptop decides: ask
+  // again soon, then less often (src/relay.ts), and at once on resume.
+  const pendingAsks = useRef(0);
+  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushRef = useRef<() => Promise<void>>(async () => undefined);
+
   const flush = useCallback(async () => {
     const outcome = await ctx.outbox.flush(base, t.id, (entries) => ctx.api.sync(t.id, entries)).catch((e) => {
       // A revoked device gets the same sentence from every call; the useful
@@ -135,10 +142,20 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     });
     if (outcome) {
       setOffline(outcome.offline);
-      if (outcome.saved > 0) await load();
+      if (outcome.saved > 0 || outcome.refused > 0) await load();
+      if (pendingTimer.current) clearTimeout(pendingTimer.current);
+      pendingTimer.current = null;
+      if (outcome.pending > 0 && !outcome.offline) {
+        const delay = pollDelay(pendingAsks.current++) * 1000;
+        pendingTimer.current = setTimeout(() => void flushRef.current(), delay);
+      } else pendingAsks.current = 0;
     }
     ctx.bump();
   }, [ctx, base, t.id, load]);
+  flushRef.current = flush;
+  useEffect(() => () => {
+    if (pendingTimer.current) clearTimeout(pendingTimer.current);
+  }, []);
 
   useEffect(() => {
     load();
@@ -148,6 +165,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   useEffect(() => {
     const undo = onResume(() => {
       reloadTournament.current();
+      pendingAsks.current = 0;
       flush();
       load();
     });
@@ -282,9 +300,10 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
   const queued = ctx.outbox.list(base, t.id).filter((q) => q.entry.round === number);
   const waitingFor = new Map(
-    queued.filter((q) => q.state === "waiting" && q.entry.kind === "result").map((q) => [q.entry.kind === "result" ? q.entry.pairing : 0, q]),
+    queued.filter((q) => (q.state === "waiting" || q.state === "pending") && q.entry.kind === "result").map((q) => [q.entry.kind === "result" ? q.entry.pairing : 0, q]),
   );
   const refused = queued.filter((q) => q.state === "refused");
+  const unsent = queued.filter((q) => q.state === "waiting" && q.entry.kind === "result").length;
   const missing = round ? round.boards.filter((b) => !b.bye && !b.result).length : 0;
   const toCheck = round ? round.boards.filter((b) => b.phone?.state === "unconfirmed").length : 0;
 
@@ -356,7 +375,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
           </span>
           <span class="result">
             {shown ? resultLabel(shown) : "–"}
-            {pending && <span class="state">{tr("round.waiting")}</span>}
+            {pending && <span class="state">{tr(pending.state === "pending" ? "round.waiting_desk" : "round.waiting")}</span>}
             {!pending && b.phone?.state === "unconfirmed" && <span class="state phone">{tr("round.phone")}</span>}
             {!pending && b.phone?.state === "confirmed" && <span class="state">{tr("round.checked")}</span>}
           </span>
@@ -392,7 +411,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
 
       {offline && (
         <Notice kind="info">
-          {tr("round.offline", { now: waitingFor.size ? tr("round.offline_now", { n: waitingFor.size }) : "" })}
+          {tr("round.offline", { now: unsent ? tr("round.offline_now", { n: unsent }) : "" })}
         </Notice>
       )}
       {error && (

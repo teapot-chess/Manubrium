@@ -4,6 +4,7 @@
 // hand edits with the desk's questions, the pool, finishing the edits - and
 // the More tab's settings and incident photos, each against a fake API.
 
+import { CommandBook } from "../relay";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError, OfflineError, type Board, type Client, type Player, type Round, type SearchHit, type Tournament } from "../api";
@@ -186,7 +187,7 @@ let outbox: Outbox;
 let n = 0;
 
 function ctxWith(api: FakeApi): Ctx {
-  return { server, api: api as unknown as Client, outbox, bump: () => undefined };
+  return { server, api: api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => undefined };
 }
 
 // The element, once the screen has rendered it.

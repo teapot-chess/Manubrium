@@ -9,6 +9,8 @@ import { PlayersScreen } from "./PlayersScreen";
 import { MoreScreen } from "./MoreScreen";
 import { TeamsScreen } from "./TeamsScreen";
 import { TeamStandingsScreen } from "./TeamStandings";
+import { RelayBanner, RelayCommands } from "./RelayCommands";
+import { writableWhenRelayed } from "../relay";
 
 type Tab = "round" | "teams" | "standings" | "players" | "more";
 
@@ -20,7 +22,9 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
 
   async function load() {
     try {
-      setT(await ctx.api.tournament(line.id));
+      // A relayed tournament is locked here but not on its laptop, which
+      // takes every write the app makes (src/relay.ts).
+      setT(writableWhenRelayed(await ctx.api.tournament(line.id)));
       setError(null);
     } catch (e) {
       // Offline with a record already open is the round screen's business
@@ -61,6 +65,8 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
             }}
           />
         )}
+        {t && <RelayBanner t={t} />}
+        {t && <RelayCommands ctx={ctx} t={t} onAnswered={() => void load()} />}
         {t?.read_only && (
           <Notice kind="info">
             {t.handed_off && !t.archived

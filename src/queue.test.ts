@@ -63,7 +63,7 @@ describe("Outbox", () => {
     });
 
     expect(sent[0].map((e) => e.cid)).toEqual(["cid-1", "cid-2"]);
-    expect(outcome).toEqual({ saved: 1, refused: 1, waiting: 0, offline: false });
+    expect(outcome).toEqual({ saved: 1, refused: 1, waiting: 0, pending: 0, offline: false });
     const [left] = box.list(S, 7);
     expect(left).toMatchObject({ state: "refused", message: "Board 11: now says 1-0.", reason: "conflict" });
 
@@ -223,5 +223,65 @@ describe("refusalText", () => {
     expect(refusalText(refused("Board ?: not saved. Check with the arbiter."))).toBe(
       "Board 2: not saved. Look at the board and enter it again if it still stands.",
     );
+  });
+});
+
+// A tournament run from a laptop through the cloud relay (contract revision 6/7).
+describe("Outbox on a relayed tournament", () => {
+  let box: Outbox;
+  let n: number;
+
+  beforeEach(() => {
+    n = 0;
+    box = new Outbox(new Memory(), () => `cid-${++n}`);
+  });
+
+  const pending = (cid: string): EntryAnswer => ({ cid, status: "pending", reason: "pending", message: "Board 1: sent, waiting for the desk to confirm it." });
+
+  it("keeps a pending result as sent, waiting for the desk, and sends it again with the same cid", async () => {
+    await box.addResult(S, 7, result(10, "1-0"));
+    await box.addIncident(S, 7, { round: 1, pairing: 10, board: 10, type: "clock", note: "" });
+    const sent: string[][] = [];
+    const first = await box.flush(S, 7, async (entries) => {
+      sent.push(entries.map((e) => e.cid));
+      return entries.map((e) => pending(e.cid));
+    });
+    expect(first).toMatchObject({ saved: 0, refused: 0, waiting: 2, pending: 2, offline: false });
+    expect(box.list(S, 7).map((q) => q.state)).toEqual(["pending", "pending"]);
+
+    const second = await box.flush(S, 7, async (entries) => {
+      sent.push(entries.map((e) => e.cid));
+      return [
+        { cid: "cid-1", status: "saved", reason: null, message: null },
+        { cid: "cid-2", status: "refused", reason: "relay_stopped", message: "The laptop stopped relaying before it got to this." },
+      ];
+    });
+    expect(sent).toEqual([
+      ["cid-1", "cid-2"],
+      ["cid-1", "cid-2"],
+    ]);
+    expect(second).toMatchObject({ saved: 1, refused: 1, waiting: 0, pending: 0 });
+    expect(box.list(S, 7)).toHaveLength(1);
+    expect(box.list(S, 7)[0]).toMatchObject({ state: "refused", reason: "relay_stopped" });
+  });
+
+  it("does not hold the rest back behind a pending answer, as it does behind retry", async () => {
+    for (let i = 0; i < 30; i++) await box.addResult(S, 7, result(100 + i, "1-0"));
+    const batches: number[] = [];
+    const outcome = await box.flush(S, 7, async (entries) => {
+      batches.push(entries.length);
+      return entries.map((e) => pending(e.cid));
+    });
+    expect(batches).toEqual([25, 5]);
+    expect(outcome.pending).toBe(30);
+  });
+
+  it("counts pending entries as still on the phone, and a second result for the board expects the pending one", async () => {
+    await box.addResult(S, 7, result(10, "1-0"));
+    await box.flush(S, 7, async (entries) => entries.map((e) => pending(e.cid)));
+    expect(box.count(S, 7)).toBe(1);
+    expect(box.pendingCount(S, 7)).toBe(1);
+    const second = await box.addResult(S, 7, result(10, "0-1", ""));
+    expect(second.entry).toMatchObject({ expected: "1-0" });
   });
 });

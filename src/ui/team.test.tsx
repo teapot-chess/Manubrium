@@ -5,6 +5,7 @@
 // history with Undo - each against a fake API that answers what the
 // contract's examples show.
 
+import { CommandBook } from "../relay";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { ApiError, type Board, type Client, type Round, type Team, type Tournament } from "../api";
@@ -134,7 +135,7 @@ let n = 0;
 // `bump` is how the app redraws after the outbox changed; so does the test.
 function Harness(props: { api: FakeApi }) {
   const [, again] = useState(0);
-  const ctx: Ctx = { server, api: props.api as unknown as Client, outbox, bump: () => again((x) => x + 1) };
+  const ctx: Ctx = { server, api: props.api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => again((x) => x + 1) };
   return <RoundScreen ctx={ctx} t={tournament()} reloadTournament={async () => undefined} />;
 }
 const el = (selector: string) =>
@@ -331,7 +332,7 @@ describe("the default time and the reminder", () => {
     phone.storage.data.set(`manubrium.defaulttime.v1.${mine.base}#7`, "40");
     const api = fakeApi([board(1)], { pushStatus: vi.fn(async () => status), setDefaultTime: vi.fn(async () => undefined) });
     const { RoundPush } = await import("./Notifications");
-    render(<RoundPush ctx={{ server: mine, api: api as unknown as Client, outbox, bump: () => undefined }} t={tournament()} round={round([board(1)])} manager={manager as never} />);
+    render(<RoundPush ctx={{ server: mine, api: api as unknown as Client, outbox, commands: new CommandBook({ get: async () => null, set: async () => undefined }), bump: () => undefined }} t={tournament()} round={round([board(1)])} manager={manager as never} />);
 
     fireEvent.click(await el("#push-reminder-set"));
     const first = await el("#push-reminder-default");

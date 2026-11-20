@@ -141,6 +141,7 @@ src/
   i18n/          English, Dutch and French dictionaries, and t()
   api.ts         the API client (one function per route)
   queue.ts       the outbox: offline results and incidents, idempotent client ids
+  relay.ts       a tournament run from a laptop: commands, their Idempotency-Key, asking again
   share.ts       the round, the standings and a team table as text, and the browser's share
   byes.ts        a player's byes: which rounds may still change, the next round
   matches.ts     a team round as matches: seats, colours, the layout, the score
@@ -164,7 +165,8 @@ src/
                  Matches.tsx: a team round's match cards and the line-ups;
                  MatchSheet.tsx: a match in full; TeamsScreen.tsx: the teams;
                  TeamStandings.tsx: team standings and board prizes;
-                 HoldButton.tsx: the button every result is entered with)
+                 HoldButton.tsx: the button every result is entered with;
+                 RelayCommands.tsx: the relay banner and the writes sent to the laptop)
 ```
 
 ## Offline
@@ -188,6 +190,38 @@ results waiting in the outbox are counted into it, marked as waiting, until
 the server's own figure replaces them. Where the desk would ask a question
 before a change (a rule the boards break, a round already sent), the server
 asks it and the app shows it; nothing is answered on the arbiter's behalf.
+
+## A tournament run from the laptop (the cloud relay)
+
+OpenPairings can run an event on the arbiter's laptop while pairings.cloud
+keeps a locked mirror and an inbox for the phones (OpenPairings'
+`docs/design-cloud-relay.md`; contract revisions 6 and 7). The tournament's
+`relay` is then not null, and the app:
+
+- says so at the top: "Run from the laptop (its name). Results go through the
+  cloud.", with when the laptop last asked for results;
+- keeps every button the role allows. The hosted copy calls itself read-only
+  and blocks pairing as `read_only`, but every write goes to the laptop,
+  which runs it through its own copy of the API with this phone's role, so
+  the desk's rules decide (`writableWhenRelayed`, `src/relay.ts`);
+- sends an `Idempotency-Key` (a UUID) with every write, relayed or not. A
+  write whose answer was lost keeps its key for ten minutes, so tapping it
+  again is the same command, not a second one;
+- reads `202 {"command": {...}}` as "sent to the laptop, waiting for the
+  desk": the client throws `RelayedWrite` instead of the usual answer (which
+  the hosted copy does not have), keeps the command on the phone
+  (`CommandBook`, across restarts) and asks `GET commands/:cid` after 2, 3,
+  5, 8, 13, 20, 30 and then every 60 seconds, and at once when the app comes
+  back to the front. Done reloads the tournament; a refusal stays with the
+  desk's sentence until dismissed; `needs_acknowledgement` is the desk's
+  question, and *Go ahead* sends the write again with `acknowledged` under a
+  new key. A board code made this way is shown from the command's answer;
+- keeps results and incidents answered `pending` in the outbox as "sent,
+  waiting for the desk" and sends them again with the same cid until they
+  are saved or refused (`relay_stopped` included).
+
+The server's own refusals before anything reaches the laptop (404
+`not_found`, 409 `desk_only`, 400 `bad_request`) are ordinary errors.
 
 ## Develop in a browser
 
@@ -392,6 +426,19 @@ the privacy policy and the screenshot list are in `store/`.
   job.
 - **The Belgian list is the only national one offered**, because it is the
   only one the server has. The toggle shows whatever `player_sources` says.
+- **Both paths (step 5 of the relay design) is not built**: the phone talks
+  to pairings.cloud only, not to the laptop first when it is on the hall
+  network. The API gives the app nothing to do it with: the `relay` block
+  has no address for the laptop; the laptop's tournament and its rows have
+  ids of their own, which the cloud's answers never name, so a write built
+  from the cloud's view cannot be sent to the laptop; and the laptop's own
+  API does not read `Idempotency-Key`, so a write tried there and then in
+  the cloud could be made twice. A phone can still be connected to the
+  laptop directly as a second server (its hall listener), as before.
+- **Browser development against a dev server**: OpenPairings' dev CORS
+  plug allows only `authorization` and `content-type`, so a browser's
+  preflight for a write with `Idempotency-Key` fails until it allows that
+  header too. The phones do not use CORS.
 - **A new tournament is not queued offline.** It needs a connection, on
   purpose.
 - `npm audit` reports moderate advisories in `@capacitor/cli`'s `xcode`

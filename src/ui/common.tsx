@@ -1,6 +1,7 @@
 import type { ComponentChildren } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, OfflineError } from "../api";
+import { RelayedWrite } from "../relay";
 import { pushBack } from "../back";
 import { shareText } from "../platform";
 import { t } from "../i18n";
@@ -57,17 +58,27 @@ export function TopBar(props: {
   );
 }
 
+// Sentences that came out of describeError but are news, not failures: a
+// write a relayed tournament passed to its laptop. Every screen shows its
+// errors in an error notice; this keeps that one from looking like a fault.
+const news = new Set<string>();
+
 /** A sentence for the person holding the phone, whatever went wrong. */
 export function describeError(error: unknown): string {
   if (error instanceof OfflineError) return t("common.no_connection");
+  if (error instanceof RelayedWrite) {
+    if (error.command.state !== "refused") news.add(error.message);
+    return error.message;
+  }
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   return t("common.something_went_wrong");
 }
 
 export function Notice(props: { kind?: "error" | "info" | "ok"; children: ComponentChildren; onClose?: () => void }) {
+  const kind = props.kind === "error" && typeof props.children === "string" && news.has(props.children) ? "info" : (props.kind ?? "info");
   return (
-    <div class={`notice ${props.kind ?? "info"}`} role={props.kind === "error" ? "alert" : "status"}>
+    <div class={`notice ${kind}`} role={kind === "error" ? "alert" : "status"}>
       <span>{props.children}</span>
       {props.onClose && (
         <button type="button" class="notice-close" onClick={props.onClose} aria-label={t("common.dismiss")}>
