@@ -976,6 +976,7 @@ export const nl: Record<Key, string> = {
   "relay.sent_waiting": "Naar de laptop gestuurd, wacht op de tafel.",
   "relay.accepted": "Gedaan aan de tafel.",
   "relay.refused_default": "De tafel heeft het niet aanvaard.",
+  "relay.laptop_lost": "Niet gedaan: de laptop die het toernooi draaide, werd zonder hem teruggenomen voor hij hieraan toe kwam. De arbiter heeft het op een lijst; kijk later opnieuw.",
   "relay.title": "Naar de laptop gestuurd",
   "relay.row_waiting": "Wacht op de tafel",
   "relay.row_done": "Gedaan aan de tafel",

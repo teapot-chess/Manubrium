@@ -1,0 +1,11 @@
+{
+  "results": [
+    {
+      "cid": "6f1c2a7e-0b9d-4e55-9a3c-2d8f1e0a4b11",
+      "current": null,
+      "message": "Board 1: not saved yet - the laptop running the tournament was given up for lost before it got to this one. The arbiter has it on a list to enter or dismiss; check the board later.",
+      "reason": "laptop_lost",
+      "status": "refused"
+    }
+  ]
+}
