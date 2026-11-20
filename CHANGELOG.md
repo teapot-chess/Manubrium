@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.4.1 - 2026-11-20
+
 - [Change] **Requests stranded by a lost laptop say so.** When the laptop running a relayed tournament is taken back on the website without it, what was still waiting for it comes back refused as `laptop_lost`, and the server, having nothing useful to add, adds nothing. The app now says it in its own words: not done, the arbiter has it on a list, look again later. The vendored OpenPairings contract is at revision 9. English, Dutch, French.
 
 - [Feature] **Uid slips.** On a relayed tournament OpenPairings prints `OP2` slips and place cards, which name the board or player by uid, the one name both copies of the tournament agree on, and the tournament by either copy's id. They open the right board whichever copy the round on screen came from. An `OP1` slip on a relayed tournament now opens nothing: its numbers belong to one of two databases and the app cannot tell which, so it says the slip is from an older print and suggests reprinting or picking the board by hand. Opening somebody else's game with confidence was the alternative. A uid that is not in the round says the board is gone, as before.
