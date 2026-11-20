@@ -84,7 +84,7 @@
 		<!-- Plain http to local-network addresses only (a desktop copy of
 		     OpenPairings in the hall); everything else stays https. The app
 		     itself refuses http to anything that is not a private address
-		     (src/link.ts). -->
+		     (src/link.ts; src/hall.ts for the laptop of a relayed tournament). -->
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>

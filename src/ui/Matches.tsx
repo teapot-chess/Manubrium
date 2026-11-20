@@ -14,7 +14,7 @@
 
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
-import type { Board, Match, MatchSide, Round, TeamBoardLayout, Tournament } from "../api";
+import { refOf, type Board, type Match, type MatchSide, type Round, type TeamBoardLayout, type Tournament } from "../api";
 import { lineup, matchScore, points, pointValues, resultBetween, seats, unconfirmed, type MatchCard, type MatchView, type Seat } from "../matches";
 import type { Queued } from "../queue";
 import type { Ctx } from "./App";
@@ -296,7 +296,7 @@ export function LineupSheet(props: {
     setBusy(true);
     setError(null);
     try {
-      const answer = await ctx.api.confirmLineup(t.id, round.number, match.id, side);
+      const answer = await ctx.api.confirmLineup(t.id, round.number, refOf(match), side);
       props.onDone(answer, tr("lineup.confirmed_msg", { team, n: match.number ?? "–" }));
     } catch (e) {
       setError(describeError(e));

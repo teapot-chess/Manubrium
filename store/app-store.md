@@ -71,10 +71,10 @@ Teamcompetities vanaf de telefoon: een match volledig, met beide opstellingen, z
 
 
 **What's new** (next version, draft):
-Tournaments run from the arbiter's laptop through the cloud: the app says so at the top, and everything still works from the phone. Each change goes to the laptop, shows as "sent, waiting for the desk" until the laptop answers, then as done or refused in the desk's own words; when the desk asks a question first, the phone asks it. Results and incidents wait in the outbox the same way.
+Tournaments run from the arbiter's laptop through the cloud: the app says so at the top, and everything still works from the phone. Each change goes to the laptop, shows as "sent, waiting for the desk" until the laptop answers, then as done or refused in the desk's own words; when the desk asks a question first, the phone asks it. Results and incidents wait in the outbox the same way. In the hall, on the hall's own network, the phone talks to the laptop directly and the cloud is the way round when the laptop does not answer; the banner says which ("Connected to the laptop in the hall" or "Through the cloud"), and a change sent both ways is still made once.
 
 **Wat is er nieuw** (volgende versie, ontwerp, NL):
-Toernooien die vanaf de laptop van de arbiter via de cloud lopen: de app zegt het bovenaan, en alles werkt nog vanaf de telefoon. Elke wijziging gaat naar de laptop, staat als "verstuurd, wacht op de tafel" tot de laptop antwoordt, en daarna als gedaan of geweigerd, in de woorden van de tafel; stelt de tafel eerst een vraag, dan stelt de telefoon ze. Uitslagen en incidenten wachten op dezelfde manier in de wachtrij.
+Toernooien die vanaf de laptop van de arbiter via de cloud lopen: de app zegt het bovenaan, en alles werkt nog vanaf de telefoon. Elke wijziging gaat naar de laptop, staat als "verstuurd, wacht op de tafel" tot de laptop antwoordt, en daarna als gedaan of geweigerd, in de woorden van de tafel; stelt de tafel eerst een vraag, dan stelt de telefoon ze. Uitslagen en incidenten wachten op dezelfde manier in de wachtrij. In de zaal, op het netwerk van de zaal, praat de telefoon rechtstreeks met de laptop, en via de cloud als de laptop niet antwoordt; de balk bovenaan zegt welke weg ("Verbonden met de laptop in de zaal" of "Via de cloud"), en een wijziging die beide wegen nam, gebeurt toch maar één keer.
 
 **Support URL:** https://pairings.cloud/help
 **Marketing URL:** https://pairings.cloud
@@ -84,7 +84,7 @@ Toernooien die vanaf de laptop van de arbiter via de cloud lopen: de app zegt he
 **Age rating:** none of the content descriptors apply; 4+.
 
 **App Review notes:**
-The app needs an OpenPairings account. A review account with a small running tournament: *(server URL, email, password, to be filled in before submission)*. Sign in on that server in a browser, open Account > Manubrium app > Connect a phone, and scan the QR code with the app, or paste the link under it into "Add a server". The camera is used for that QR code and for incident photos; the local-network prompt only appears for a server on a private address.
+The app needs an OpenPairings account. A review account with a small running tournament: *(server URL, email, password, to be filled in before submission)*. Sign in on that server in a browser, open Account > Manubrium app > Connect a phone, and scan the QR code with the app, or paste the link under it into "Add a server". The camera is used for that QR code and for incident photos; the local-network prompt only appears for a server on a private address, or for a tournament run from a laptop in the hall, which the phone reaches on the hall's network.
 
 ## App privacy (the questionnaire)
 

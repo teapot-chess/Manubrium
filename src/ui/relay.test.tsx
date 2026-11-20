@@ -4,7 +4,7 @@
 // laptop - waiting for the desk, done, refused, or the desk's question -
 // against a fake API that answers what the contract's examples show.
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Client, Tournament } from "../api";
 import { Outbox, type KeyValue } from "../queue";
@@ -13,6 +13,7 @@ import type { SavedServer } from "../servers";
 import type { Ctx } from "./App";
 import { describeError, Notice } from "./common";
 import { RelayBanner, RelayCommands } from "./RelayCommands";
+import { HallRoutes } from "../hall";
 import { examples } from "../contract.testkit";
 
 vi.mock("../platform", () => ({
@@ -59,13 +60,29 @@ async function setup(api: Partial<Client>, command: RelayCommand) {
 }
 
 describe("a relayed tournament", () => {
-  it("says at the top that the laptop runs it", () => {
-    render(<RelayBanner t={tournament()} />);
-    expect(screen.getByText(/Run from the laptop \(laptop Hall\)\. Results go through the cloud\./)).toBeTruthy();
+  it("says at the top that the laptop runs it, through the cloud until the laptop has answered here", () => {
+    render(<RelayBanner t={tournament()} base={server.base} routes={new HallRoutes()} />);
+    const banner = document.querySelector("#relay-banner")!;
+    expect(banner.textContent).toContain("Run from the laptop (laptop Hall).");
+    expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud.");
+    expect(banner.textContent).toContain("Last heard from it at");
+  });
+
+  it("says when this phone talks to the laptop in the hall, and when it went back to the cloud", async () => {
+    const routes = new HallRoutes();
+    const t = tournament();
+    routes.set(server.base, t.id, { urls: ["http://192.168.1.20:4748"], tournament_id: 2, seen_at: null, token: "oph1.x", expires_at: "2099-01-01T00:00:00Z" });
+    render(<RelayBanner t={t} base={server.base} routes={routes} />);
+    expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud.");
+    act(() => routes.reached(server.base, t.id, "http://192.168.1.20:4748"));
+    await waitFor(() => expect(document.querySelector("#relay-path")!.textContent).toBe("Connected to the laptop in the hall."));
+    expect(document.querySelector("#relay-banner")!.getAttribute("data-path")).toBe("hall");
+    act(() => routes.cloud(server.base, t.id));
+    await waitFor(() => expect(document.querySelector("#relay-path")!.textContent).toBe("Through the cloud."));
   });
 
   it("says nothing for a tournament that is not relayed", () => {
-    const { container } = render(<RelayBanner t={{ ...tournament(), relay: null }} />);
+    const { container } = render(<RelayBanner t={{ ...tournament(), relay: null }} base={server.base} />);
     expect(container.innerHTML).toBe("");
   });
 

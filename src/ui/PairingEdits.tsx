@@ -11,7 +11,7 @@
 // the server's answer before the next one makes sense.
 
 import { useState } from "preact/hooks";
-import { needsAcknowledgement, type Board, type BoardPlayer, type HandEdit, type Round, type Tournament } from "../api";
+import { editRefs, needsAcknowledgement, type Board, type BoardPlayer, type HandEdit, type Round, type Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Notice, Sheet } from "./common";
 import { byeLabel } from "../byes";
@@ -134,7 +134,7 @@ export function BoardEditSheet(props: {
 
   const apply = (edit: HandEdit, message: string) =>
     flow.run(async (acks) => {
-      await ctx.api.edit(t.id, round.number, edit, acks);
+      await ctx.api.edit(t.id, round.number, editRefs(edit, round), acks);
       props.onDone(message);
     });
 
@@ -365,7 +365,7 @@ export function PoolPanel(props: { ctx: Ctx; t: Tournament; round: Round; onDone
   const name = (id: number) => pool.find((e) => e.player.id === id)?.player.name ?? "?";
   const apply = (edit: HandEdit, message: string) =>
     flow.run(async (acks) => {
-      await ctx.api.edit(t.id, round.number, edit, acks);
+      await ctx.api.edit(t.id, round.number, editRefs(edit, round), acks);
       setPicked([]);
       props.onDone(message);
     });

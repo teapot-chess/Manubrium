@@ -4,7 +4,7 @@
 // its reason as it is and offers the button only when it says yes.
 
 import { useEffect, useState } from "preact/hooks";
-import { type Board, type BoardHistory, type Tournament } from "../api";
+import { refOf, type Board, type BoardHistory, type HistoryEntry, type Tournament } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, Sheet } from "./common";
 import { dateLocale, t as tr } from "../i18n";
@@ -27,7 +27,7 @@ export function HistorySheet(props: {
 
   async function load() {
     try {
-      setHistory(await ctx.api.boardHistory(t.id, props.round, board.id));
+      setHistory(await ctx.api.boardHistory(t.id, props.round, refOf(board)));
       setError(null);
     } catch (e) {
       setError(describeError(e));
@@ -38,10 +38,11 @@ export function HistorySheet(props: {
     void load();
   }, [t.id, props.round, board.id]);
 
-  async function undo(entry: number) {
-    setBusy(entry);
+  async function undo(entry: HistoryEntry) {
+    setBusy(entry.id);
     try {
-      props.onUndone(await ctx.api.undo(t.id, props.round, board.id, entry));
+      // By the row's uid (`row-N`) where it has one: the same on the laptop and the cloud.
+      props.onUndone(await ctx.api.undo(t.id, props.round, refOf(board), entry.uid || entry.id));
     } catch (e) {
       // A refusal comes with its reason; the list may be out of date too.
       setError(describeError(e));
@@ -78,7 +79,7 @@ export function HistorySheet(props: {
                 )}
               </span>
               {canUndo && e.undo.status === "ok" && (
-                <button type="button" class="chip" id={`history-undo-${e.id}`} disabled={busy !== null} onClick={() => void undo(e.id)}>
+                <button type="button" class="chip" id={`history-undo-${e.id}`} disabled={busy !== null} onClick={() => void undo(e)}>
                   {tr("history.undo")}
                 </button>
               )}

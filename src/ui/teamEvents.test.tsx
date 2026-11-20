@@ -132,6 +132,11 @@ const detail = (over: Partial<MatchDetail> = {}, can: Partial<MatchDetail["can"]
   return { ...base, ...over, can: { ...base.can, ...can } };
 };
 
+// Rows are named by uid where the server gives one (contract revision 8).
+const rosterUid = (id: number) => [...detail().lineup!.roster_a, ...detail().lineup!.roster_b].find((p) => p.id === id)?.uid ?? id;
+const teamUid = () => ex<TeamDetail>("team-detail-response.json").team.uid;
+const teamPlayerUid = (id: number) => ex<TeamDetail>("team-detail-response.json").team.roster.find((p) => p.id === id)?.uid ?? id;
+
 const round = (): Round => ({
   number: 1,
   latest: true,
@@ -366,8 +371,8 @@ describe("the line-up editor", () => {
     await waitFor(() => expect((document.querySelector("#tm-save") as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(document.querySelector("#tm-save")!);
     await waitFor(() => expect(api.setLineups).toHaveBeenCalled());
-    const [, , , body] = api.setLineups.mock.calls[0] as [number, number, number, { out: { a: number[]; b: number[] } }];
-    expect([...body.out.a].sort()).toEqual([1, 3]);
+    const [, , , body] = api.setLineups.mock.calls[0] as [number, number, string, { out: { a: string[]; b: string[] } }];
+    expect([...body.out.a].sort()).toEqual([rosterUid(1), rosterUid(3)].sort());
     expect(body.out.b).toEqual([]);
     await screen.findByText("Line-ups saved and confirmed.");
   });
@@ -392,7 +397,7 @@ describe("the line-up editor", () => {
     expect(taken.disabled).toBe(true);
     await change$("#seat-a-1", "3");
     fireEvent.click(await el("#tm-save"));
-    await waitFor(() => expect(api.setLineups).toHaveBeenCalledWith(7, 1, 1, { a: [3, 2], b: [7, 8] }));
+    await waitFor(() => expect(api.setLineups).toHaveBeenCalledWith(7, 1, 1, { a: [3, 2].map(rosterUid), b: [7, 8].map(rosterUid) }));
   });
 
   it("can empty a seat in selects mode", async () => {
@@ -403,7 +408,7 @@ describe("the line-up editor", () => {
     await click("#tm-edit");
     await change$("#seat-b-2", "");
     fireEvent.click(await el("#tm-save"));
-    await waitFor(() => expect(api.setLineups).toHaveBeenCalledWith(7, 1, 1, { a: [1, 2], b: [7, null] }));
+    await waitFor(() => expect(api.setLineups).toHaveBeenCalledWith(7, 1, 1, { a: [1, 2].map(rosterUid), b: [rosterUid(7), null] }));
   });
 
   it("checks the line-ups against the regulations without saving, violations first", async () => {
@@ -641,7 +646,7 @@ describe("the teams", () => {
     await el("#team-round-2-absent");
     expect(document.querySelectorAll("#team-rounds .round-status")).toHaveLength(4);
     await click("#team-round-3-half_bye");
-    await waitFor(() => expect(api.setTeamRound).toHaveBeenCalledWith(7, 1, 3, "half_bye"));
+    await waitFor(() => expect(api.setTeamRound).toHaveBeenCalledWith(7, teamUid(), 3, "half_bye"));
   });
 
   it("offers no half-point bye in a round robin", async () => {
@@ -671,7 +676,7 @@ describe("the teams", () => {
     await screen.findByText("Hold for a second to lock the result");
     expect(api.withdrawTeam).not.toHaveBeenCalled();
     await hold(await el("#team-withdraw-yes"));
-    await waitFor(() => expect(api.withdrawTeam).toHaveBeenCalledWith(7, 1, 1, []));
+    await waitFor(() => expect(api.withdrawTeam).toHaveBeenCalledWith(7, teamUid(), 1, []));
     // The sheet now shows the team as out, and the list behind it as well.
     await screen.findByText("Alpha is out from round 1.");
     await waitFor(() => expect(present("#team-out-1")).toBe(true));
@@ -688,7 +693,7 @@ describe("the teams", () => {
     await hold(await el("#team-withdraw-yes"));
     await el("#team-question");
     await hold(await el("#team-question-yes"));
-    await waitFor(() => expect(api.withdrawTeam).toHaveBeenLastCalledWith(7, 1, 2, ["finalised_result_changed"]));
+    await waitFor(() => expect(api.withdrawTeam).toHaveBeenLastCalledWith(7, teamUid(), 2, ["finalised_result_changed"]));
   });
 
   it("brings a withdrawn team back", async () => {
@@ -697,7 +702,7 @@ describe("the teams", () => {
     await click("#team-open-1");
     await click("#team-reinstate");
     await click("#team-ask-yes");
-    await waitFor(() => expect(api.reinstateTeam).toHaveBeenCalledWith(7, 1));
+    await waitFor(() => expect(api.reinstateTeam).toHaveBeenCalledWith(7, teamUid()));
   });
 
   it("takes a player off the roster after asking", async () => {
@@ -707,7 +712,7 @@ describe("the teams", () => {
     await click("#team-remove-3");
     expect(api.removeTeamPlayer).not.toHaveBeenCalled();
     await click("#team-ask-yes");
-    await waitFor(() => expect(api.removeTeamPlayer).toHaveBeenCalledWith(7, 1, 3));
+    await waitFor(() => expect(api.removeTeamPlayer).toHaveBeenCalledWith(7, teamUid(), teamPlayerUid(3)));
   });
 
   it("puts a late reserve from the tournament's players on the roster, found by name", async () => {
@@ -720,7 +725,7 @@ describe("the teams", () => {
     fireEvent.input(document.querySelector("#team-reserve-search")!, { target: { value: "sam" } });
     await waitFor(() => expect(document.querySelectorAll("#team-reserve-list .row")).toHaveLength(1));
     await click("#team-reserve-21");
-    await waitFor(() => expect(api.addTeamPlayer).toHaveBeenCalledWith(7, 1, 21));
+    await waitFor(() => expect(api.addTeamPlayer).toHaveBeenCalledWith(7, teamUid(), 21));
   });
 
   it("does not offer a player already on the team", async () => {

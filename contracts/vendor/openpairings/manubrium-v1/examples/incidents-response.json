@@ -8,8 +8,9 @@
       "id": 1,
       "kind": "clock",
       "note": "Flag fell on White's clock",
-      "occurred_at": "2026-10-22T06:27:49Z",
+      "occurred_at": "2026-11-20T01:19:57Z",
       "round": 1,
+      "uid": "dd4a140e64209fc272bb0897",
       "white": "Player 1"
     }
   ]

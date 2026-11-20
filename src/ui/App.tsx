@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { client, type Client, type TournamentLine } from "../api";
 import { Outbox } from "../queue";
 import { CommandBook } from "../relay";
+import { hallRoutes } from "../hall";
 import { labelFor, type SavedServer } from "../servers";
 import { pendingRevokes, serverList } from "../stores";
 import { onBackButton, onOpenLink, onResume, storage } from "../platform";
@@ -234,6 +235,7 @@ export function App() {
           }
           await outbox.forgetServer(s.base);
           await commands.forgetServer(s.base);
+          hallRoutes.forgetServer(s.base);
           await serverList.remove(s.base);
           await reload();
         }}

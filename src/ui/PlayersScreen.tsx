@@ -4,7 +4,7 @@
 // because the next pairing depends on it.
 
 import { useEffect, useRef, useState } from "preact/hooks";
-import { ApiError, type Bye, type Player, type SearchHit, type Tournament } from "../api";
+import { ApiError, refOf, type Bye, type Player, type SearchHit, type Tournament } from "../api";
 import { byeRows, byesChanged, byesToSend, setBye } from "../byes";
 import { DEBOUNCE_MS, hitDetails, MIN_QUERY, searchQuery, sourceOf } from "../search";
 import type { Ctx } from "./App";
@@ -46,7 +46,7 @@ export function PlayersScreen(props: { ctx: Ctx; t: Tournament }) {
     setBusy(p.id);
     setError(null);
     try {
-      const saved = await ctx.api.updatePlayer(t.id, p.id, { present });
+      const saved = await ctx.api.updatePlayer(t.id, refOf(p), { present });
       if (saved && typeof saved.id === "number") swap({ ...p, ...saved });
     } catch (e) {
       swap(p);
@@ -371,7 +371,7 @@ function PlayerSheet(props: {
     setBusy(true);
     setError(null);
     try {
-      if (player) await ctx.api.updatePlayer(t.id, player.id, changes, acknowledged);
+      if (player) await ctx.api.updatePlayer(t.id, refOf(player), changes, acknowledged);
       else await ctx.api.createPlayer(t.id, changes as { name: string });
       props.onSaved();
     } catch (e) {
@@ -514,7 +514,7 @@ function ByesEditor(props: { ctx: Ctx; t: Tournament; player: Player; byes: Bye[
     setSaid(null);
     try {
       const list = byesToSend(byes, t.paired_rounds);
-      await (acknowledged.length ? ctx.api.setByes(t.id, player.id, list, acknowledged) : ctx.api.setByes(t.id, player.id, list));
+      await (acknowledged.length ? ctx.api.setByes(t.id, refOf(player), list, acknowledged) : ctx.api.setByes(t.id, refOf(player), list));
       setSaved(byes);
       setAsk(null);
       setSaid(tr("pl.byes_saved"));

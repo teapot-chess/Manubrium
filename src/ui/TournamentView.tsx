@@ -65,7 +65,7 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
             }}
           />
         )}
-        {t && <RelayBanner t={t} />}
+        {t && <RelayBanner t={t} base={ctx.server.base} />}
         {t && <RelayCommands ctx={ctx} t={t} onAnswered={() => void load()} />}
         {t?.read_only && (
           <Notice kind="info">

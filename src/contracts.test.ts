@@ -736,7 +736,7 @@ describe("the app's types against the contract's shapes", () => {
   const cases: [string, Record<string, string>, string][] = [
     [
       "MatchDetail",
-      shape<MatchDetail>()({
+      shape<MatchDetail>()({ uid: "optional",
         id: "required",
         number: "required nullable",
         team_a: "required",
@@ -790,7 +790,7 @@ describe("the app's types against the contract's shapes", () => {
     ],
     [
       "LineupRosterPlayer",
-      shape<LineupRosterPlayer>()({ id: "required", name: "required", title: "required nullable", rating: "required nullable", order: "required", available: "required" }),
+      shape<LineupRosterPlayer>()({ uid: "optional", id: "required", name: "required", title: "required nullable", rating: "required nullable", order: "required", available: "required" }),
       "lineup_roster_player",
     ],
     [
@@ -807,7 +807,7 @@ describe("the app's types against the contract's shapes", () => {
     ],
     [
       "EventTeam",
-      shape<EventTeam>()({
+      shape<EventTeam>()({ uid: "optional",
         id: "required",
         name: "required",
         short_name: "required nullable",
@@ -907,10 +907,10 @@ describe("the app's types against the contract's shapes", () => {
       "command-response.schema.json#/properties/command",
     ],
     ["Warning", shape<Warning>()({ id: "required", confirm: "required", message: "required" }), "warning"],
-    ["BoardPlayer", shape<BoardPlayer>()({ id: "required", name: "required", title: "required nullable", rating: "required nullable", score: "required" }), "board_player"],
+    ["BoardPlayer", shape<BoardPlayer>()({ uid: "optional", id: "required", name: "required", title: "required nullable", rating: "required nullable", score: "required" }), "board_player"],
     [
       "Board",
-      shape<Board>()({
+      shape<Board>()({ uid: "optional",
         id: "required",
         board: "required nullable",
         label: "required",
@@ -933,7 +933,7 @@ describe("the app's types against the contract's shapes", () => {
     ],
     [
       "Round",
-      shape<Round>()({
+      shape<Round>()({ uid: "optional",
         number: "required",
         latest: "required",
         publish_level: "required",
@@ -948,7 +948,7 @@ describe("the app's types against the contract's shapes", () => {
     ],
     [
       "Match",
-      shape<Match>()({
+      shape<Match>()({ uid: "optional",
         id: "required",
         number: "required nullable",
         team_a: "required",
@@ -963,13 +963,13 @@ describe("the app's types against the contract's shapes", () => {
       }),
       "match",
     ],
-    ["MatchTeam", shape<MatchTeam>()({ id: "required", name: "required", short_name: "required nullable" }), "match_team"],
-    ["MatchBoard", shape<MatchBoard>()({ id: "required", number: "required", a_white: "required" }), "common.schema.json#/definitions/match/properties/boards/items"],
+    ["MatchTeam", shape<MatchTeam>()({ uid: "optional", id: "required", name: "required", short_name: "required nullable" }), "match_team"],
+    ["MatchBoard", shape<MatchBoard>()({ uid: "optional", id: "required", number: "required", a_white: "required" }), "common.schema.json#/definitions/match/properties/boards/items"],
     ["StandingRow", shape<StandingRow>()({ rank: "required nullable", player: "required nullable", points: "required nullable", tiebreaks: "required" }), "common.schema.json#/definitions/standings/properties/rows/items"],
     ["Standings", shape<Standings>()({ tiebreaks: "required", rows: "required", tiebreaks_through: "optional", rounds_paired: "optional" }), "standings"],
     [
       "Player",
-      shape<Player>()({
+      shape<Player>()({ uid: "optional",
         id: "required",
         name: "required",
         title: "required nullable",
@@ -1017,7 +1017,7 @@ describe("the app's types against the contract's shapes", () => {
     ],
     [
       "Incident",
-      shape<Incident>()({
+      shape<Incident>()({ uid: "optional",
         id: "required",
         round: "required",
         board: "required nullable",
@@ -1059,7 +1059,7 @@ describe("the app's types against the contract's shapes", () => {
     ["BoardHistory", shape<BoardHistory>()({ title: "required", entries: "required" }), "board-history-response.schema.json#/properties/history"],
     [
       "HistoryEntry",
-      shape<HistoryEntry>()({ id: "required", who: "required", at: "required", text: "required", undo: "required" }),
+      shape<HistoryEntry>()({ uid: "optional nullable", id: "required", who: "required", at: "required", text: "required", undo: "required" }),
       "board-history-response.schema.json#/properties/history/properties/entries/items",
     ],
     ["PushStatus", shape<PushStatus>()({ available: "required", platforms: "required", events: "required", registration: "required nullable" }), "push-response.schema.json#/properties/push"],

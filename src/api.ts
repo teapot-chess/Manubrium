@@ -6,6 +6,7 @@
 
 import { normaliseServer } from "./link";
 import { t as tr } from "./i18n";
+import { hallCapable, hallPath, hallRoutes, HALL_TIMEOUT_MS, readHall, type HallRoutes, type RelayHall } from "./hall";
 import { KeyMemory, RelayedWrite, relayCommandOf, type Relay, type RelayCommand, type WriteRequest } from "./relay";
 
 export type Role = "owner" | "editor" | "arbiter";
@@ -84,10 +85,29 @@ export interface NewTournament {
   rated: boolean;
 }
 
-export interface BoardPlayer { id: number; name: string; title: string | null; rating: number | null; score: number }
+/**
+ * A row as a request names it (contract revision 8): its uid when the
+ * server gave one, which both copies of a relayed tournament understand,
+ * or this server's id.
+ */
+export type Ref = number | string;
+
+export function refOf(row: { id: number; uid?: string | null }): Ref {
+  return row.uid || row.id;
+}
+
+/** Whether a request's ref names this row, whichever copy the row came from. */
+export function sameRow(ref: Ref | null | undefined, row: { id: number; uid?: string | null } | null | undefined): boolean {
+  if (ref === null || ref === undefined || !row) return false;
+  return typeof ref === "string" ? ref === row.uid : ref === row.id;
+}
+
+export interface BoardPlayer { id: number; uid?: string; name: string; title: string | null; rating: number | null; score: number }
 
 export interface Board {
   id: number;
+  /** The row on every copy of the tournament (contract revision 8; absent from older servers). */
+  uid?: string;
   /** Null for a board with a fixed table and no number; `label` is what to show. */
   board: number | null;
   label: string;
@@ -122,6 +142,7 @@ export interface PoolEntry { player: BoardPlayer; type: string | null; absent: b
 
 export interface Round {
   number: number;
+  uid?: string;
   latest: boolean;
   publish_level: number;
   boards: Board[];
@@ -138,12 +159,13 @@ export interface Round {
 
 // A team event, as matches (contract revision 4).
 
-export interface MatchTeam { id: number; name: string; short_name: string | null }
+export interface MatchTeam { id: number; uid?: string; name: string; short_name: string | null }
 
 /** One of a match's boards: which of the round's boards, and where the first-named team sits. */
 export interface MatchBoard {
   /** The pairing id: the `id` of one of the round's boards. */
   id: number;
+  uid?: string;
   /** The board within the match, from 1. */
   number: number;
   /** The first-named team has White on this board. */
@@ -155,6 +177,8 @@ export type MatchSide = "a" | "b";
 
 export interface Match {
   id: number;
+  /** The row on every copy of the tournament (contract revision 8; absent from older servers). */
+  uid?: string;
   number: number | null;
   team_a: MatchTeam;
   /** Null for the round's bye. */
@@ -176,13 +200,17 @@ export interface Match {
 // (contract revision 5). The server decides everything here; `can` says
 // which of a match's actions apply now, and the phone shows only those.
 
-export interface PlayerBrief { id: number; name: string; title: string | null; rating: number | null }
+export interface PlayerBrief { id: number; uid?: string; name: string; title: string | null; rating: number | null }
 
 /** A line-up: a player id per board, board 1 first, null for an empty seat. */
 export type Seats = (number | null)[];
 
+/** A line-up as it is sent, its players named by uid where the server gave one. */
+export type SeatRefs = (Ref | null)[];
+
 export interface LineupRosterPlayer {
   id: number;
+  uid?: string;
   name: string;
   title: string | null;
   rating: number | null;
@@ -246,7 +274,7 @@ export interface MatchDetail extends Match {
 }
 
 /** A line-up as it is sent: a player per board, or who sits out. */
-export type LineupsBody = { a: Seats; b: Seats } | { out: { a: number[]; b: number[] } };
+export type LineupsBody = { a: SeatRefs; b: SeatRefs } | { out: { a: Ref[]; b: Ref[] } };
 
 export type MatchDecisionKind = "forfeit_a" | "forfeit_b" | "double_forfeit";
 
@@ -255,6 +283,7 @@ export interface MatchChange { round: Round; match: MatchDetail }
 
 export interface RosterPlayer {
   id: number;
+  uid?: string;
   name: string;
   title: string | null;
   rating: number | null;
@@ -269,6 +298,8 @@ export interface RosterPlayer {
 /** A team of a team event, with its roster in board order. */
 export interface EventTeam {
   id: number;
+  /** The row on every copy of the tournament (contract revision 8; absent from older servers). */
+  uid?: string;
   name: string;
   short_name: string | null;
   number: number | null;
@@ -358,14 +389,32 @@ export interface BoardPrizes {
 
 /** One hand edit, as `POST /rounds/:n/edits` takes it. */
 export type HandEdit =
-  | { kind: "swap"; a: number; b: number }
-  | { kind: "vacate"; player: number; bye_type?: string }
-  | { kind: "bye"; pairing: number }
-  | { kind: "fill"; pairing: number; player: number }
-  | { kind: "pool_pair"; a: number; b: number; board?: number }
-  | { kind: "pool_bye"; player: number }
-  | { kind: "bye_pair"; pairing: number; player: number }
-  | { kind: "delete"; pairing: number };
+  | { kind: "swap"; a: Ref; b: Ref }
+  | { kind: "vacate"; player: Ref; bye_type?: string }
+  | { kind: "bye"; pairing: Ref }
+  | { kind: "fill"; pairing: Ref; player: Ref }
+  | { kind: "pool_pair"; a: Ref; b: Ref; board?: number }
+  | { kind: "pool_bye"; player: Ref }
+  | { kind: "bye_pair"; pairing: Ref; player: Ref }
+  | { kind: "delete"; pairing: Ref };
+
+/**
+ * A hand edit with its boards and players named by uid, where the round
+ * gives one (contract revision 8): the same edit on the laptop and the cloud.
+ */
+export function editRefs(edit: HandEdit, round: Pick<Round, "boards" | "byes" | "pool">): HandEdit {
+  const players = new Map<Ref, Ref>();
+  const pairings = new Map<Ref, Ref>();
+  for (const b of round.boards) {
+    if (b.uid) pairings.set(b.id, b.uid);
+    for (const p of [b.white, b.black]) if (p?.uid) players.set(p.id, p.uid);
+  }
+  for (const p of [...round.byes.map((x) => x.player), ...(round.pool ?? []).map((x) => x.player)]) if (p.uid) players.set(p.id, p.uid);
+  const out: Record<string, unknown> = { ...edit };
+  for (const k of ["a", "b", "player"] as const) if (k in edit) out[k] = players.get((edit as Record<string, Ref>)[k]) ?? (edit as Record<string, Ref>)[k];
+  if ("pairing" in edit) out.pairing = pairings.get(edit.pairing) ?? edit.pairing;
+  return out as HandEdit;
+}
 
 /** The settings a phone may change (`PATCH /settings`), by field. */
 export type SettingsChange = Partial<{
@@ -398,6 +447,8 @@ export interface Standings {
 
 export interface Player {
   id: number;
+  /** The row on every copy of the tournament (contract revision 8; absent from older servers). */
+  uid?: string;
   name: string;
   title: string | null;
   sex: string | null;
@@ -495,6 +546,8 @@ export interface BoardLink {
 
 export interface Incident {
   id: number;
+  /** The row on every copy of the tournament (contract revision 8; absent from older servers). */
+  uid?: string;
   round: number;
   board: number | null;
   kind: string;
@@ -510,10 +563,11 @@ export interface ResultEntry {
   cid: string;
   kind: "result";
   round: number;
-  pairing: number;
+  /** The board: by uid where the round gave one, so the same entry goes to the laptop or the cloud. */
+  pairing: Ref;
   board: number | null;
-  white: number | null;
-  black: number | null;
+  white: Ref | null;
+  black: Ref | null;
   result: string;
   expected: string;
 }
@@ -523,7 +577,7 @@ export interface IncidentEntry {
   kind: "incident";
   round: number;
   /** Every incident names its board: the server refuses one without as `no_board`. */
-  pairing: number;
+  pairing: Ref;
   board?: number | null;
   type: string;
   note: string;
@@ -576,6 +630,8 @@ export interface HandoverNote {
 
 export interface HistoryEntry {
   id: number;
+  /** `row-N`, the same on both copies of a relayed tournament; null for a change only the desk can undo (revision 8). */
+  uid?: string | null;
   who: string;
   at: string;
   text: string;
@@ -825,6 +881,8 @@ export interface ClientOptions {
   keys?: KeyMemory;
   /** A write went to the laptop instead (a relayed tournament): keep it, and ask about it. */
   onCommand?: (tournament: number, command: RelayCommand, request: WriteRequest) => void | Promise<void>;
+  /** Where relayed tournaments' laptops answer in the hall (src/hall.ts); the app's one by default. */
+  routes?: HallRoutes;
 }
 
 const isWrite = (method: string) => method !== "GET" && method !== "HEAD";
@@ -832,9 +890,105 @@ const tournamentOf = (path: string): number | null => {
   const m = /^\/tournaments\/(\d+)(?:\/|$)/.exec(path);
   return m ? Number(m[1]) : null;
 };
+/** `GET /tournaments/:id` itself: where the hall path comes from. */
+const tournamentRead = (method: string, path: string): number | null => {
+  const m = /^\/tournaments\/(\d+)$/.exec(path);
+  return method === "GET" && m ? Number(m[1]) : null;
+};
 
 /** One key memory for the whole app: a lost answer on any screen is the same write again. */
 export const writeKeys = new KeyMemory();
+
+/** An answer, read but not yet judged: the same judging for either path. */
+interface Answer {
+  status: number;
+  data: Record<string, unknown>;
+}
+
+/** Waits for `fetch`, at most `ms`. A timeout is no answer, like no network. */
+async function fetchWithin(fetchImpl: FetchLike, url: string, init: RequestInit, ms: number): Promise<Response> {
+  const abort = typeof AbortController === "function" ? new AbortController() : null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      abort?.abort();
+      reject(new Error("timeout"));
+    }, ms);
+  });
+  try {
+    return await Promise.race([fetchImpl(url, abort ? { ...init, signal: abort.signal } : init), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The body as JSON; null when it is not (a proxy's page, a captive portal). */
+async function bodyOf(response: Response): Promise<Record<string, unknown> | null> {
+  if (response.status === 204) return {};
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The laptop, on the hall's network: each address in turn, all of them
+ * within one short wait. Null when it gave no answer worth keeping and the
+ * cloud is to be asked instead: no answer in time, a refused pass (401), a
+ * route that is the cloud's (409 cloud_only), a failure of its own (5xx),
+ * something that is not the API. Any other answer is the desk's.
+ */
+async function viaHall(
+  fetchImpl: FetchLike,
+  routes: HallRoutes,
+  base: string,
+  tournament: number,
+  hall: RelayHall,
+  method: string,
+  path: string,
+  body: unknown,
+  key: string | null,
+): Promise<Answer | null> {
+  const headers: Record<string, string> = { accept: "application/json", authorization: `Bearer ${hall.token}` };
+  if (body !== undefined) headers["content-type"] = "application/json";
+  if (key) headers["idempotency-key"] = key;
+  const started = Date.now();
+  for (const url of routes.urls(base, tournament)) {
+    const left = HALL_TIMEOUT_MS - (Date.now() - started);
+    if (left <= 0) break;
+    let response: Response;
+    let data: Record<string, unknown> | null;
+    try {
+      response = await fetchWithin(
+        fetchImpl,
+        url + PREFIX + hallPath(path, hall),
+        { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+        left,
+      );
+      data = await bodyOf(response);
+    } catch {
+      continue;
+    }
+    if (response.status === 401) {
+      routes.refused(base, tournament);
+      return null;
+    }
+    if (response.status === 409 && data?.error === "cloud_only") return null;
+    // A command the laptop has not seen may still be waiting in the cloud's inbox.
+    if (response.status === 404 && /\/commands\/[^/]+$/.test(path)) return null;
+    if (response.status >= 500 || data === null) {
+      routes.missed(base, tournament);
+      return null;
+    }
+    routes.reached(base, tournament, url);
+    return { status: response.status, data };
+  }
+  routes.missed(base, tournament);
+  return null;
+}
 
 async function call<T>(
   fetchImpl: FetchLike,
@@ -849,51 +1003,87 @@ async function call<T>(
   if (token) headers.authorization = `Bearer ${token}`;
   if (body !== undefined) headers["content-type"] = "application/json";
 
-  // Every write carries a key, so the same write sent twice is one command.
+  // Every write carries a key, so the same write sent twice is one command:
+  // also on the laptop first and the cloud after, or the other way round.
   const request: WriteRequest = body === undefined ? { method, path } : { method, path, body };
   const keys = options.keys ?? writeKeys;
+  const routes = options.routes ?? hallRoutes;
   const write = isWrite(method) && token !== null;
-  if (write) headers["idempotency-key"] = options.key ?? keys.keyFor(base, request);
+  const key = write ? (options.key ?? keys.keyFor(base, request)) : null;
+  if (key) headers["idempotency-key"] = key;
 
-  let response: Response;
-  try {
-    response = await fetchImpl(base + PREFIX + path, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-  } catch (error) {
-    throw new OfflineError(error instanceof Error && error.message ? tr("api.no_connection_detail", { detail: error.message }) : undefined);
+  const tournament = token !== null ? tournamentOf(path) : null;
+  // A pass that ran out: the next read of the tournament brings a new one.
+  if (tournament !== null && tournamentRead(method, path) === null && routes.wantsRefresh(base, tournament)) {
+    void call(fetchImpl, base, token, "GET", `/tournaments/${tournament}`, undefined, options).catch(() => undefined);
   }
-  if (write) keys.answered(base, request);
+  const hall = tournament !== null && hallCapable(method, path, body) ? routes.get(base, tournament) : null;
 
-  if (response.status === 204) return undefined as T;
-
-  let data: Record<string, unknown> = {};
-  const text = await response.text();
-  if (text) {
+  const cloud = async (): Promise<Answer> => {
+    let response: Response;
     try {
-      data = JSON.parse(text);
-    } catch {
-      // A proxy's HTML error page, a captive portal: not the API answering.
+      response = await fetchImpl(base + PREFIX + path, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (error) {
+      throw new OfflineError(error instanceof Error && error.message ? tr("api.no_connection_detail", { detail: error.message }) : undefined);
+    }
+    const data = await bodyOf(response);
+    // A proxy's HTML error page, a captive portal: not the API answering.
+    if (data === null) {
+      if (key) keys.answered(base, request);
       if (!response.ok) throw new ApiError(response.status, "not_api", tr("api.not_openpairings", { status: response.status }));
       throw new ApiError(response.status, "not_api", tr("api.not_json"));
     }
+    if (hall && tournament !== null) routes.cloud(base, tournament);
+    return { status: response.status, data };
+  };
+
+  let answer: Answer | null = null;
+  if (hall && tournament !== null) {
+    // Writes always try the laptop first: a second or two is worth the
+    // shorter road. Reads too, unless it did not answer a moment ago; then
+    // the cloud first, and the laptop only if the cloud cannot be reached.
+    if (write || !routes.quiet(base, tournament)) {
+      answer = await viaHall(fetchImpl, routes, base, tournament, hall, method, path, body, key);
+    } else {
+      try {
+        answer = await cloud();
+      } catch (error) {
+        if (!(error instanceof OfflineError)) throw error;
+        answer = await viaHall(fetchImpl, routes, base, tournament, hall, method, path, body, key);
+        if (!answer) throw error;
+      }
+    }
+  }
+  answer ??= await cloud();
+  if (key) keys.answered(base, request);
+
+  const { status, data } = answer;
+  if (status === 204) return undefined as T;
+
+  // The tournament says where its laptop answers in the hall, or that it does not.
+  const read = tournamentRead(method, path);
+  if (read !== null && token !== null && status === 200) {
+    const relay = (data.tournament as { relay?: { hall?: unknown } | null } | undefined)?.relay;
+    routes.set(base, read, readHall(relay?.hall));
   }
 
   // A relayed tournament: the write went to the laptop. 202 while it decides;
-  // 200 when a resend finds it already answered.
-  const tournament = write ? tournamentOf(path) : null;
-  const command = tournament !== null && (response.status === 202 || response.status === 200) ? relayCommandOf(data) : null;
+  // 200 when the laptop answered at once (the hall path) or a resend finds
+  // it already answered.
+  const command = write && tournament !== null && (status === 202 || status === 200) ? relayCommandOf(data) : null;
   if (command && tournament !== null) {
     await options.onCommand?.(tournament, command, request);
     throw new RelayedWrite(tournament, command, request);
   }
 
-  if (!response.ok) {
-    const code = typeof data.error === "string" ? data.error : `http_${response.status}`;
-    const message = typeof data.message === "string" ? data.message : tr("api.answered", { status: response.status });
-    throw new ApiError(response.status, code, message, data);
+  if (status < 200 || status >= 300) {
+    const code = typeof data.error === "string" ? data.error : `http_${status}`;
+    const message = typeof data.message === "string" ? data.message : tr("api.answered", { status });
+    throw new ApiError(status, code, message, data);
   }
 
   return data as T;
@@ -917,7 +1107,7 @@ export interface Client {
   tournament(id: number): Promise<Tournament>;
   round(id: number, n: number): Promise<Round>;
   sync(id: number, entries: Entry[]): Promise<EntryAnswer[]>;
-  clear(id: number, n: number, pairing: number, expected: string): Promise<void>;
+  clear(id: number, n: number, pairing: Ref, expected: string): Promise<void>;
   pair(id: number, acknowledged?: string[]): Promise<Round>;
   unpair(id: number, n: number): Promise<void>;
   publish(id: number, n: number, level: 0 | 1 | 2 | 3): Promise<number>;
@@ -925,23 +1115,23 @@ export interface Client {
   incidents(id: number, round?: number): Promise<Incident[]>;
   players(id: number): Promise<Player[]>;
   createPlayer(id: number, player: Partial<Player> & { name: string }): Promise<Player>;
-  updatePlayer(id: number, playerId: number, changes: Record<string, unknown>, acknowledged?: string[]): Promise<Player>;
+  updatePlayer(id: number, playerId: Ref, changes: Record<string, unknown>, acknowledged?: string[]): Promise<Player>;
   edit(id: number, n: number, edit: HandEdit, acknowledged?: string[]): Promise<Round>;
   finishEdits(id: number, n: number, acknowledged?: string[]): Promise<{ pibe: string | null; round: Round }>;
   discardEdits(id: number, n: number): Promise<Round>;
-  confirmResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
-  rejectResult(id: number, n: number, pairing: number, expected: string): Promise<void>;
+  confirmResult(id: number, n: number, pairing: Ref, expected: string): Promise<void>;
+  rejectResult(id: number, n: number, pairing: Ref, expected: string): Promise<void>;
   updateSettings(id: number, settings: SettingsChange): Promise<Record<string, unknown>>;
-  attachPhoto(id: number, incident: number, jpegBase64: string): Promise<Incident>;
-  updateIncident(id: number, incident: number, changes: { kind?: string; note?: string }): Promise<Incident>;
-  deleteIncident(id: number, incident: number): Promise<void>;
-  photo(id: number, incident: number): Promise<Blob>;
+  attachPhoto(id: number, incident: Ref, jpegBase64: string): Promise<Incident>;
+  updateIncident(id: number, incident: Ref, changes: { kind?: string; note?: string }): Promise<Incident>;
+  deleteIncident(id: number, incident: Ref): Promise<void>;
+  photo(id: number, incident: Ref): Promise<Blob>;
   tournamentOptions(): Promise<TournamentOptions>;
   /** The new tournament as a line of the list; `tournament()` has the rest. */
   createTournament(tournament: NewTournament): Promise<TournamentLine>;
   searchPlayers(id: number, q: string, source: string): Promise<SearchHit[]>;
   addPlayerFrom(id: number, from: PlayerSource): Promise<Player>;
-  setByes(id: number, playerId: number, byes: Bye[], acknowledged?: string[]): Promise<Player | null>;
+  setByes(id: number, playerId: Ref, byes: Bye[], acknowledged?: string[]): Promise<Player | null>;
   boardLinks(id: number): Promise<BoardLink[]>;
   createBoardLink(id: number, label?: string): Promise<{ link: BoardLink; code: string }>;
   revokeBoardLink(id: number, linkId: number): Promise<void>;
@@ -951,7 +1141,7 @@ export interface Client {
   hallCancelCountdown(id: number): Promise<HallSent>;
   hallAnnounce(id: number, what: { canned: HallCanned } | { text: string }): Promise<HallSent>;
   /** One player's card; open to arbiters, unlike `players()`. */
-  playerCard(id: number, playerId: number): Promise<PlayerCard>;
+  playerCard(id: number, playerId: Ref): Promise<PlayerCard>;
   /** Who is checked in; open to arbiters. */
   arrivals(id: number): Promise<Arrival[]>;
   /** The prize list; the desk roles, like the standings. */
@@ -965,39 +1155,39 @@ export interface Client {
   cancelDefaultTime(id: number, round: number): Promise<void>;
 
   /** Confirms one side's line-up of a team match (or both) as it stands; answers the round. */
-  confirmLineup(id: number, n: number, match: number, side: MatchSide | "both"): Promise<Round>;
+  confirmLineup(id: number, n: number, match: Ref, side: MatchSide | "both"): Promise<Round>;
   /** Confirms every line-up of the round that still waits; answers the round. */
   confirmLineups(id: number, n: number): Promise<Round>;
 
   /** One team match in full: line-ups, rosters, findings, and what this account may do to it. */
-  match(id: number, n: number, match: number): Promise<MatchDetail>;
+  match(id: number, n: number, match: Ref): Promise<MatchDetail>;
   /** Saves both line-ups (a player per board, or who sits out); a side that changed counts as confirmed. */
-  setLineups(id: number, n: number, match: number, lineups: LineupsBody): Promise<MatchChange>;
+  setLineups(id: number, n: number, match: Ref, lineups: LineupsBody): Promise<MatchChange>;
   /** What a plug-in's regulations make of line-ups not saved yet. Writes nothing. */
-  checkLineups(id: number, n: number, match: number, lineups: LineupsBody): Promise<LineupFindings>;
+  checkLineups(id: number, n: number, match: Ref, lineups: LineupsBody): Promise<LineupFindings>;
   /** Both line-ups back to the rosters', both provisional again. */
-  resetLineups(id: number, n: number, match: number): Promise<MatchChange>;
+  resetLineups(id: number, n: number, match: Ref): Promise<MatchChange>;
   /** Takes a confirmation back: that side is provisional again. */
-  unconfirmLineup(id: number, n: number, match: number, side: MatchSide | "both"): Promise<MatchChange>;
+  unconfirmLineup(id: number, n: number, match: Ref, side: MatchSide | "both"): Promise<MatchChange>;
   /** League-style colours: the away team becomes the home team. */
-  swapHome(id: number, n: number, match: number): Promise<MatchChange>;
+  swapHome(id: number, n: number, match: Ref): Promise<MatchChange>;
   /** Settles the match as a whole: a forfeit to one team, or a double forfeit. */
-  decideMatch(id: number, n: number, match: number, decision: MatchDecisionKind, acknowledged?: string[]): Promise<MatchChange>;
-  withdrawDecision(id: number, n: number, match: number): Promise<MatchChange>;
+  decideMatch(id: number, n: number, match: Ref, decision: MatchDecisionKind, acknowledged?: string[]): Promise<MatchChange>;
+  withdrawDecision(id: number, n: number, match: Ref): Promise<MatchChange>;
   /** Decides a match nobody sits at by its score, in boards. */
-  setMatchScore(id: number, n: number, match: number, score: { a: number; b: number }): Promise<MatchChange>;
-  clearMatchScore(id: number, n: number, match: number): Promise<MatchChange>;
+  setMatchScore(id: number, n: number, match: Ref, score: { a: number; b: number }): Promise<MatchChange>;
+  clearMatchScore(id: number, n: number, match: Ref): Promise<MatchChange>;
   /** The teams in draw order, rosters in board order; open to arbiters. */
   teams(id: number): Promise<EventTeam[]>;
-  teamDetail(id: number, team: number): Promise<TeamDetail>;
+  teamDetail(id: number, team: Ref): Promise<TeamDetail>;
   /** The team leaves from round `fromRound` on; its open matches are forfeited to the opponents. */
-  withdrawTeam(id: number, team: number, fromRound: number, acknowledged?: string[]): Promise<TeamDetail>;
-  reinstateTeam(id: number, team: number): Promise<TeamDetail>;
+  withdrawTeam(id: number, team: Ref, fromRound: number, acknowledged?: string[]): Promise<TeamDetail>;
+  reinstateTeam(id: number, team: Ref): Promise<TeamDetail>;
   /** What the team does in a round not yet paired. */
-  setTeamRound(id: number, team: number, round: number, status: TeamRoundStatus): Promise<TeamDetail>;
+  setTeamRound(id: number, team: Ref, round: number, status: TeamRoundStatus): Promise<TeamDetail>;
   /** A player of the tournament onto the team's roster, at the bottom of its board order. */
-  addTeamPlayer(id: number, team: number, player: number): Promise<TeamDetail>;
-  removeTeamPlayer(id: number, team: number, player: number): Promise<TeamDetail>;
+  addTeamPlayer(id: number, team: Ref, player: Ref): Promise<TeamDetail>;
+  removeTeamPlayer(id: number, team: Ref, player: Ref): Promise<TeamDetail>;
   teamStandings(id: number): Promise<TeamStandings>;
   /** The board prizes; `minGames` absent means the desk's default. */
   boardPrizes(id: number, minGames?: number): Promise<BoardPrizes>;
@@ -1009,9 +1199,9 @@ export interface Client {
   createNote(id: number, note: { body: string; round?: number | null; pinned?: boolean }): Promise<HandoverNote>;
   updateNote(id: number, noteId: number, changes: { body?: string; round?: number | null; pinned?: boolean; resolved?: boolean }): Promise<HandoverNote>;
   /** Who changed a board's result, with whether each change can be undone. */
-  boardHistory(id: number, n: number, pairing: number): Promise<BoardHistory>;
+  boardHistory(id: number, n: number, pairing: Ref): Promise<BoardHistory>;
   /** Undoes one result change; the server's sentence, or an ApiError `undo_refused` with the reason. */
-  undo(id: number, n: number, pairing: number, entry: number): Promise<string>;
+  undo(id: number, n: number, pairing: Ref, entry: Ref): Promise<string>;
 
   liveBoards(id: number): Promise<LiveBoards>;
   liveGame(id: number, game: string): Promise<LiveGame>;

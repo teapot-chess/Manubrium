@@ -9,7 +9,8 @@
       "opponent": {
         "id": 3,
         "name": "Charlie",
-        "short_name": null
+        "short_name": null,
+        "uid": "5e527c33047d43d06f752326"
       },
       "opponent_game_points": 0.5,
       "round": 1
@@ -32,7 +33,8 @@
         "plays_next": true,
         "rating": 2300,
         "status": "active",
-        "title": null
+        "title": null,
+        "uid": "e60e3d005aeb25ec253ac9de"
       },
       {
         "federation": null,
@@ -42,7 +44,8 @@
         "plays_next": true,
         "rating": 2250,
         "status": "active",
-        "title": null
+        "title": null,
+        "uid": "d563bfce78918e4a9594b27c"
       },
       {
         "federation": null,
@@ -52,12 +55,14 @@
         "plays_next": true,
         "rating": 2200,
         "status": "active",
-        "title": null
+        "title": null,
+        "uid": "fc3700d864968163815194e3"
       }
     ],
     "rounds": [],
     "series": null,
     "short_name": null,
+    "uid": "b317c3084a1fc3450e6ca28a",
     "withdrawn_from_round": null
   }
 }

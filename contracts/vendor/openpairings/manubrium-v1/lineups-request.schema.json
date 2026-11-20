@@ -16,8 +16,8 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "a": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/id" } },
-        "b": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/id" } }
+        "a": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/ref" } },
+        "b": { "type": "array", "items": { "$ref": "common.schema.json#/definitions/ref" } }
       }
     }
   }

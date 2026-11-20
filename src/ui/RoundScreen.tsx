@@ -3,7 +3,8 @@
 // on a Lite phone's result are online only.
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { ApiError, OfflineError, type Board, type MatchSide, type Round, type Tournament } from "../api";
+import { ApiError, OfflineError, refOf, sameRow, type Ref, type Board, type MatchSide, type Round, type Tournament } from "../api";
+import type { Queued } from "../queue";
 import { native, onResume, scanQr, takePhoto } from "../platform";
 import type { Ctx } from "./App";
 import { describeError, Empty, Loading, Notice, resultLabel, ShareButton, Sheet } from "./common";
@@ -79,7 +80,9 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [desk, setDesk] = useState(false);
   const [editing, setEditing] = useState<Board | null>(null);
   const [history, setHistory] = useState<Board | null>(null);
-  const [player, setPlayer] = useState<number | null>(null);
+  // By uid where the round gave one: the round may have come from the laptop.
+  const [player, setPlayerRef] = useState<Ref | null>(null);
+  const setPlayer = (id: number | null) => setPlayerRef(id === null ? null : playerRefIn(round, id));
   // A team's line-up, open: by match and side, so a refreshed round is what the sheet shows.
   const [lineupOf, setLineupOf] = useState<{ match: number; side: MatchSide } | null>(null);
   // A team match open in full, by id, so a refreshed round is what the sheet draws behind it.
@@ -213,10 +216,10 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     try {
       await ctx.outbox.addResult(base, t.id, {
         round: round.number,
-        pairing: b.id,
+        pairing: refOf(b),
         board: b.board,
-        white: b.white?.id ?? null,
-        black: b.black?.id ?? null,
+        white: b.white ? refOf(b.white) : null,
+        black: b.black ? refOf(b.black) : null,
         result,
         expected: b.result,
       }, b.label);
@@ -234,7 +237,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   async function clear(b: Board) {
     setBoard(null);
     try {
-      await ctx.api.clear(t.id, number, b.id, b.result);
+      await ctx.api.clear(t.id, number, refOf(b), b.result);
       setInfo(tr("round.board_cleared", { label: b.label }));
     } catch (e) {
       setError(describeError(e));
@@ -248,8 +251,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   async function verdict(b: Board, confirm: boolean) {
     setBoard(null);
     try {
-      if (confirm) await ctx.api.confirmResult(t.id, number, b.id, b.result);
-      else await ctx.api.rejectResult(t.id, number, b.id, b.result);
+      if (confirm) await ctx.api.confirmResult(t.id, number, refOf(b), b.result);
+      else await ctx.api.rejectResult(t.id, number, refOf(b), b.result);
       setInfo(
         confirm
           ? tr("round.board_confirmed", { label: b.label, result: resultLabel(b.result) })
@@ -277,7 +280,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
         t.id,
         {
           round: round.number,
-          pairing: b.id,
+          pairing: refOf(b),
           board: b.board,
           type,
           note,
@@ -299,9 +302,15 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   }
 
   const queued = ctx.outbox.list(base, t.id).filter((q) => q.entry.round === number);
-  const waitingFor = new Map(
-    queued.filter((q) => (q.state === "waiting" || q.state === "pending") && q.entry.kind === "result").map((q) => [q.entry.kind === "result" ? q.entry.pairing : 0, q]),
-  );
+  // By the board's id in the round on screen: an entry names its board by
+  // uid (or, queued by an older version, by the cloud's id).
+  const waitingFor = new Map<number, Queued>();
+  for (const q of queued) {
+    if ((q.state !== "waiting" && q.state !== "pending") || q.entry.kind !== "result") continue;
+    const pairing = q.entry.pairing;
+    const b = round?.boards.find((x) => sameRow(pairing, x));
+    if (b) waitingFor.set(b.id, q);
+  }
   const refused = queued.filter((q) => q.state === "refused");
   const unsent = queued.filter((q) => q.state === "waiting" && q.entry.kind === "result").length;
   const missing = round ? round.boards.filter((b) => !b.bye && !b.result).length : 0;
@@ -429,7 +438,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
           <ConflictNotice
             key={q.entry.cid}
             q={q}
-            board={round?.boards.find((b) => b.id === (q.entry.kind === "result" ? q.entry.pairing : 0))}
+            board={round?.boards.find((b) => sameRow(q.entry.pairing, b))}
             onKeep={() => ctx.outbox.dismiss(q.entry.cid).then(() => {
               ctx.bump();
               void load();
@@ -1076,4 +1085,11 @@ function DeskSheet(props: {
       {error && <Notice kind="error">{error}</Notice>}
     </Sheet>
   );
+}
+
+/** A player of the round by uid, where the round names one; else the id as it came. */
+function playerRefIn(round: Round | null, id: number): Ref {
+  for (const b of round?.boards ?? []) for (const p of [b.white, b.black]) if (p && p.id === id) return refOf(p);
+  for (const p of [...(round?.byes ?? []).map((x) => x.player), ...(round?.pool ?? []).map((x) => x.player)]) if (p.id === id) return refOf(p);
+  return id;
 }
