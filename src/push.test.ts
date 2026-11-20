@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PUSH_EVENTS, type Client, type PushStatus, type Round } from "./api";
 import { activityKey, LiveActivities, plan, progress, type RoundActivityPlugin } from "./liveActivity";
-import { ASKED_KEY, PushManager, serverCanPush, shouldOffer, tapTarget, TOKEN_KEY, withEvent, type PushBackend } from "./push";
+import { ASKED_KEY, lockScreenOn, PushManager, serverCanPush, shouldOffer, tapTarget, TOKEN_KEY, withEvent, type PushBackend } from "./push";
 import type { KeyValue } from "./queue";
 import type { SavedServer } from "./servers";
 
@@ -253,5 +253,14 @@ describe("LiveActivities", () => {
     const none = fakePlugin(false);
     await sync(new LiveActivities(none.plugin), a, round(5, ["", ""]));
     expect(none.calls).toEqual([]);
+  });
+});
+
+describe("lockScreenOn", () => {
+  it("keeps the round off the lock screen where the server cannot push", () => {
+    expect(lockScreenOn(true, null, "apns")).toBeNull();
+    expect(lockScreenOn(true, status({ available: false }), "apns")).toBe(false);
+    expect(lockScreenOn(true, status(), "apns")).toBe(true);
+    expect(lockScreenOn(false, status(), "apns")).toBe(false);
   });
 });

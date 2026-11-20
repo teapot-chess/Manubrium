@@ -6,7 +6,7 @@ import { client, type Client, type PushEvent, type PushStatus, type Round, type 
 import { t as tr, type Key } from "../i18n";
 import { liveActivities, progress } from "../liveActivity";
 import { nativePushBackend } from "../pushNative";
-import { PushManager, serverCanPush, shouldOffer, withEvent, type Permission } from "../push";
+import { lockScreenOn, PushManager, serverCanPush, shouldOffer, withEvent, type Permission } from "../push";
 import { storage } from "../platform";
 import { defaultReminder, loadDefaultTime, type DefaultReminder } from "../defaultTime";
 import type { SavedServer } from "../servers";
@@ -197,11 +197,15 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
     };
   }, [ctx.server.base, reminderKey]);
 
-  // The lock screen follows the round on screen.
+  // The lock screen follows the round on screen, where the server can keep it
+  // following once the app is away.
   const { done, total } = progress(round);
   useEffect(() => {
-    manager.liveActivities().then((on) =>
-      liveActivities.sync({
+    if (!status) return;
+    manager.liveActivities().then((wanted) => {
+      const on = lockScreenOn(wanted, status, manager.platform);
+      if (on === null) return;
+      return liveActivities.sync({
         base: ctx.server.base,
         api: ctx.api,
         tournament: t.id,
@@ -210,9 +214,9 @@ export function RoundPush(props: { ctx: Ctx; t: Tournament; round: Round; manage
         title: tr("live.title", { n: round.number }),
         format: tr("live.format"),
         on,
-      }),
-    );
-  }, [ctx.server.base, t.id, round.number, round.latest, done, total]);
+      });
+    });
+  }, [ctx.server.base, t.id, round.number, round.latest, done, total, status]);
 
   async function remind(when: Date) {
     const at = when.toISOString();
