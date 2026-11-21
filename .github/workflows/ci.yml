@@ -51,7 +51,7 @@ jobs:
   # a fork and a pull request get the same check.
   ios:
     if: github.event_name != 'schedule'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -70,7 +70,7 @@ jobs:
       - name: Build for the simulator
         run: |
           set -eu -o pipefail
-          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          xcode=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
           [ -z "$xcode" ] || sudo xcode-select -s "$xcode"
           xcodebuild -version
           xcodebuild build \

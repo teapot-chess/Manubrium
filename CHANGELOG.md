@@ -5,6 +5,9 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.5.0 - 2026-11-21
+
+- [Change] **Built with Xcode 27.** App Store Connect had started warning that it stops taking iOS 26 builds in April 2027. It said so politely, on every upload, which is how one knows it means it.
 - [Fix] **One lock-screen activity per tournament, kept for the whole event.** It used to be one per round: the last result ended it, and the next round appeared only once somebody opened the app, which nobody does at the moment the desk is busy pairing. So the lock screen said "Round 2, 1/1 results" well into round 3. The round number now lives in the activity's state instead of being carved into it at birth, so the server moves it on: a complete round says *All results in*, the next pairing says *Round 3: 0 of 16*. It ends when the tournament is finished, archived or deleted, or when the switch goes off. Opening the app keeps the one that is running instead of replacing it. It dims after four hours without news. Still nothing where the server cannot push. Needs OpenPairings with contract revision 10; an older server ends it with the round, as before.
 - [Feature] **The server can start it again after iOS takes it away.** iOS allows a Live Activity eight hours. On iOS 17.2 and later the app gives every server that can push a push-to-start token, with its strings in the app's language, and the server starts a fresh activity at the next result or pairing. That one counts along once the app has been opened, which is when iOS tells the app about it. Switching the lock screen off takes the token back. The vendored OpenPairings contract is at revision 10. English, Dutch, French.
 
