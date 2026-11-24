@@ -33,6 +33,8 @@ vi.mock("../platform", () => ({
   cancelReminder: vi.fn(async () => undefined),
   deviceUnlockAvailable: async () => false,
   deviceUnlock: async () => false,
+  selfUpdating: false,
+  appVersion: async () => null,
 }));
 
 const START = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";

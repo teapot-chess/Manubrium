@@ -9,15 +9,17 @@ export const PHONE_KEY = "manubrium.phone.v1";
 export interface PhoneSettings {
   /** A local notification when a round's default time is reached. */
   remindDefaultTime: boolean;
+  /** The Android build asks GitHub once a day for a newer apk (src/update.ts). On unless switched off. */
+  checkUpdates: boolean;
 }
 
-export const PHONE_DEFAULTS: PhoneSettings = { remindDefaultTime: false };
+export const PHONE_DEFAULTS: PhoneSettings = { remindDefaultTime: false, checkUpdates: true };
 
 export async function loadPhoneSettings(store: KeyValue): Promise<PhoneSettings> {
   try {
     const raw = await store.get(PHONE_KEY);
     const v = raw ? (JSON.parse(raw) as Partial<PhoneSettings>) : {};
-    return { remindDefaultTime: v.remindDefaultTime === true };
+    return { remindDefaultTime: v.remindDefaultTime === true, checkUpdates: v.checkUpdates !== false };
   } catch {
     return PHONE_DEFAULTS;
   }

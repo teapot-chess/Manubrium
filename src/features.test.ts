@@ -247,7 +247,7 @@ describe("the default time", () => {
   it("keeps the reminder off until asked", async () => {
     const store = new Memory();
     expect(await loadPhoneSettings(store)).toEqual(PHONE_DEFAULTS);
-    await savePhoneSettings(store, { remindDefaultTime: true });
+    await savePhoneSettings(store, { ...PHONE_DEFAULTS, remindDefaultTime: true });
     expect((await loadPhoneSettings(store)).remindDefaultTime).toBe(true);
   });
 });

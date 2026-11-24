@@ -1,13 +1,20 @@
-# The Android store build: a signed .aab for the Play Console (uploaded by
-# hand to a testing track; Play app signing re-signs it with the app key)
-# and the matching .apk for a phone with no Play account. Run by hand
-# (workflow_dispatch) or by a version tag, which also gets the .apk as a
-# release asset.
+# The Android build. Manubrium for Android is not on Google Play: it is the
+# signed .apk on this repository's GitHub releases, which the app itself
+# checks for once a day (src/update.ts). Run on a version tag - by hand,
+# `gh workflow run android.yml --ref vX.Y.Z`, while the tag trigger is off -
+# it makes the release vX.Y.Z with manubrium.apk (always that name, so
+# releases/latest/download/manubrium.apk is always the newest), the same
+# file under its version, and SHA256SUMS. Run on a branch, it is a build
+# and an artifact, no release. The .aab is built too, for the day there is
+# a Play Console, and stays an artifact.
 #
-# Signing: android/app/build.gradle reads the upload keystore from the
-# MANUBRIUM_* variables and signs only when they are set; without them the
-# build is unsigned, so a fork gets a build, not a red cross. The secrets
-# and where they come from: docs/releasing.md.
+# Signing: android/app/build.gradle reads the keystore from the MANUBRIUM_*
+# variables and signs only when they are set; without them the build is
+# unsigned, so a fork gets a build, not a red cross. A tag refuses to be
+# unsigned, and refuses any key but ours: Android installs an update only
+# over an app signed with the same key, so a release signed with another
+# one would strand every phone that has the app. The secrets, where the
+# keystore lives, and what not to do with it: docs/releasing.md.
 name: Android
 
 on:
@@ -106,8 +113,11 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE" ]; then
             echo "sign=true" >> "$GITHUB_OUTPUT"
           else
+            case "$GITHUB_REF" in
+              refs/tags/v*) echo "::error::No ANDROID_KEYSTORE secret: a release must be signed (docs/releasing.md)."; exit 1 ;;
+            esac
             echo "sign=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No ANDROID_KEYSTORE secret (a fork?) - the bundle will be unsigned and the Play Console will refuse it (docs/releasing.md)."
+            echo "::warning::No ANDROID_KEYSTORE secret (a fork?) - the apk will be unsigned and will not install (docs/releasing.md)."
           fi
 
       - name: Write the keystore
@@ -133,6 +143,27 @@ jobs:
             bundleRelease assembleRelease
           ls -l app/build/outputs/bundle/release app/build/outputs/apk/release
 
+      # The release key's certificate, SHA-256 (docs/releasing.md has the same
+      # line). A tag stops here on any other: shipping it would make every
+      # installed copy refuse the update, with nothing to do about it but
+      # uninstalling, which takes the outbox along.
+      - name: Check the apk's signature
+        if: steps.keystore.outputs.sign == 'true'
+        env:
+          RELEASE_CERT_SHA256: f478156b2c8ca5b8bf2d9c5d081b717edfeda9d60264b82700f585949c2e37b4
+        run: |
+          set -eu
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          "$tools/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt"
+          got=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | tr -d ': ' | tr A-F a-f)
+          if [ "$got" != "$RELEASE_CERT_SHA256" ]; then
+            case "$GITHUB_REF" in
+              refs/tags/v*) echo "::error::the apk is signed with $got, not the release key $RELEASE_CERT_SHA256"; exit 1 ;;
+              *) echo "::warning::signed with $got, not the release key: this apk will not update an installed Manubrium" ;;
+            esac
+          fi
+
       - name: Name the files after the version
         run: |
           set -eu
@@ -153,9 +184,13 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-  # On a version tag the .apk goes on the GitHub release (a tester without
-  # Play can sideload it). The .aab stays an artifact: only the Play Console
-  # can do anything with it.
+  # On a version tag the .apk goes on the GitHub release, which is where
+  # phones get it: twice, as manubrium.apk (the stable link and the app's
+  # update check want that name) and as Manubrium-<version>-<build>.apk
+  # (for whoever keeps old ones), with SHA256SUMS for both. The release is
+  # marked latest, so /releases/latest/download/manubrium.apk follows it.
+  # The TestFlight workflow makes no releases, so every release is this
+  # one's and carries the apk. The .aab stays an artifact.
   release:
     needs: android
     if: startsWith(github.ref, 'refs/tags/v')
@@ -170,7 +205,35 @@ jobs:
           merge-multiple: true
           path: out
 
+      - name: manubrium.apk and SHA256SUMS
+        run: |
+          set -eu
+          cd out
+          rm -f ./*.aab
+          versioned=$(ls Manubrium-*.apk)
+          [ "$(echo "$versioned" | wc -l)" -eq 1 ] || { echo "::error::expected one apk, got: $versioned"; exit 1; }
+          cp "$versioned" manubrium.apk
+          sha256sum manubrium.apk "$versioned" > SHA256SUMS
+          cat SHA256SUMS
+          version=${GITHUB_REF#refs/tags/v}
+          {
+            echo "Manubrium $version for Android: download **manubrium.apk** below and open it on the phone."
+            echo "The first time, Android asks to allow the browser (or file manager) to install apps."
+            echo "After that the app offers each new version itself (More, This phone, Check for updates)."
+            echo
+            echo "What changed: [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/v$version/CHANGELOG.md)."
+            echo
+            echo "Release key, SHA-256 of the signing certificate:"
+            echo '`f4:78:15:6b:2c:8c:a5:b8:bf:2d:c5:9d:08:1b:71:7e:df:ed:a9:d6:02:64:b8:27:00:f5:85:94:9c:2e:37:b4`'
+          } > ../notes.md
+
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          files: out/*.apk
+          name: Manubrium ${{ github.ref_name }}
+          body_path: notes.md
+          make_latest: "true"
+          files: |
+            out/manubrium.apk
+            out/Manubrium-*.apk
+            out/SHA256SUMS
           fail_on_unmatched_files: true

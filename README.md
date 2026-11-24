@@ -115,6 +115,19 @@ The server side - the API, device tokens, roles - lives in OpenPairings
 Manubrium Lite, the no-install browser page at `/m`, is OpenPairings' own and
 has nothing to do with this code.
 
+## Install
+
+- **iPhone:** the App Store (TestFlight until the listing is public).
+- **Android:** not on Google Play. On the phone, download
+  [manubrium.apk](https://github.com/teapot-chess/Manubrium/releases/latest/download/manubrium.apk)
+  (always the newest release) and open it. The first time, Android asks to
+  allow the browser to install apps; allow it, install, and switch it back
+  off if you like. After that the app looks for a new version once a day
+  and offers it (*More, This phone, Check for updates*, which can be
+  switched off). `SHA256SUMS` on each release has the checksums; the
+  signing certificate's fingerprint is in `docs/releasing.md`. Android 8.0
+  or later. Notifications need Google Play services on the phone.
+
 ## Licence
 
 Source published for reference under the Microsoft Reference Source License (Ms-RSL), copyright 2026 Jorian Burssens. The builds we publish (downloads, app stores, the Alnasl Pi image) may be used free of charge to run chess events; that permission covers our builds, not builds you make yourself. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
@@ -446,15 +459,17 @@ For the hall's local network, run a desktop OpenPairings on the laptop and
 connect the phone to its private address; iOS asks once for the local
 network, Android asks for nothing.
 
-### Store builds: TestFlight and Google Play
+### Release builds: TestFlight and the Android apk
 
 Both come out of GitHub Actions, signed with the organisation's secrets,
 and need no Mac on anyone's desk:
 
 - `.github/workflows/testflight.yml` archives, signs for the App Store and
   uploads to App Store Connect (then TestFlight).
-- `.github/workflows/android.yml` builds the signed `.aab` for the Play
-  Console and the `.apk` for a tester without Play.
+- `.github/workflows/android.yml` builds the signed `.apk` and, on a
+  version tag, puts it on the GitHub release as `manubrium.apk` (plus a
+  versioned copy and `SHA256SUMS`), which is where Android phones install
+  and update from. The `.aab` is kept as an artifact.
 
 Both run from the Actions tab (*Run workflow*) or on a tag `vX.Y.Z` that
 matches `package.json`. `docs/releasing.md` has the whole procedure, the

@@ -319,3 +319,20 @@ export async function deviceUnlock(reason: string, cancelTitle: string): Promise
     }
   });
 }
+
+/**
+ * Whether this build updates itself: the Android app, which is installed
+ * from the apk on GitHub's releases rather than from a store (src/update.ts).
+ * The iPhone has the App Store and a browser tab is always current.
+ */
+export const selfUpdating = platform === "android";
+
+/** The installed version (versionName on Android, the marketing version on iOS); null in a browser. */
+export async function appVersion(): Promise<string | null> {
+  if (!native) return null;
+  try {
+    return (await App.getInfo()).version || null;
+  } catch {
+    return null;
+  }
+}
