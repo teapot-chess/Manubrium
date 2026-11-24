@@ -22,7 +22,7 @@ import {
   started,
   waitingBoards,
 } from "./defaultTime";
-import { boardIn, boardOf, parseScan, slipTarget } from "./scan";
+import { boardIn, boardOf, matchIn, parseScan, slipTarget } from "./scan";
 import { colourHistory } from "./ui/PlayerSheet";
 import { loadPhoneSettings, PHONE_DEFAULTS, savePhoneSettings } from "./phoneSettings";
 
@@ -317,6 +317,34 @@ describe("scan codes", () => {
       expect(boardIn(r, "000000000000000000000001")).toBeNull();
       expect(boardOf(r, "cccccccccccccccccccccccc")?.id).toBe(2);
       expect(boardOf(r, "dddddddddddddddddddddddd")).toBeNull();
+    });
+
+    it("reads a team match slip's link, whatever address it was printed on", () => {
+      expect(parseScan("https://pairings.cloud/t/7/scan/3/4567")).toEqual({ kind: "match", tournament: 7, round: 3, match: 4567, uid: null });
+      expect(parseScan(`http://127.0.0.1:4000/t/2/scan/3/45?m=${UID.toUpperCase()}`)).toEqual({ kind: "match", tournament: 2, round: 3, match: 45, uid: UID });
+      // The match page's own address, which somebody will turn into a code.
+      expect(parseScan("https://pairings.cloud/t/7/pairings/3/matches/4567/")).toEqual({ kind: "match", tournament: 7, round: 3, match: 4567, uid: null });
+      for (const text of ["https://pairings.cloud/t/7/pairings", "https://pairings.cloud/t/7/scan/3", "/t/7/scan/3/4567", "ftp://x/t/7/scan/3/4567"])
+        expect(parseScan(text)).toBeNull();
+    });
+
+    it("opens a match link by id where it is safe, by uid on a relayed tournament, and an id-only link there not at all", () => {
+      expect(slipTarget(parseScan("https://x/t/7/scan/3/45"), hosted)).toEqual({ kind: "match", round: 3, match: 45, uid: null, byId: true });
+      expect(slipTarget(parseScan("https://x/t/8/scan/3/45"), hosted)).toEqual({ kind: "refused", reason: "other_tournament" });
+      expect(slipTarget(parseScan(`https://x/t/2/scan/3/45?m=${UID}`), relayed)).toEqual({ kind: "match", round: 3, match: 45, uid: UID, byId: false });
+      expect(slipTarget(parseScan("https://x/t/2/scan/3/45"), relayed)).toEqual({ kind: "refused", reason: "old_print" });
+    });
+
+    it("finds the match a link names: by uid, by id only where allowed", () => {
+      const m = (id: number, uid?: string) => ({ id, uid, number: id, boards: [] }) as unknown as NonNullable<Round["matches"]>[number];
+      const r = { ...round([board(1)]), matches: [m(45, UID), m(46, "bbbbbbbbbbbbbbbbbbbbbbbb")] };
+      expect(matchIn(r, { match: 999, uid: UID, byId: false })?.id).toBe(45);
+      expect(matchIn(r, { match: 45, uid: "dddddddddddddddddddddddd", byId: true })).toBeNull();
+      expect(matchIn(r, { match: 46, uid: null, byId: true })?.id).toBe(46);
+      expect(matchIn(r, { match: 46, uid: null, byId: false })).toBeNull();
+      // A server too old to send match uids: the id, where the id is safe.
+      const old = { ...r, matches: [m(45), m(46)] };
+      expect(matchIn(old, { match: 46, uid: UID, byId: true })?.id).toBe(46);
     });
   });
 

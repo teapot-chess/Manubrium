@@ -9,10 +9,13 @@ import { HOLD_MS, holdTiming } from "../hold";
 export function fastHolds(ms = 5): void {
   holdTiming.ms = ms;
   holdTiming.buzz = () => undefined;
+  // The stray-click shield drops the moment the test lets go.
+  holdTiming.shield = { afterUpMs: 0, maxMs: 1500 };
 }
 
 export function slowHolds(): void {
   holdTiming.ms = HOLD_MS;
+  holdTiming.shield = { afterUpMs: 450, maxMs: 1500 };
 }
 
 /** Holds the button (or the button an element is in) until it locks, then lets go. */

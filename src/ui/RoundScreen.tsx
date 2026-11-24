@@ -16,7 +16,7 @@ import { refusalText } from "../queue";
 import { pollDelay } from "../relay";
 import { BoardEditSheet, FinishEdits, PoolPanel } from "./PairingEdits";
 import { currentRound } from "../currentRound";
-import { boardIn, boardOf, parseScan, slipTarget } from "../scan";
+import { boardIn, boardOf, matchIn, parseScan, slipTarget } from "../scan";
 import { DefaultTimeCard } from "./DefaultTime";
 import { PlayerSheet } from "./PlayerSheet";
 import { RoundPush } from "./Notifications";
@@ -91,6 +91,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const [openOnly, setOpenOnly] = useState(false);
   // A scanned slip for a round not on screen: opened once that round is.
   const [scanned, setScanned] = useState<{ round: number; pairing: Ref } | null>(null);
+  // A scanned team match slip, likewise: opened once its round is on screen.
+  const [scannedMatch, setScannedMatch] = useState<{ round: number; match: number; uid: string | null; byId: boolean } | null>(null);
   const deskRole = t.can.includes("pair");
 
   const base = ctx.server.base;
@@ -105,9 +107,15 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   const load = useCallback(async () => {
     if (number < 1) return;
     const mine = ++requests.current;
+    // Saved before this read was asked for, so the answer holds them.
+    const caughtUp = ctx.outbox
+      .recentlySaved(ctx.server.base, t.id)
+      .filter((q) => q.entry.round === number)
+      .map((q) => q.entry.cid);
     try {
       const answer = await ctx.api.round(t.id, number);
       if (mine !== requests.current) return;
+      if (answer.number === number) ctx.outbox.settle(caughtUp);
       setRound(answer);
       setOffline(false);
       setError(null);
@@ -193,8 +201,31 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     else setError(tr("scan.board_gone"));
   }, [scanned, round]);
 
+  // A team match slip: the match comes into view, marked for a moment, and
+  // its first board still without a result opens - the desk's scanner puts
+  // the cursor there too. A match with every result in only comes into view.
+  useEffect(() => {
+    if (!scannedMatch || !round || round.number !== scannedMatch.round) return;
+    setScannedMatch(null);
+    const m = matchIn(round, scannedMatch);
+    const card = m ? matchView(round)?.cards.find((c) => c.match.id === m.id) : undefined;
+    if (!m || !card) return setError(tr("scan.match_gone", { n: round.number }));
+    setOpenOnly(false);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`match-${m.id}`);
+      if (!el) return;
+      el.scrollIntoView?.({ block: "start", behavior: "smooth" });
+      el.classList.add("scanned");
+      setTimeout(() => el.classList.remove("scanned"), 1800);
+    });
+    const open = card.rows.map((r) => r.board).find((b) => !b.bye && !b.vacant && !b.empty && !shownResult(b));
+    if (open && !boardDisabled(open)) setBoard(open);
+    else setInfo(tr("scan.match_done", { n: m.number ?? "–" }));
+  }, [scannedMatch, round]);
+
   // A result slip opens its board; a place card opens the player's board in
-  // the round on screen, or the player when they have none in it.
+  // the round on screen, or the player when they have none in it; a team
+  // match slip's link opens its match (above).
   async function scan() {
     const code = slipTarget(parseScan(await scanQr()), t);
     if (code.kind === "refused") return setError(tr(`scan.${code.reason}`));
@@ -206,7 +237,8 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
       return;
     }
     if (code.round < 1 || code.round > latest) return setError(tr("scan.round_not_paired", { n: code.round }));
-    setScanned({ round: code.round, pairing: code.pairing });
+    if (code.kind === "match") setScannedMatch({ round: code.round, match: code.match, uid: code.uid, byId: code.byId });
+    else setScanned({ round: code.round, pairing: code.pairing });
     if (code.round !== number) setNumber(code.round);
   }
 
@@ -310,6 +342,16 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
     const b = round?.boards.find((x) => sameRow(pairing, x));
     if (b) waitingFor.set(b.id, q);
   }
+  // Saved by the server, but the round on screen was read before: shown as
+  // saved until a newer read lands (see Outbox.recentlySaved), so a result
+  // does not vanish and come back while the round is fetched again.
+  const savedFor = new Map<number, string>();
+  for (const q of ctx.outbox.recentlySaved(base, t.id)) {
+    if (q.entry.kind !== "result" || q.entry.round !== number) continue;
+    const pairing = q.entry.pairing;
+    const b = round?.boards.find((x) => sameRow(pairing, x));
+    if (b && !waitingFor.has(b.id)) savedFor.set(b.id, q.entry.result);
+  }
   const refused = queued.filter((q) => q.state === "refused");
   const unsent = queued.filter((q) => q.state === "waiting" && q.entry.kind === "result").length;
   const missing = round ? round.boards.filter((b) => !b.bye && !b.result).length : 0;
@@ -318,7 +360,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // What a board shows: this phone's waiting result before the server's own.
   const shownResult = (b: Board): string => {
     const pending = waitingFor.get(b.id);
-    return pending && pending.entry.kind === "result" ? pending.entry.result : b.result;
+    return pending && pending.entry.kind === "result" ? pending.entry.result : (savedFor.get(b.id) ?? b.result);
   };
   const stillOpen = (b: Board): boolean => !b.bye && !shownResult(b);
   const openCount = round ? round.boards.filter(stillOpen).length : 0;
@@ -494,6 +536,7 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
             view={view}
             layout={layoutOf(t)}
             waitingFor={waitingFor}
+            savedFor={savedFor}
             disabled={boardDisabled}
             hidden={filtering ? (b) => !stillOpen(b) : undefined}
             canConfirm={canConfirm}

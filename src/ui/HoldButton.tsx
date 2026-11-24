@@ -15,6 +15,50 @@ import { t as tr } from "../i18n";
 
 let counter = 0;
 const NOTICE_MS = 2500;
+/**
+ * A hold locks while the finger is still on the glass, and what it locks
+ * usually closes the sheet the button was on. The click the browser sends
+ * when the finger lifts then lands on whatever is under it now - on the
+ * round screen, a board, whose sheet opened again. An arbiter who confirmed
+ * a result saw the screen jump away and jump straight back, and blamed the
+ * server. Until shortly after the finger lifts, clicks outside `own` are
+ * swallowed: the gesture already did what it was for.
+ *
+ * The lift is heard on the window, and on the button itself: on iOS a touch
+ * keeps reporting to the element it began on even once that element has
+ * left the page, where the window never hears it. A finger that never
+ * seems to lift gives up the shield after `holdTiming.shield.maxMs`.
+ */
+export function shieldStrayClick(own: Element | null): void {
+  if (typeof window === "undefined") return;
+  const { afterUpMs, maxMs } = holdTiming.shield;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const swallow = (e: Event) => {
+    if (own && own.isConnected && e.target instanceof Node && own.contains(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const lifts = ["pointerup", "pointercancel", "touchend", "touchcancel"];
+  const done = () => {
+    if (timer) clearTimeout(timer);
+    window.removeEventListener("click", swallow, true);
+    for (const name of lifts) {
+      window.removeEventListener(name, lifted, true);
+      own?.removeEventListener(name, lifted);
+    }
+  };
+  function lifted() {
+    if (timer) clearTimeout(timer);
+    if (afterUpMs <= 0) done();
+    else timer = setTimeout(done, afterUpMs);
+  }
+  window.addEventListener("click", swallow, true);
+  for (const name of lifts) {
+    window.addEventListener(name, lifted, true);
+    own?.addEventListener(name, lifted);
+  }
+  timer = setTimeout(done, maxMs);
+}
 
 export function HoldButton(props: {
   id?: string;
@@ -35,12 +79,15 @@ export function HoldButton(props: {
   // The controller reads the latest props at the moment it fires.
   const latest = useRef(props);
   latest.current = props;
+  /** A finger or a mouse button is down on the button right now. */
+  const pressed = useRef(false);
   const controller = useRef<HoldController | null>(null);
   if (!controller.current) {
     controller.current = new HoldController(() => ({
       ms: latest.current.ms,
       onLock: () => {
         setHint(false);
+        if (pressed.current) shieldStrayClick(button.current);
         latest.current.onLock();
       },
       onTap: () => {
@@ -68,10 +115,17 @@ export function HoldButton(props: {
         // No capture to release.
       }
       setHint(false);
+      pressed.current = true;
       hold.start(true);
     };
-    const up = () => hold.release();
-    const leave = () => hold.cancel();
+    const up = () => {
+      pressed.current = false;
+      hold.release();
+    };
+    const leave = () => {
+      pressed.current = false;
+      hold.cancel();
+    };
     const click = (e: Event) => {
       e.preventDefault();
       if (!latest.current.disabled) hold.click();

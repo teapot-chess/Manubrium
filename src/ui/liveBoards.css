@@ -42,15 +42,19 @@
 .live-results.mismatch { color: var(--danger); font-weight: 700; }
 .live-alarm-detail { margin: 6px 0; font-size: 14px; color: var(--danger); }
 
-/* The board: a grid of 64 squares, glyphs coloured by side. */
+/* The board: a grid of 64 squares, glyphs coloured by side. Rows as well as
+   columns are fixed eighths, and a square never grows to fit its glyph:
+   with only the columns set, a rank with no pieces on it got whatever
+   height the ranks with pieces left over, which was not much. */
 .mini-board {
-  display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; flex: none;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr));
+  aspect-ratio: 1; flex: none;
   border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--border); user-select: none;
 }
 .mini-board.small { width: 64px; }
 .mini-board.large { width: min(340px, 100%); margin: 6px auto; border-radius: 10px; }
 .mini-board.empty { display: flex; align-items: center; justify-content: center; background: var(--surface-alt); color: var(--text-soft); font-size: 13px; }
-.mini-board .sq { position: relative; display: flex; align-items: center; justify-content: center; line-height: 1; }
+.mini-board .sq { position: relative; display: flex; align-items: center; justify-content: center; line-height: 1; min-width: 0; min-height: 0; overflow: hidden; }
 .mini-board .sq.light { background: #eee6d3; }
 .mini-board .sq.dark { background: #8ca58f; }
 .mini-board .sq.last::after { content: ""; position: absolute; inset: 0; background: rgba(240, 200, 60, 0.45); }

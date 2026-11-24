@@ -84,6 +84,14 @@ export class Outbox {
   private items: Queued[] = [];
   private loaded = false;
   private flushing = new Map<string, Promise<FlushOutcome>>();
+  /**
+   * Results the server saved that the round on screen may not show yet: it
+   * was read before they landed. Memory only. Without these, a board went
+   * from the phone's result to the old round's empty one and back again in
+   * the half-second between "saved" and the next read, which an arbiter
+   * reasonably took for the server having second thoughts.
+   */
+  private saved: Queued[] = [];
 
   constructor(
     private readonly store: KeyValue,
@@ -109,6 +117,18 @@ export class Outbox {
   /** Everything for one tournament on one server, oldest first. */
   list(server: string, tournament: number): Queued[] {
     return this.items.filter((q) => q.server === server && q.tournament === tournament);
+  }
+
+  /** Results saved lately for one tournament, oldest first, until `settle` says a read caught up. */
+  recentlySaved(server: string, tournament: number): Queued[] {
+    return this.saved.filter((q) => q.server === server && q.tournament === tournament);
+  }
+
+  /** A round asked for after these were saved has landed: it shows them itself. */
+  settle(cids: string[]): void {
+    if (cids.length === 0) return;
+    const done = new Set(cids);
+    this.saved = this.saved.filter((q) => !done.has(q.entry.cid));
   }
 
   /** Entries still on the phone (not sent, or sent and waiting for the desk). */
@@ -211,6 +231,7 @@ export class Outbox {
   async forgetServer(server: string): Promise<void> {
     await this.load();
     this.items = this.items.filter((q) => q.server !== server);
+    this.saved = this.saved.filter((q) => q.server !== server);
     await this.save();
   }
 
@@ -277,6 +298,7 @@ export class Outbox {
           retry = true;
         } else if (answer.status === "saved") {
           this.items = this.items.filter((item) => item !== q);
+          if (q.entry.kind === "result") this.saved = [...this.saved.slice(-49), q];
           outcome.saved += 1;
         } else if (answer.status === "pending") {
           // The server has it; the laptop decides. Not a reason to hold the

@@ -119,7 +119,7 @@ export function Sheet(props: { title: string; onClose: () => void; sticky?: bool
 
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null;
-    box.current?.focus();
+    box.current?.focus({ preventScroll: true });
     const undo = pushBack(() => {
       if (sticky) return;
       // Back while being asked is "keep it": the question is not a second sheet to leave.
@@ -128,7 +128,9 @@ export function Sheet(props: { title: string; onClose: () => void; sticky?: bool
     });
     return () => {
       undo();
-      if (before && before.isConnected) before.focus();
+      // Back where it was, without scrolling the list to it: a list that
+      // moved under a closing sheet was half of "the screen jumps".
+      if (before && before.isConnected) before.focus({ preventScroll: true });
     };
   }, [sticky]);
 

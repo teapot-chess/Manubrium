@@ -18,9 +18,13 @@ export const HOLD_MS = 1000;
  * that has one (src/haptics.ts): a light one when a press starts, so the
  * thumb knows it is being held, and a firmer one when it locks.
  */
-export const holdTiming: { ms: number; buzz: (kind: Buzz) => void } = {
+export const holdTiming: { ms: number; buzz: (kind: Buzz) => void; shield: { afterUpMs: number; maxMs: number } } = {
   ms: HOLD_MS,
   buzz,
+  // After a hold locks with the finger still down, the click its lift sends
+  // is swallowed (ui/HoldButton.tsx, shieldStrayClick): until this long
+  // after the lift, and never longer than `maxMs` after the lock.
+  shield: { afterUpMs: 450, maxMs: 1500 },
 };
 
 export interface HoldOptions {

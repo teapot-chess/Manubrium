@@ -138,13 +138,15 @@ export interface MatchScore {
  * then each of them is counted in place of what the server holds for that
  * board, and the match points are held back until the server has spoken.
  */
-export function matchScore(card: MatchCard, pending: Map<number, string>, values: PointValues): MatchScore {
+export function matchScore(card: MatchCard, pending: Map<number, string>, values: PointValues, saved?: Map<number, string>): MatchScore {
   let { a, b } = card.match.game_points;
   let waiting = 0;
   for (const row of card.rows) {
-    const next = pending.get(row.board.id);
+    // Saved by the server, not yet in the round on screen: counted, but not waiting.
+    const onPhone = pending.get(row.board.id);
+    const next = onPhone ?? saved?.get(row.board.id);
     if (next === undefined || next === row.board.result) continue;
-    waiting++;
+    if (onPhone !== undefined) waiting++;
     const before = boardPoints(row.board.result, values);
     const after = boardPoints(next, values);
     const white = after.white - before.white;
@@ -152,6 +154,9 @@ export function matchScore(card: MatchCard, pending: Map<number, string>, values
     a += row.aWhite ? white : black;
     b += row.aWhite ? black : white;
   }
+  // Match points wait for the phone's own results only: a saved one is on
+  // the server, and hiding the line for the half-second until the round is
+  // read again would be a jump of its own.
   return { a, b, matchPoints: waiting > 0 ? null : card.match.match_points, waiting };
 }
 
