@@ -5,6 +5,13 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.6.0 - 2026-11-24
+
+- [Feature] **Scan reads team match slips.** The code on a team match slip or match sheet is a link (OpenPairings' "Scan team match slips"), and the app's Scan used to call it "not a slip", which was accurate and no help at all. It now reads the link - `/t/…/scan/<round>/<match>`, and the match page's own address - goes to the round, brings the match into view, marks it, and opens its first board still without a result. A match with every result in is only brought into view, with a line saying so. On a relayed tournament the link must carry the match's uid (OpenPairings prints it from 0.158.0); an older print there says so instead of opening a match by a number that belongs to the other copy. English, Dutch, French.
+- [Fix] **Entering or confirming a result no longer bounces.** A hold locks while the finger is still down, and closing the sheet left the finger over the round list. The click its lift sent then landed on the board underneath, whose sheet opened again: away and straight back, which looked very much like the server changing its mind. It was the glass. For a moment after a hold locks, a click anywhere else is ignored. Closing a sheet also no longer scrolls the list to the board it came from.
+- [Fix] **A saved result stays put while the round is read again.** In the half-second between the server saying "saved" and the round being fetched again, the board showed the round as it was before - no result - and anything that redrew the screen in that window (the "still playing" filter, a second scan) put the board back in the list. The app now keeps showing what the server saved until a round asked for after the save has arrived.
+- [Fix] **Live boards keep all eight ranks.** The board was a grid with eight columns and however many rows its contents asked for, so an empty rank shrank to a sliver next to ranks with pieces on them. Rows are eighths now, and squares stay square, on the small boards and the large one.
+
 ## 1.5.0 - 2026-11-21
 
 - [Change] **Built with Xcode 27.** App Store Connect had started warning that it stops taking iOS 26 builds in April 2027. It said so politely, on every upload, which is how one knows it means it.

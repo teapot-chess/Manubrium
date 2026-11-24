@@ -470,6 +470,8 @@ h3.sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; col
 .matches { display: flex; flex-direction: column; gap: 14px; }
 .match { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .match.provisional { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); }
+/* The match a scanned slip named, marked for a moment. */
+.match.scanned { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow 300ms ease; }
 .match-head { padding: 10px 12px; background: var(--surface-alt); }
 .match-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft); }
 .match-lineups { font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; text-align: right; }

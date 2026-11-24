@@ -48,9 +48,10 @@ Since 1.2 it also:
   whether they are entering results in this round, handover notes (read,
   write, pin, resolve), "keep theirs / use mine" when a result was beaten to
   the board, and a board's history with Undo, under the desk's rules;
-- **scans the code** OpenPairings now prints on result slips and place
-  cards: a slip opens its board's result entry, a place card the player's
-  board in the round on screen;
+- **scans the code** OpenPairings now prints on result slips, place cards
+  and team match slips: a slip opens its board's result entry, a place card
+  the player's board in the round on screen, a team match slip its match and
+  the match's first board without a result;
 - opens a **player** from the result sheet, the default-time list or the
   standings: games so far with colours and results, the colour history,
   score and rank, rating, club, requested byes, and a line when they are not
@@ -152,7 +153,7 @@ src/
   search.ts      when a list search is worth sending, what a hit adds
   alnasl.ts      the line a hall board's report gets beside its pairing
   defaultTime.ts the default-time list, the round's clock, the forfeit to offer
-  scan.ts        the codes on result slips and place cards
+  scan.ts        the codes on result slips, place cards and team match slips
   themes.ts      the palettes, light and dark, and applying one
   lock.ts        the app lock: when it locks, the code (salted hash only)
   phoneSettings.ts  what this phone keeps for itself (the reminder switch)
@@ -276,6 +277,11 @@ and `OP2:P:<tournament>:<player uid>`, the tournament being the cloud's id or
 the laptop's. They open by uid. An `OP1` slip (ids) opens nothing on a
 relayed tournament, since the ids could be either copy's: the app asks for a
 reprint or the board by hand.
+
+Team match slips carry a link, `<base>/t/<tournament>/scan/<round>/<match id>?m=<match uid>`
+(`PairingsEngineWeb.MatchLink`); only the path counts. Not relayed, the match
+id opens it; relayed, only the uid does, and a link without one is an older
+print.
 
 ## Develop in a browser
 

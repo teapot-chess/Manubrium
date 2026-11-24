@@ -55,6 +55,8 @@ export function MatchList(props: {
   layout: TeamBoardLayout;
   /** This phone's results still waiting to be sent, by pairing id. */
   waitingFor: Map<number, Queued>;
+  /** Results the server saved that the round on screen was read too early to hold, by pairing id. */
+  savedFor?: Map<number, string>;
   /** Whether a board can be tapped at all (the round screen's own rule). */
   disabled: (b: Board) => boolean;
   /** Boards to leave out (a filter); a match with none left is left out too. */
@@ -79,7 +81,7 @@ export function MatchList(props: {
         const { match } = card;
         const rows = shownRows(card);
         if (props.hidden && rows.length === 0) return null;
-        const score = matchScore(card, pending, values);
+        const score = matchScore(card, pending, values, props.savedFor);
         return (
           <section class={`match ${match.lineups.confirmed ? "" : "provisional"}`} key={match.id} id={`match-${match.id}`}>
             <header class="match-head">
@@ -144,7 +146,7 @@ export function MatchList(props: {
                 {rows.map((row) => {
                   const b = row.board;
                   const q = waitingFor.get(b.id);
-                  const shown = q && q.entry.kind === "result" ? q.entry.result : b.result;
+                  const shown = q && q.entry.kind === "result" ? q.entry.result : (props.savedFor?.get(b.id) ?? b.result);
                   const { left, right } = seats(row, layout);
                   const team = (seat: Seat) => (layout === "white_left" ? (seat.team === "a" ? match.team_a : match.team_b) : null);
                   const tag = (seat: Seat) => {

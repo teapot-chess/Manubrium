@@ -491,3 +491,14 @@ describe("commandsFor", () => {
   });
 });
 
+
+describe("the board's squares", () => {
+  it("are eighths both ways, so a rank with no pieces is as tall as one with them", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("src/ui/liveBoards.css", "utf8");
+    const rule = /\.mini-board\s*\{([^}]*)\}/.exec(css)![1];
+    expect(rule).toMatch(/grid-template-columns:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/);
+    expect(rule).toMatch(/grid-template-rows:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/);
+    expect(rule).toMatch(/aspect-ratio:\s*1/);
+  });
+});

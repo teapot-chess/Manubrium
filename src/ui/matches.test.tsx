@@ -604,3 +604,81 @@ describe("the byes editor and the server's question", () => {
     await screen.findByText("Byes saved.");
   });
 });
+
+describe("a team match slip, scanned", () => {
+  it("brings its match into view and opens its first board still without a result", async () => {
+    const { scanQr } = await import("../platform");
+    const bs = boards();
+    bs[2].result = "1-0";
+    show(fakeApi(teamRound(bs)));
+    (scanQr as Mock).mockResolvedValueOnce("https://pairings.cloud/t/7/scan/1/32");
+    fireEvent.click(await el("#scan-slip"));
+    // Match 2's board 1 has its result; board 2 (round board 4) is the one to enter.
+    await screen.findByText("Match 2, board 2");
+    expect(text("#result-white")).toBe("Delta Two");
+  });
+
+  it("refuses another tournament's slip and says so for a match no longer in the round", async () => {
+    const { scanQr } = await import("../platform");
+    show(fakeApi(teamRound()));
+    (scanQr as Mock).mockResolvedValueOnce("https://pairings.cloud/t/8/scan/1/32");
+    fireEvent.click(await el("#scan-slip"));
+    await waitFor(() => expect(text(".notice.error")).toContain("another tournament"));
+    (scanQr as Mock).mockResolvedValueOnce("https://pairings.cloud/t/7/scan/1/99");
+    fireEvent.click(await el("#scan-slip"));
+    await waitFor(() => expect(text(".notice.error")).toContain("not in round 1"));
+    expect(document.querySelector("#result-white")).toBeNull();
+  });
+});
+
+describe("a result held in, on a round read again", () => {
+  it("stays on the board while the round is fetched again, instead of going and coming back", async () => {
+    let release: (r: Round) => void = () => undefined;
+    const stale = teamRound();
+    const api = fakeApi(stale, {
+      sync: vi.fn(async (_id: number, entries: { cid: string }[]) => entries.map((e) => ({ cid: e.cid, status: "saved", reason: "saved", message: "" }))),
+    });
+    show(api);
+    fireEvent.click(await el("#board-1"));
+    await screen.findByText("Match 1, board 1");
+    // The read after the save hangs: until it lands, the round on screen is the old one.
+    api.round.mockImplementation(() => new Promise<Round>((resolve) => (release = resolve)));
+    await hold(screen.getByText("1-0"));
+    await waitFor(() => expect(api.sync).toHaveBeenCalled());
+    await waitFor(() => expect(outbox.list(server.base, 7)).toHaveLength(0));
+    // Anything that draws the screen now draws the old round: here, "still playing".
+    fireEvent.click(await el("#filter-open"));
+    // The saved board stays finished, so it stays out of the list of open ones.
+    await waitFor(() => expect(document.querySelector("#filter-open")!.getAttribute("aria-pressed")).toBe("true"));
+    expect(document.querySelector("#board-1")).toBeNull();
+    expect(document.querySelector("#board-2")).not.toBeNull();
+    fireEvent.click(await el("#filter-open"));
+    await waitFor(() => expect(text("#board-1 .result")).toContain("1-0"));
+    expect(text("#board-1 .result")).not.toContain("Waiting");
+
+    const fresh = teamRound();
+    fresh.boards[0].result = "1-0";
+    release(fresh);
+    await waitFor(() => expect(outbox.recentlySaved(server.base, 7)).toHaveLength(0));
+    expect(text("#board-1 .result")).toContain("1-0");
+  });
+
+  it("does not reopen the board the finger was over when the hold closes the sheet", async () => {
+    const api = fakeApi(teamRound());
+    show(api);
+    fireEvent.click(await el("#board-2"));
+    await screen.findByText("Match 1, board 2");
+    const button = screen.getByText("1-0").closest("button")!;
+    fireEvent.pointerDown(button, { pointerId: 1, pointerType: "touch", isPrimary: true, button: 0 });
+    // Locked with the finger still down: the sheet is gone...
+    await waitFor(() => expect(document.querySelector("#result-white")).toBeNull());
+    // ...and the click its lift sends lands on the board underneath.
+    fireEvent.click(document.querySelector("#board-2")!);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.querySelector("#result-white")).toBeNull();
+    // Once the finger is up, a tap is a tap again.
+    fireEvent.pointerUp(button, { pointerId: 1, pointerType: "touch", isPrimary: true, button: 0 });
+    fireEvent.click(document.querySelector("#board-2")!);
+    await el("#result-white");
+  });
+});
