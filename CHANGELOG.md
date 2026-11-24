@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Change] **`.gitattributes` forces LF everywhere, with CRLF only for `gradlew.bat`.** A Windows checkout used to depend on `core.autocrlf` being in a good mood. Binary types (images, archives, fonts, the Gradle wrapper jar) are listed instead of guessed. Nothing in the repository changed when the file was renormalised, which is the whole point.
+
 ## 1.6.0 - 2026-11-24
 
 - [Feature] **Scan reads team match slips.** The code on a team match slip or match sheet is a link (OpenPairings' "Scan team match slips"), and the app's Scan used to call it "not a slip", which was accurate and no help at all. It now reads the link - `/t/…/scan/<round>/<match>`, and the match page's own address - goes to the round, brings the match into view, marks it, and opens its first board still without a result. A match with every result in is only brought into view, with a line saying so. On a relayed tournament the link must carry the match's uid (OpenPairings prints it from 0.158.0); an older print there says so instead of opening a match by a number that belongs to the other copy. English, Dutch, French.
