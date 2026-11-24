@@ -1,14 +1,18 @@
 // More, "This phone": what this phone keeps for itself, whichever server and
-// tournament it is on - the colour theme, the default-time reminder and the
-// app lock. Each is in Preferences (the code in the Keychain / Keystore) and
-// never sent anywhere. Further phone-wide switches belong here as rows.
+// tournament it is on - the colour theme, the default-time reminder, the
+// app lock and, on Android, the update check. Each is in Preferences (the
+// code in the Keychain / Keystore) and never sent anywhere; the update
+// check asks GitHub a question that has none of them in it (src/update.ts).
+// Further phone-wide switches belong here as rows.
 
 import { useEffect, useState } from "preact/hooks";
 import { currentTheme, palette, saveTheme, THEMES, type ThemeId } from "../themes";
 import { CODE_MAX, CODE_MIN, LOCK_AFTER, LOCK_OFF, loadLock, lockChanged, saveLock, storeCode, validCode, type LockSettings } from "../lock";
 import { loadPhoneSettings, PHONE_DEFAULTS, savePhoneSettings, type PhoneSettings as Phone } from "../phoneSettings";
-import { deviceUnlockAvailable, native, secureStorage, storage } from "../platform";
+import { appVersion, deviceUnlockAvailable, native, secureStorage, selfUpdating, storage } from "../platform";
+import { checkForUpdate, type Update } from "../update";
 import { Sheet } from "./common";
+import { UpdateSheet } from "./Update";
 import { t as tr, type Key } from "../i18n";
 
 export const themeName = (id: ThemeId) => tr(`theme.${id}` as Key);
@@ -19,12 +23,30 @@ export function PhoneSettings() {
   const [lock, setLock] = useState<LockSettings>(LOCK_OFF);
   const [device, setDevice] = useState(false);
   const [settingCode, setSettingCode] = useState(false);
+  const [version, setVersion] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState<"current" | "failed" | null>(null);
+  const [offer, setOffer] = useState<Update | null>(null);
 
   useEffect(() => {
     loadPhoneSettings(storage).then(setPhone);
     loadLock(storage).then(setLock);
     deviceUnlockAvailable().then(setDevice);
+    if (selfUpdating) appVersion().then(setVersion);
   }, []);
+
+  async function checkNow() {
+    if (!version) return;
+    setChecking(true);
+    setChecked(null);
+    try {
+      const answer = await checkForUpdate({ current: version, store: storage, fetch, force: true });
+      if (answer.kind === "update") setOffer(answer.update);
+      else setChecked(answer.kind === "current" ? "current" : "failed");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function pickTheme(id: ThemeId) {
     setThemeState(id);
@@ -110,6 +132,30 @@ export function PhoneSettings() {
             </span>
           </label>
         </li>
+        {selfUpdating && (
+          <li class="row">
+            <label class="row-main pick" for="check-updates">
+              <input
+                type="checkbox"
+                id="check-updates"
+                checked={phone.checkUpdates}
+                onChange={(e) => void changePhone({ ...phone, checkUpdates: (e.target as HTMLInputElement).checked })}
+              />
+              <span>
+                <span class="row-title">{tr("phone.updates")}</span>
+                <span class="row-sub">{tr("phone.updates_fine", { version: version ?? "?" })}</span>
+              </span>
+            </label>
+          </li>
+        )}
+        {selfUpdating && (
+          <li class="row update-options">
+            <button type="button" class="chip" id="check-updates-now" disabled={checking || !version} onClick={() => void checkNow()}>
+              {tr("phone.updates_now")}
+            </button>
+            {checked && <span class="fine" id="check-updates-answer">{tr(checked === "current" ? "phone.updates_current" : "phone.updates_failed")}</span>}
+          </li>
+        )}
         {lock.enabled && (
           <li class="row lock-options">
             <label for="app-lock-after">{tr("phone.lock_after")}</label>
@@ -126,6 +172,8 @@ export function PhoneSettings() {
           </li>
         )}
       </ul>
+
+      {offer && version && <UpdateSheet update={offer} current={version} onClose={() => setOffer(null)} />}
 
       {settingCode && (
         <CodeSheet

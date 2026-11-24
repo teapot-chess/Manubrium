@@ -9,10 +9,12 @@ it has no servers, no accounts and no analytics of its own.
 ## What the app talks to
 
 Only the OpenPairings servers you add to it yourself, by scanning or
-pasting a connect link from your account page on that server. The one
-exception is notifications, if you switch them on: those are delivered
+pasting a connect link from your account page on that server. There are
+two exceptions. Notifications, if you switch them on, are delivered
 through Apple's or Google's push service (see *Notifications and push
-tokens* below). There is no advertising, no analytics and no crash
+tokens* below). And the Android app, which is installed from GitHub
+rather than from a store, asks GitHub once a day whether a newer version
+has been published (see *Update check on Android* below). There is no advertising, no analytics and no crash
 reporting in the app. On Android it contains two Google libraries, for
 two jobs only: Firebase Cloud Messaging, to receive notifications, and
 ML Kit barcode scanning, to read QR codes on the phone (see *Camera and
@@ -110,6 +112,21 @@ had tapped it.
 The photo library is read only when you pick an existing photo for an
 incident. No image leaves the phone except as that incident attachment,
 to that server.
+
+## Update check on Android
+
+The Android app is not distributed through Google Play, so it looks for
+its own updates: when it starts or comes back to the front, at most once
+a day, it reads the public page describing the latest Manubrium release
+at `api.github.com` (GitHub, operated by GitHub, Inc.). The request
+contains nothing about you, your account, your servers or your
+tournaments; GitHub sees what any web request shows it, such as the
+phone's IP address, under GitHub's own privacy statement. The app keeps
+only the time of the last check. When there is a newer version, the app
+offers it, and *Download* opens the file in the phone's browser; nothing
+is downloaded or installed without you. The check can be switched off
+under *More, This phone*. The iPhone app does not do this; the App Store
+updates it.
 
 ## Local network
 

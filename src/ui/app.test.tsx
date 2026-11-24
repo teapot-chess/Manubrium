@@ -48,6 +48,8 @@ vi.mock("../platform", () => ({
   cancelReminder: async () => undefined,
   deviceUnlockAvailable: async () => false,
   deviceUnlock: async () => false,
+  selfUpdating: false,
+  appVersion: async () => null,
 }));
 
 vi.mock("../api", async (original) => ({

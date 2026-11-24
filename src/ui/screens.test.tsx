@@ -56,6 +56,8 @@ vi.mock("../platform", () => ({
   cancelReminder: vi.fn(async () => undefined),
   deviceUnlockAvailable: async () => false,
   deviceUnlock: async () => false,
+  selfUpdating: false,
+  appVersion: async () => null,
 }));
 
 class Memory implements KeyValue {

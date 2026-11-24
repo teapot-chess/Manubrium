@@ -20,6 +20,7 @@ import { Tournaments } from "./Tournaments";
 import { TournamentView } from "./TournamentView";
 import { connectLiveActivities, pushManager } from "./Notifications";
 import { tapTarget } from "../push";
+import { UpdateCheck } from "./Update";
 
 export type Screen =
   | { name: "servers" }
@@ -181,6 +182,7 @@ export function App() {
   return (
     <>
       {view(servers)}
+      <UpdateCheck />
       {pendingLink && (
         <ConnectAsk
           link={pendingLink}

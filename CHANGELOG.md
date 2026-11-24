@@ -5,6 +5,12 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.7.0 - 2026-11-24
+
+- [Feature] **Android, without Google Play.** Play wanted a D-U-N-S number or twelve testers for a fortnight, and we had neither, so Manubrium for Android is now a signed apk on GitHub's releases: [manubrium.apk](https://github.com/teapot-chess/Manubrium/releases/latest/download/manubrium.apk), always the newest. Every release carries it under that name, beside a versioned copy and `SHA256SUMS`. The release key is made, kept off every repository, and pinned in the workflow, which refuses to publish an apk signed with anything else; an update signed with another key would not install over the app, and the phones would find out before we did.
+- [Feature] **The Android app looks for its own updates.** On start and on coming back to the front, at most once a day, it asks GitHub for the latest release and, when there is a newer apk, offers it. *Download* hands the file to the phone's browser, and tapping it brings up Android's installer; an installer of our own would have needed a sensitive permission and a native plug-in to arrive at the same screen. The request carries nothing about the phone or its tournaments. *More, This phone* has the switch to turn it off and *Check now* for the impatient. The iPhone has the App Store and is left alone. English, Dutch, French.
+- [Change] **No Firebase, no push, no drama.** The Android build still gets push only when `GOOGLE_SERVICES_JSON` is set, which it is not yet; until then it says it cannot push and does everything else. `docs/releasing.md` says what to create.
+
 - [Change] **The privacy policy admits to push tokens and the slip scanner.** It said the app talks to nothing but your servers and carries no third-party SDK, which stopped being quite true the day notifications arrived. It now says what a push token is, what goes with it to which server, why, and how each switch, a removed server or a revoked phone deletes it; that scanning a result slip, place card or team match slip happens on the phone and keeps nothing; and that the Android build carries Google's Firebase Cloud Messaging and ML Kit for exactly those two jobs. The App Store and Play Store answers in `store/` say the same. The copy shown on pairings.cloud is OpenPairings' manual and follows there.
 
 ## 1.6.1 - 2026-11-24

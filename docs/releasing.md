@@ -1,11 +1,20 @@
-# Releasing Manubrium to the stores
+# Releasing Manubrium
 
-Two workflows build the store packages: `.github/workflows/testflight.yml`
+Two workflows build the packages: `.github/workflows/testflight.yml`
 (iOS, uploads to App Store Connect) and `.github/workflows/android.yml`
-(a signed `.aab` and `.apk`). Both run on **Run workflow** in the Actions tab
-and on a tag `vX.Y.Z` that matches `package.json`'s version. Neither needs
-a Mac or a keystore on anybody's desk: everything that signs comes from the
-repository's secrets, listed below with where each one is made.
+(a signed `.apk`, put on this repository's GitHub releases, plus an `.aab`
+kept as an artifact). Both run on **Run workflow** in the Actions tab and,
+once their tag triggers are back on, on a tag `vX.Y.Z` that matches
+`package.json`'s version. Neither needs a Mac or a keystore on anybody's
+desk: everything that signs comes from the repository's secrets, listed
+below with where each one is made.
+
+**Android is not on Google Play.** A Play Console account for an
+organisation wants a D-U-N-S number, a personal one wants twelve testers
+for two weeks before anything goes public, and we have neither. So
+Android phones install the `.apk` from GitHub, and the app looks for the
+next one itself (*Sideloading* below). The `.aab` is still built, for the
+day that changes.
 
 Identity, fixed in three places that `cap sync` does not rewrite:
 `capacitor.config.ts`, `ios/App/App.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`)
@@ -19,27 +28,41 @@ and `android/app/build.gradle` (`applicationId`, `namespace`):
 | build number | the workflow's run number → `CURRENT_PROJECT_VERSION` / `versionCode` |
 
 The build number rises on its own and is unique per workflow, which is all
-either store asks (App Store Connect refuses a build number it has seen for
-the same version; Play refuses a `versionCode` it has seen at all - the two
-workflows count separately, which is fine, since the stores do too).
+either side asks (App Store Connect refuses a build number it has seen for
+the same version; Android refuses to install an apk over one with a higher
+`versionCode`, and Play would refuse a `versionCode` it has seen at all -
+the two workflows count separately, which is fine). Do not rename or
+re-create `android.yml`: GitHub numbers runs per workflow file, a new file
+starts again at 1, and every phone already on a higher `versionCode`
+would refuse the "update" as a downgrade. If it ever has to happen, add
+the old run number to `APP_BUILD` in the workflow.
 
 ## Releasing a version
 
 1. Bump `version` in `package.json` (and `package-lock.json`: `npm install`
    does it). Commit, push, let CI go green.
-2. `git tag v0.1.0 && git push origin v0.1.0`. Both workflows run; the
-   tag's version must equal `package.json`'s or they stop at once.
+2. `git tag v0.1.0 && git push origin v0.1.0`. With the tag triggers on,
+   both workflows run; while they are off (until December 2026), run them
+   on the tag by hand: `gh workflow run android.yml --ref v0.1.0` (and the
+   same for `testflight.yml`, after enabling it). The tag's version must
+   equal `package.json`'s or they stop at once.
 3. iOS: in App Store Connect, **TestFlight**, the build appears when
    Apple has processed it (minutes). Add it to the internal group; an
    external group needs Beta App Review.
-4. Android: download the artifact `Manubrium-android-<version>-<build>`
-   from the run and upload the `.aab` in the Play Console under
-   **Testing > Internal testing > Create new release**. (Play has an API
-   for this; it needs a service account, which is not set up. Upload by
-   hand until it is.)
+4. Android: nothing to do. The run on the tag makes the GitHub release
+   `v0.1.0`, marked latest, with `manubrium.apk`, the same file as
+   `Manubrium-<version>-<build>.apk`, and `SHA256SUMS`. Phones that have
+   the app are offered it within a day.
 
-Or press **Run workflow** on either, with no tag, for a build that is not
-a release.
+Every GitHub release must carry `manubrium.apk`: the stable link and the
+app's update check read the *latest* release, and a release without the
+file makes the link a 404 and the check say nothing. Only `android.yml`
+makes releases (`testflight.yml` makes none), so a release is always an
+Android one; do not make one by hand in the web page. A pre-release is
+ignored by both, which makes it the way to publish a test apk.
+
+Or press **Run workflow** on either, on a branch, for a build that is not
+a release (the apk is in the run's artifact).
 
 ## Secrets
 
@@ -58,11 +81,11 @@ across the organisation.
 | `APPLE_DIST_CERT_PASSWORD` | the `.p12`'s password | new |
 | `APPLE_PROVISIONING_PROFILE` | the **App Store** provisioning profile for `cloud.pairings.manubrium`, the `.mobileprovision` file, base64 | new |
 | `APPLE_EXTENSION_PROFILE` | the **App Store** profile for the Live Activity extension `cloud.pairings.manubrium.RoundActivity`, `.mobileprovision`, base64 | new in 1.2 |
-| `ANDROID_KEYSTORE` | the upload keystore, `.jks`, base64 | new |
-| `ANDROID_KEYSTORE_PASSWORD` | its store password | new |
-| `ANDROID_KEY_ALIAS` | the key's alias in it | new |
-| `ANDROID_KEY_PASSWORD` | the key's password | new |
-| `GOOGLE_SERVICES_JSON` | Firebase's `google-services.json` for push, base64; optional - without it Android has no push | new in 1.2 |
+| `ANDROID_KEYSTORE` | the release keystore, `.jks` (PKCS12), base64 | set 2026-11-24 |
+| `ANDROID_KEYSTORE_PASSWORD` | its store password | set 2026-11-24 |
+| `ANDROID_KEY_ALIAS` | the key's alias in it, `upload` | set 2026-11-24 |
+| `ANDROID_KEY_PASSWORD` | the key's password (PKCS12: the same as the store password) | set 2026-11-24 |
+| `GOOGLE_SERVICES_JSON` | Firebase's `google-services.json` for push, base64; optional - without it Android has no push | not set yet |
 
 Base64 on a Mac or Linux: `base64 -i file | pbcopy` (Mac) or
 `base64 -w0 file` (Linux); paste the one line as the secret's value.
@@ -160,35 +183,96 @@ Google ([console.firebase.google.com](https://console.firebase.google.com)):
    accounts > Generate new private key*. That JSON goes on each OpenPairings
    server that should push (`FCM_SERVICE_ACCOUNT_PATH`), never here.
 
+Firebase does not care how the app got onto the phone: a sideloaded apk
+gets pushes like a Play one, on any phone with Google Play services (most;
+not Huawei's newer ones, nor de-Googled ROMs, which get "no notifications
+here" like a build without the file). FCM needs no SHA fingerprint, so
+the Firebase app needs only the package name. Push arrives with the first
+release built after the secret is set; until then the Android app says it
+cannot push and everything else works.
+
 So the secrets in this repository grow by two (`APPLE_EXTENSION_PROFILE`,
 `GOOGLE_SERVICES_JSON`), and each server that wants push gets two files
 (the `.p8` and the service account). A server without them sends nothing;
 the app tells its arbiters that server has no notifications.
 
-### Google: what to make, in order
+### Sideloading: the Android route
 
-1. **The upload keystore.** Play App Signing holds the real app key; the
-   repository holds only the *upload* key, which Google can reset if lost.
-   With any JDK:
+**The key.** Without Play there is no Play App Signing: the key in
+`ANDROID_KEYSTORE` is the app's key itself, and Android installs an
+update only over an app signed with the same key. Lose it, or sign one
+release with another, and every installed copy refuses every later
+version; the only way out is uninstalling, which takes the phone's
+outbox and its servers with it. So:
 
-       keytool -genkeypair -v -keystore manubrium-upload.jks -alias upload \
-         -keyalg RSA -keysize 4096 -validity 10000 \
+- The keystore and its passwords are in `C:\Users\jorian\.manubrium-signing\`
+  on the owner's PC (`manubrium-upload.jks`, `passwords.txt`). That drive
+  is backed up hourly off-site, which is the backup. It is not in any
+  repository and must not be.
+- Alias `upload` (the name is history; it is the release key now), RSA
+  4096, valid until 2054. SHA-256 of its certificate:
+  `F4:78:15:6B:2C:8C:A5:B8:BF:2D:C5:9D:08:1B:71:7E:DF:ED:A9:D6:02:64:B8:27:00:F5:85:94:9C:2E:37:B4`.
+  The workflow checks every apk against it and a tag refuses any other, so a
+  secret replaced by mistake fails the run instead of the phones.
+- Should the app ever go to Play after all, give Play App Signing this
+  same key (*Use existing app signing key*); then phones that sideloaded it
+  can take Play's updates.
+
+**The download.** `https://github.com/teapot-chess/Manubrium/releases/latest/download/manubrium.apk`
+is always the newest. Open it on the phone; the first time, Android asks to
+allow the browser (or the file manager) to install unknown apps, then
+installs. Play Protect may ask to scan an app it has not seen before; let it.
+
+**Updates.** The Android build asks
+`api.github.com/repos/teapot-chess/Manubrium/releases/latest` on start and
+when it comes back to the front, at most once a day, and when a newer
+version has a `manubrium.apk`, offers it: *Download* opens the file's link
+in the phone's browser, which downloads it, and tapping it brings up the
+installer. It is not an installer inside the app on purpose: that would
+need `REQUEST_INSTALL_PACKAGES` (a permission Play Protect and Play both
+treat as sensitive), a native plug-in, a FileProvider for a file of our
+own and handling a download the hall's wifi drops halfway; the browser has
+all of that already and the installer screen is the same. The check is an
+anonymous GET with nothing of the phone's in it, and can be switched off
+under *More, This phone*, which also has *Check now*. Code:
+`src/update.ts`, `src/ui/Update.tsx`.
+
+**Google's developer verification.** Google announced in 2025 that
+certified Android phones will install only apps whose developer is
+verified with Google, sideloaded ones included: from September 2026 in
+Brazil, Indonesia, Singapore and Thailand, worldwide from 2027. Verifying
+happens in the *Android Developer Console* (not the Play Console): an
+identity check, and the package name `cloud.pairings.manubrium` registered
+with the certificate above. An organisation is asked for a D-U-N-S
+number there too; a person verifies with an ID, which is the way open to
+us. Google also promised a free tier for small distribution and a flow
+for experienced users to install unverified apps anyway. Check the
+current rules before the rollout reaches Belgium and register the package
+with this key then; nothing in the workflow changes, because the apk is
+already signed with the key that will be registered.
+
+### Google Play, if it ever happens
+
+1. **The keystore.** It exists (above); do not make a new one. For the
+   record, it was made with:
+
+       keytool -genkeypair -keystore manubrium-upload.jks -storetype PKCS12 \
+         -alias upload -keyalg RSA -keysize 4096 -validity 10000 \
          -dname "CN=Manubrium, O=teapot-chess, C=BE"
 
-   It asks for the store password and (with recent keytool, the same) key
-   password. The file, base64, is `ANDROID_KEYSTORE`; the passwords are
-   `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_PASSWORD`; `ANDROID_KEY_ALIAS`
-   is `upload`. Keep the `.jks` somewhere that is not this repository, too.
+   with a random 32-character password (PKCS12 has one for the store and
+   the key), set as the secrets with `gh secret set NAME < file` so that
+   it was never printed.
 
 2. **The app in the Play Console** - [play.google.com/console](https://play.google.com/console),
    *Create app*: name "Manubrium", app, free, the declarations. The
    application id is fixed by the first bundle uploaded; it will be
    `cloud.pairings.manubrium`.
 
-3. **Play App Signing** - on the first upload under *Testing > Internal
-   testing*, accept Google-managed signing (the default). Google derives
-   the upload certificate from that first `.aab`; later uploads must be
-   signed with the same key, hence the secret.
+3. **Play App Signing** - on the first upload, choose *Use existing app
+   signing key* and hand Google this keystore's key (the Console's PEPK
+   tool), not Google-managed signing: phones that sideloaded the apk only
+   take updates signed with it.
 
 4. The store listing, the data-safety form and the content rating are
    filled from `store/play-store.md` and `store/privacy-policy.md`;
@@ -205,7 +289,10 @@ OpenPairings' Mac signing: revoking it breaks both.
 ## What the workflows do not do
 
 - Take screenshots. `store/screenshots.md` says which are needed.
-- Upload to Google Play. The `.aab` is an artifact; upload it by hand.
+- Upload to Google Play. There is no Play listing; the `.aab` is an artifact.
+- Test the update check on a phone. The tests cover the version
+  comparison, the daily limit and what counts as a release with an apk;
+  the browser hand-off and the installer are Android's.
 - Build a signed package on a pull request. `ci.yml` runs the unit tests,
   the type check, the web build and `npx cap sync` (which catches a plugin
   that both native projects cannot take), and compiles the iOS project with
