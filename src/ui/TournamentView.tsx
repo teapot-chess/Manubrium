@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { OfflineError, type Tournament, type TournamentLine } from "../api";
 import type { Ctx } from "./App";
 import { describeError, Loading, Notice, TopBar, TryAgain } from "./common";
@@ -26,14 +26,22 @@ export function TournamentView(props: { ctx: Ctx; line: TournamentLine; onBack: 
   // Opened from what the cloud last said, because the cloud cannot be reached now.
   const [kept, setKept] = useState(false);
 
+  // Only the newest read may land: the relay timer, a pairing and an answered
+  // command all reload, and a slow older answer must not undo a newer one.
+  const asked = useRef(0);
+
   async function load() {
+    const mine = ++asked.current;
     try {
       // A relayed tournament is locked here but not on its laptop, which
       // takes every write the app makes (src/relay.ts).
-      setT(writableWhenRelayed(await ctx.api.tournament(line.id)));
+      const fresh = await ctx.api.tournament(line.id);
+      if (mine !== asked.current) return;
+      setT(writableWhenRelayed(fresh));
       setKept(false);
       setError(null);
     } catch (e) {
+      if (mine !== asked.current) return;
       // No cloud, but a relayed tournament whose laptop this phone may reach
       // in the hall (src/hall.ts): open it as it was last shown, and let
       // the round, standings and writes take the hall path.

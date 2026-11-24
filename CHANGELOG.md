@@ -5,6 +5,13 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.6.1 - 2026-11-24
+
+- [Fix] **An open team stays the team you opened.** On a relayed tournament the teams list can be read from the laptop one time and from the cloud the next, and the two copies number their teams differently. The open team was remembered by number, so a refresh could quietly swap it for whichever team now wore that number. It is remembered by its uid now, which both copies agree on.
+- [Fix] **Backing out of a withdrawal forgets the question.** Closing the withdraw sheet any way but *Keep* left the server's question behind, so the next Withdraw skipped the round picker and went straight to "go ahead anyway?". Every way out now tidies up.
+- [Fix] **A line-up check answers the line-up on screen.** A check still on its way when a player was ticked used to land under the new draft, approving a line-up it had never seen. An answer about an older draft is now dropped.
+- [Fix] **A slow tournament read no longer overwrites a newer one.** The relay timer, a pairing and an answered command all read the tournament again; whichever answer came last won, not whichever was asked last. Only the newest counts now.
+- [Fix] **A write stranded by a lost laptop says so in the list too.** The relayed-writes list showed the generic "the desk did not accept it" for a `laptop_lost` refusal, ignoring the sentence written for exactly that case in 1.4.1. It uses it now.
 - [Change] **`.gitattributes` forces LF everywhere, with CRLF only for `gradlew.bat`.** A Windows checkout used to depend on `core.autocrlf` being in a good mood. Binary types (images, archives, fonts, the Gradle wrapper jar) are listed instead of guessed. Nothing in the repository changed when the file was renormalised, which is the whole point.
 
 ## 1.6.0 - 2026-11-24

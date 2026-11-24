@@ -728,6 +728,36 @@ describe("the teams", () => {
     await waitFor(() => expect(api.addTeamPlayer).toHaveBeenCalledWith(7, teamUid(), 21));
   });
 
+  it("keeps the open team by uid when the list is read again from the other copy of a relayed tournament", async () => {
+    const first = ex<{ teams: EventTeam[] }>("teams-response.json").teams;
+    // The other copy: the same teams under other ids, Alpha's id now Bravo's.
+    const other = ex<{ teams: EventTeam[] }>("teams-response.json").teams.map((x, i, all) => ({ ...x, id: all[(i + 1) % all.length].id }));
+    const teams = vi.fn().mockResolvedValueOnce(first).mockResolvedValue(other);
+    const api = fakeApi({ teams, teamDetail: vi.fn(async () => ({ team: first[0], matches: [] })) });
+    show(api);
+    await click("#team-open-1");
+    await el("#team-withdraw");
+    await click("#teams .btn.ghost");
+    await waitFor(() => expect(teams).toHaveBeenCalledTimes(2));
+    // Still Alpha, not whichever team now has the id Alpha had.
+    await waitFor(() => expect(document.querySelector(".sheet h2")?.textContent).toBe(first[0].name));
+    expect(api.teamDetail).not.toHaveBeenCalledWith(7, first[4].uid);
+  });
+
+  it("forgets the server's question when the withdraw sheet is closed another way than Keep", async () => {
+    const asked = new ApiError(409, "needs_acknowledgement", "A match of this team was already sent in a rating report.", { confirm: ["finalised_result_changed"] });
+    const api = fakeApi({ withdrawTeam: vi.fn().mockRejectedValueOnce(asked) });
+    show(api);
+    await click("#team-open-1");
+    await click("#team-withdraw");
+    await hold(await el("#team-withdraw-yes"));
+    await el("#team-question");
+    fireEvent.click(document.querySelector(".sheet-backdrop")!);
+    await click("#team-withdraw");
+    await el("#team-withdraw-round");
+    expect(present("#team-question")).toBe(false);
+  });
+
   it("does not offer a player already on the team", async () => {
     const teams = ex<{ teams: EventTeam[] }>("teams-response.json").teams;
     const api = fakeApi({ teams: vi.fn(async () => teams), teamDetail: vi.fn(async () => ({ team: teams[4], matches: [] })), players: vi.fn(async () => [player(12, "Echo 2"), player(20, "Reserve Rita")]) });

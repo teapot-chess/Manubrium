@@ -146,6 +146,13 @@ describe("a relayed tournament", () => {
     await waitFor(() => expect(commands.list(server.base, tournament().id)).toEqual([]));
   });
 
+  it("says a write stranded by a lost laptop in the app's own words, not the generic refusal", async () => {
+    const lost = { ...pending(), state: "refused" as const, status: null, error: "laptop_lost", message: null };
+    await setup({ relayCommand: vi.fn() }, lost);
+    expect(await screen.findByText(/taken back without it/)).toBeTruthy();
+    expect(screen.queryByText(/The desk did not accept it\./)).toBeNull();
+  });
+
   it("asks the desk's question, and sends the write again with acknowledged when the arbiter goes ahead", async () => {
     const question: RelayCommand = {
       ...pending(),
