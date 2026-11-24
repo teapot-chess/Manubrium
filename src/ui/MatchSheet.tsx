@@ -564,18 +564,22 @@ function LineupEditor(props: {
   const [checked, setChecked] = useState<LineupFindings | undefined>(undefined);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
+  // Which draft a check was asked for: an answer about an older one is not about this one.
+  const draftNo = useRef(0);
 
   const draft = { a, b, outA, outB };
   const body = lineupBody(lineup.mode, draft);
   const changed = lineupChanged(lineup, draft);
 
   async function check() {
+    const mine = draftNo.current;
     setChecking(true);
     setCheckError(null);
     try {
-      setChecked(await props.onCheck(body));
+      const findings = await props.onCheck(body);
+      if (mine === draftNo.current) setChecked(findings);
     } catch (e) {
-      setCheckError(describeError(e));
+      if (mine === draftNo.current) setCheckError(describeError(e));
     } finally {
       setChecking(false);
     }
@@ -583,6 +587,7 @@ function LineupEditor(props: {
 
   // Anything edited makes an earlier check stale.
   const edit = <T,>(set: (v: T) => void) => (v: T) => {
+    draftNo.current += 1;
     setChecked(undefined);
     set(v);
   };

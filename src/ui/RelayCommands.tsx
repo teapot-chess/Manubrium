@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, type Tournament } from "../api";
 import { onResume } from "../platform";
 import { hallRoutes, laptopSilentSince, type HallRoutes } from "../hall";
-import { acknowledgedRequest, actionLabel, commandQuestion, RelayedWrite, type KeptCommand } from "../relay";
+import { acknowledgedRequest, actionLabel, commandQuestion, commandSentence, RelayedWrite, type KeptCommand } from "../relay";
 import { dateLocale, t as tr } from "../i18n";
 import type { Ctx } from "./App";
 import { describeError, Notice } from "./common";
@@ -234,7 +234,7 @@ export function RelayCommands(props: { ctx: Ctx; t: Tournament; onAnswered: () =
         }
         return (
           <Notice key={c.cid} kind="error" onClose={() => void dismiss(k)}>
-            {what}: {c.message || tr("relay.refused_default")}
+            {what}: {commandSentence(c)}
           </Notice>
         );
       })}

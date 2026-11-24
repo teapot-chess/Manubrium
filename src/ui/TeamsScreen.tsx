@@ -15,6 +15,7 @@ import {
   needsAcknowledgement,
   type EventTeam,
   type Player,
+  type Ref,
   type RosterPlayer,
   type TeamDetail,
   type TeamRoundStatus,
@@ -33,7 +34,9 @@ export function TeamsScreen(props: { ctx: Ctx; t: Tournament }) {
   const { ctx, t } = props;
   const [teams, setTeams] = useState<EventTeam[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
+  // By uid where there is one: on a relayed tournament the list may be read
+  // from the laptop one time and from the cloud the next, and their ids differ.
+  const [open, setOpen] = useState<Ref | null>(null);
   const [filter, setFilter] = useState("");
 
   async function load() {
@@ -53,7 +56,7 @@ export function TeamsScreen(props: { ctx: Ctx; t: Tournament }) {
     const q = filter.trim().toLowerCase();
     return (teams ?? []).filter((x) => !q || [x.name, x.short_name, x.club, x.captain].some((v) => v?.toLowerCase().includes(q)));
   }, [teams, filter]);
-  const openTeam = teams?.find((x) => x.id === open) ?? null;
+  const openTeam = open === null ? null : (teams?.find((x) => sameRow(open, x)) ?? null);
 
   return (
     <div class="teams" id="teams">
@@ -72,7 +75,7 @@ export function TeamsScreen(props: { ctx: Ctx; t: Tournament }) {
         />
       )}
       {shown.map((team) => (
-        <TeamCard key={team.id} team={team} onOpen={() => setOpen(team.id)} />
+        <TeamCard key={team.id} team={team} onOpen={() => setOpen(refOf(team))} />
       ))}
       {teams && teams.length > 0 && (
         <button type="button" class="btn ghost block" onClick={() => void load()}>
@@ -85,7 +88,12 @@ export function TeamsScreen(props: { ctx: Ctx; t: Tournament }) {
           t={t}
           team={openTeam}
           onClose={() => setOpen(null)}
-          onChanged={(changed) => setTeams((list) => list?.map((x) => (x.id === changed.id ? changed : x)) ?? list)}
+          onChanged={(changed) => {
+            // The open team changed: by the ref it was opened with, not by an id
+            // that may be the other copy's.
+            setTeams((list) => list?.map((x) => (sameRow(open, x) ? changed : x)) ?? list);
+            setOpen(refOf(changed));
+          }}
         />
       )}
     </div>
@@ -221,7 +229,14 @@ function TeamSheet(props: {
   if (ask?.kind === "withdraw") {
     const send = (ack: string[]) => void run(() => ctx.api.withdrawTeam(t.id, refOf(team), fromRound, ack), tr("teams.withdraw_msg", { team: team.name, n: fromRound }));
     return (
-      <Sheet title={title} onClose={() => setAsk(null)}>
+      <Sheet
+        title={title}
+        onClose={() => {
+          setAsk(null);
+          setQuestion(null);
+          setError(null);
+        }}
+      >
         <div class="ask" id="team-ask">
           <p class="ask-summary">{tr("teams.withdraw_title", { team: team.name })}</p>
           {question ? (
