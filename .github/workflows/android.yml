@@ -105,7 +105,7 @@ jobs:
               ;;
           esac
 
-      - name: Is the upload keystore set up?
+      - name: Is the release keystore set up?
         id: keystore
         env:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
@@ -125,8 +125,8 @@ jobs:
         env:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: |
-          printf '%s' "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/upload.jks"
-          echo "MANUBRIUM_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          printf '%s' "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "MANUBRIUM_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       # The passwords reach Gradle through the environment of this one step.
       - name: Build the signed bundle and apk
@@ -150,13 +150,13 @@ jobs:
       - name: Check the apk's signature
         if: steps.keystore.outputs.sign == 'true'
         env:
-          RELEASE_CERT_SHA256: f478156b2c8ca5b8bf2d9c5d081b717edfeda9d60264b82700f585949c2e37b4
+          RELEASE_CERT_SHA256: f478156b2c8ca5b8bf2dc59d081b717edfeda9d60264b82700f585949c2e37b4
         run: |
           set -eu
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           apk=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
           "$tools/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt"
-          got=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | tr -d ': ' | tr A-F a-f)
+          got=$(sed -n 's/^.*[Ss]igner.*certificate SHA-256 digest: //p' "$RUNNER_TEMP/certs.txt" | head -1 | tr -d ': ' | tr A-F a-f)
           if [ "$got" != "$RELEASE_CERT_SHA256" ]; then
             case "$GITHUB_REF" in
               refs/tags/v*) echo "::error::the apk is signed with $got, not the release key $RELEASE_CERT_SHA256"; exit 1 ;;
@@ -175,7 +175,7 @@ jobs:
 
       - name: Delete the keystore
         if: always()
-        run: rm -f "$RUNNER_TEMP/upload.jks"
+        run: rm -f "$RUNNER_TEMP/release.jks"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
