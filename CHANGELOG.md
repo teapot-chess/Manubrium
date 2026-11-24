@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Change] **The privacy policy admits to push tokens and the slip scanner.** It said the app talks to nothing but your servers and carries no third-party SDK, which stopped being quite true the day notifications arrived. It now says what a push token is, what goes with it to which server, why, and how each switch, a removed server or a revoked phone deletes it; that scanning a result slip, place card or team match slip happens on the phone and keeps nothing; and that the Android build carries Google's Firebase Cloud Messaging and ML Kit for exactly those two jobs. The App Store and Play Store answers in `store/` say the same. The copy shown on pairings.cloud is OpenPairings' manual and follows there.
+
 ## 1.6.1 - 2026-11-24
 
 - [Fix] **An open team stays the team you opened.** On a relayed tournament the teams list can be read from the laptop one time and from the cloud the next, and the two copies number their teams differently. The open team was remembered by number, so a refresh could quietly swap it for whichever team now wore that number. It is remembered by its uid now, which both copies agree on.

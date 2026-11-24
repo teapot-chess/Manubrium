@@ -63,12 +63,19 @@ Team events from the phone: match details with line-ups and forfeits, a Teams ta
 | Photos and videos > Photos | Yes, only when the user attaches one to an incident | No | No | Optional | App functionality |
 | App activity > Other user-generated content (results, incidents) | Yes | No | No | Required | App functionality |
 | App info and performance > Crash logs, Diagnostics | No | - | - | - | - |
-| Device or other IDs | No | - | - | - | - |
+| Device or other IDs | Yes, only when the user switches notifications on: the Firebase Cloud Messaging token, sent to the user's own servers | No | No | Optional | App functionality |
 | Personal info | No (the server shows the account's name/email to the app; the app sends none) | - | - | - | - |
 
 "Collected" here means sent to the OpenPairings server the user added;
-there is no other recipient and no third-party SDK. The device token is
-issued by that server and stays in the phone's keystore.
+there is no other recipient. The device token is issued by that server
+and stays in the phone's keystore. Two Google libraries are in the app:
+Firebase Cloud Messaging, which delivers the notifications the user
+switched on (its token goes to the user's servers, which delete it when
+the server is removed from the app or the phone is revoked), and ML Kit
+barcode scanning, which reads QR codes on the phone; the camera picture
+is neither kept nor sent, and only the code's text is used, to open the
+board or match it names. Google's own disclosures for these SDKs apply
+to what they report to Google.
 
 **Ads:** no. **App access:** restricted - give a review account (server
 URL, email, password) with a small running tournament and the steps:

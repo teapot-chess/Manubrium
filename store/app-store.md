@@ -95,12 +95,15 @@ Data collection: **Yes, we collect data from this app** - then only:
 | Contact info > Email address | No (the server has it; the app only shows it) | - | - | - |
 | User content > Photos | Yes, when the user attaches one to an incident | Yes (to the account on that server) | No | App functionality |
 | User content > Other (results, incidents) | Yes | Yes | No | App functionality |
-| Identifiers > Device ID | No - the device token is created by the server and is not a device identifier | - | - | - |
+| Identifiers > Device ID | No - the device token is created by the server and is not a device identifier; the APNs push token (only when the user switches notifications on) is sent only to the user's own servers, to deliver the notifications they chose, and is not a device identifier in Apple's sense | - | - | - |
 | Diagnostics | No | - | - | - |
 | Usage data | No | - | - | - |
 
 Everything the app sends goes to the OpenPairings server the user added,
-and to nothing else; there is no third-party SDK. Tracking: **No**. The
+and to nothing else; there is no third-party SDK. Notifications travel
+from that server through Apple's push service. QR codes (connect links,
+result slips, place cards, team match slips) are read on the phone; the
+picture is neither kept nor sent. Tracking: **No**. The
 answers above describe the app as a client; the servers' own policies
 describe what they keep.
 
