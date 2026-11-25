@@ -128,6 +128,10 @@ has nothing to do with this code.
   signing certificate's fingerprint is in `docs/releasing.md`. Android 8.0
   or later. Notifications need Google Play services on the phone.
 
+**Verify an Android download.** Each release file carries signed build
+provenance from GitHub. With the [GitHub CLI](https://cli.github.com/):
+`gh attestation verify manubrium.apk --repo teapot-chess/Manubrium`
+
 ## Licence
 
 Source published for reference under the Microsoft Reference Source License (Ms-RSL), copyright 2026 Jorian Burssens. The builds we publish (downloads, app stores, the Alnasl Pi image) may be used free of charge to run chess events; that permission covers our builds, not builds you make yourself. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

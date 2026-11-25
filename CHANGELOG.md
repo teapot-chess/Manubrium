@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Change] **Android releases carry signed build provenance.** `manubrium.apk`, its versioned copy and `SHA256SUMS` are attested through GitHub and Sigstore, keyless, so `gh attestation verify manubrium.apk --repo teapot-chess/Manubrium` can say who built a download and from what. The checksums alone only ever vouched for a file against the release it sat in, which is a witness who was hired by the defendant.
+
 ## 1.7.1 - 2026-11-25
 
 - [Fix] **Cancelling the scanner no longer scolds.** Backing out of Scan on a round, or a phone with no camera to offer, came back as "that is not a slip", as if a code had been read and found wanting. Nothing was read; nothing is said.

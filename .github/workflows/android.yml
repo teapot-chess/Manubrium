@@ -198,6 +198,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # Keyless attestation: the OIDC token and the right to store the result.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -226,6 +229,16 @@ jobs:
             echo "Release key, SHA-256 of the signing certificate:"
             echo '`f4:78:15:6b:2c:8c:a5:b8:bf:2d:c5:9d:08:1b:71:7e:df:ed:a9:d6:02:64:b8:27:00:f5:85:94:9c:2e:37:b4`'
           } > ../notes.md
+
+      # Signed build provenance, keyless (GitHub OIDC, Sigstore). Check with:
+      #   gh attestation verify manubrium.apk --repo teapot-chess/Manubrium
+      - name: Attest the build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            out/manubrium.apk
+            out/Manubrium-*.apk
+            out/SHA256SUMS
 
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
