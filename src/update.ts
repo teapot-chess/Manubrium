@@ -19,8 +19,6 @@
 import type { KeyValue } from "./queue";
 
 export const RELEASES_API = "https://api.github.com/repos/teapot-chess/Manubrium/releases/latest";
-/** Always the newest release's apk; the docs and the README link it. */
-export const APK_URL = "https://github.com/teapot-chess/Manubrium/releases/latest/download/manubrium.apk";
 export const APK_NAME = "manubrium.apk";
 export const UPDATE_KEY = "manubrium.update.v1";
 export const CHECK_EVERY = 24 * 60 * 60 * 1000;

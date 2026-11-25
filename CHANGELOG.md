@@ -5,6 +5,8 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+- [Change] **Two exports nobody imported go.** `APK_URL` and `isRunning` had been waiting for a caller since they were written. Nothing slow turned up, and the one-photo-per-request sync stays as deliberate as ever.
+
 - [Change] **Android releases carry signed build provenance.** `manubrium.apk`, its versioned copy and `SHA256SUMS` are attested through GitHub and Sigstore, keyless, so `gh attestation verify manubrium.apk --repo teapot-chess/Manubrium` can say who built a download and from what. The checksums alone only ever vouched for a file against the release it sat in, which is a witness who was hired by the defendant.
 
 ## 1.7.1 - 2026-11-25
