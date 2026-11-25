@@ -5,6 +5,11 @@ OpenPairings' own changelog.
 
 ## [Unreleased]
 
+## 1.7.1 - 2026-11-25
+
+- [Fix] **Cancelling the scanner no longer scolds.** Backing out of Scan on a round, or a phone with no camera to offer, came back as "that is not a slip", as if a code had been read and found wanting. Nothing was read; nothing is said.
+- [Fix] **The app lock hears only of real returns.** The same listener that refreshes data when the network comes back also reset the lock's "left at" time, so a connection regained while the app sat in the background could forget when it had gone, and the lock would not come back after its delay. The lock now listens to the app coming to the front and to nothing else.
+
 ## 1.7.0 - 2026-11-24
 
 - [Feature] **Android, without Google Play.** Play wanted a D-U-N-S number or twelve testers for a fortnight, and we had neither, so Manubrium for Android is now a signed apk on GitHub's releases: [manubrium.apk](https://github.com/teapot-chess/Manubrium/releases/latest/download/manubrium.apk), always the newest. Every release carries it under that name, beside a versioned copy and `SHA256SUMS`. The release key is made, kept off every repository, and pinned in the workflow, which refuses to publish an apk signed with anything else; an update signed with another key would not install over the app, and the phones would find out before we did.

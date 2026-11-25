@@ -138,8 +138,13 @@ export function onBackButton(back: () => boolean): () => void {
   };
 }
 
-/** Calls `handler` when the app comes back to the foreground or online; returns the undo. */
-export function onResume(handler: () => void): () => void {
+/**
+ * Calls `handler` when the app comes back to the foreground or online;
+ * returns the undo. `online: false` leaves the network out: the app lock
+ * must hear only of a real return, or a connection regained in the
+ * background would clear the time it left.
+ */
+export function onResume(handler: () => void, o: { online?: boolean } = {}): () => void {
   let undoNative: (() => void) | null = null;
   const visible = () => {
     if (document.visibilityState === "visible") handler();
@@ -153,7 +158,7 @@ export function onResume(handler: () => void): () => void {
   } else {
     document.addEventListener("visibilitychange", visible);
   }
-  window.addEventListener("online", handler);
+  if (o.online !== false) window.addEventListener("online", handler);
 
   return () => {
     undoNative?.();

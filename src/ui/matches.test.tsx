@@ -633,6 +633,16 @@ describe("a team match slip, scanned", () => {
   });
 });
 
+describe("a scan that is cancelled", () => {
+  it("says nothing: no code was read, so there is no \"not a slip\"", async () => {
+    const { scanQr } = await import("../platform");
+    show(fakeApi(teamRound()));
+    fireEvent.click(await el("#scan-slip"));
+    await waitFor(() => expect((scanQr as Mock)).toHaveBeenCalled());
+    expect(document.querySelector(".notice.error")).toBeNull();
+  });
+});
+
 describe("a result held in, on a round read again", () => {
   it("stays on the board while the round is fetched again, instead of going and coming back", async () => {
     let release: (r: Round) => void = () => undefined;

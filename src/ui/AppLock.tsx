@@ -60,7 +60,7 @@ export function AppLock(props: { children: ComponentChildren }) {
     const undoResume = onResume(() => {
       if (lockOnReturn(settingsRef.current, hiddenAt.current, Date.now())) setLocked(true);
       hiddenAt.current = null;
-    });
+    }, { online: false });
     return () => {
       undoPause();
       undoResume();
