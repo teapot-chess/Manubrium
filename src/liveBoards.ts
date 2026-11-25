@@ -3,7 +3,7 @@
 // reports, the guessed moves grouped into runs, and what to tell the arbiter
 // about a command and about a refusal. All pure, all tested on their own.
 
-import { ApiError, type BoardCommand, type LiveSide, type LiveTable } from "./api";
+import { ApiError, type BoardCommand, type LiveTable } from "./api";
 import { t, type Key } from "./i18n";
 // As ui/common's resultLabel; repeated so this file pulls in no UI.
 const resultLabel = (code: string) => code.replace(/1\/2/g, "½");
@@ -57,8 +57,6 @@ export function formatClock(ms: number | null): string {
   const two = (n: number) => String(n).padStart(2, "0");
   return h > 0 ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
-
-export const isRunning = (running: LiveSide | null | undefined, side: "white" | "black") => running === side;
 
 /** Consecutive guessed plies, as runs: [3,4,5,9] is [[3,5],[9,9]]. */
 export function guessedRuns(plies: number[]): [number, number][] {
