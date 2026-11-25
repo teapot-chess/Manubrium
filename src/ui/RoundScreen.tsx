@@ -227,7 +227,10 @@ export function RoundScreen(props: { ctx: Ctx; t: Tournament; reloadTournament: 
   // the round on screen, or the player when they have none in it; a team
   // match slip's link opens its match (above).
   async function scan() {
-    const code = slipTarget(parseScan(await scanQr()), t);
+    const text = await scanQr();
+    // Cancelled (or no camera): nothing was scanned, so nothing is "not a slip".
+    if (text === null) return;
+    const code = slipTarget(parseScan(text), t);
     if (code.kind === "refused") return setError(tr(`scan.${code.reason}`));
     setError(null);
     if (code.kind === "player") {
